@@ -42,3 +42,9 @@ export const deleteAccount = (id: string) => {
   const stmt = db.prepare('DELETE FROM accounts WHERE id = ?');
   return stmt.run(id);
 };
+
+export const checkAccountExists = (email: string): boolean => {
+  const stmt = db.prepare('SELECT COUNT(*) as count FROM accounts WHERE email = ?');
+  const result = stmt.get(email) as { count: number };
+  return result.count > 0;
+};

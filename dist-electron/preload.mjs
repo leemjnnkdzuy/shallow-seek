@@ -21,13 +21,21 @@ electron.contextBridge.exposeInMainWorld("electron", {
     zoomOut: () => electron.ipcRenderer.send("window-zoom-out"),
     resetZoom: () => electron.ipcRenderer.send("window-zoom-reset"),
     onWindowStateChange: (callback) => {
-      electron.ipcRenderer.on("window-state-changed", (_event, state) => callback(state));
+      electron.ipcRenderer.on(
+        "window-state-changed",
+        (_event, state) => callback(state)
+      );
     },
     openAddAccount: () => electron.ipcRenderer.send("open-add-account")
   },
   db: {
     addAccount: (account) => electron.ipcRenderer.invoke("db-add-account", account),
     getAccounts: () => electron.ipcRenderer.invoke("db-get-accounts"),
-    deleteAccount: (id) => electron.ipcRenderer.invoke("db-delete-account", id)
-  }
+    deleteAccount: (id) => electron.ipcRenderer.invoke("db-delete-account", id),
+    checkAccountExists: (email) => electron.ipcRenderer.invoke("db-check-account-exists", email)
+  },
+  deepseek: {
+    login: (payload) => electron.ipcRenderer.invoke("deepseek-login", payload)
+  },
+  log: (payload) => electron.ipcRenderer.send("renderer-log", payload)
 });

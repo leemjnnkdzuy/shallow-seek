@@ -4,6 +4,10 @@ interface TitleBarConfig {
   showMinimize: boolean;
   showMaximize: boolean;
   showClose: boolean;
+  showLogo: boolean;
+  showBack: boolean;
+  title: string;
+  onBack?: () => void;
 }
 
 interface TitleBarContextType extends TitleBarConfig {
@@ -15,6 +19,9 @@ const defaultConfig: TitleBarConfig = {
   showMinimize: true,
   showMaximize: true,
   showClose: true,
+  showLogo: true,
+  showBack: false,
+  title: "ShallowSeek",
 };
 
 const TitleBarContext = createContext<TitleBarContextType | undefined>(undefined);

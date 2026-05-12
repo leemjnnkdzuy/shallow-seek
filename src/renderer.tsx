@@ -5,21 +5,30 @@ import './index.css';
 import routes from './routes';
 
 const App = () => {
-  try {
-    const getPath = () => {
+  const [currentPath, setCurrentPath] = React.useState(() => {
+    const hash = window.location.hash;
+    if (hash && hash.startsWith('#')) {
+      return hash.substring(1) || '/';
+    }
+    const path = window.location.pathname;
+    return path.includes('index.html') ? '/' : (path || '/');
+  });
+
+  React.useEffect(() => {
+    const handleHashChange = () => {
       const hash = window.location.hash;
       if (hash && hash.startsWith('#')) {
-        return hash.substring(1) || '/';
+        setCurrentPath(hash.substring(1) || '/');
+      } else {
+        setCurrentPath('/');
       }
-      
-      const path = window.location.pathname;
-      if (path.includes('index.html')) {
-        return '/';
-      }
-      return path || '/';
     };
 
-    const currentPath = getPath();
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  try {
     const route = routes.find((r: any) => r.path === currentPath) || (routes && routes.length > 0 ? routes[0] : null);
     
     if (!route) {

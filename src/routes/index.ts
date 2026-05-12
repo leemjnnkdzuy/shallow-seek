@@ -7,6 +7,7 @@ import NothingLayout from "@/components/layouts/NothingLayout";
 // Pages
 import HomePage from "@/windows/main/HomePage";
 import AddAccountPage from "@/windows/popup/AddAccountPage";
+import WarningPage from "@/windows/main/WarningPage";
 
 export interface RouteConfig {
 	path: string;
@@ -18,6 +19,11 @@ const routes: RouteConfig[] = [
 	{
 		path: "/",
 		component: HomePage,
+		layout: NothingLayout,
+	},
+	{
+		path: "/warning",
+		component: WarningPage,
 		layout: NothingLayout,
 	},
 	{
