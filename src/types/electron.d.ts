@@ -69,6 +69,33 @@ declare global {
 						dataPreview?: string;
 					};
 				}>;
+				fetchHistory: (payload: {
+					token: string;
+					cookies?: string;
+				}) => Promise<{ok: boolean; data?: any; error?: any}>;
+				fetchSessionMessages: (payload: {
+					token: string;
+					cookies?: string;
+					sessionId: string;
+				}) => Promise<{ok: boolean; data?: any; error?: any}>;
+				createChatSession: (payload: {token: string; cookies?: string}) => Promise<{ok: boolean; data?: any; error?: any}>;
+				deleteChatSession: (payload: {token: string; cookies?: string; sessionId: string}) => Promise<{ok: boolean; data?: any; error?: any}>;
+				startChatStream: (payload: {
+					token: string;
+					cookies?: string;
+					payload: any;
+				}) => void;
+				onChatChunk: (callback: (chunk: string) => void) => () => void;
+				onChatEnd: (callback: () => void) => () => void;
+				onChatError: (callback: (err: {message: string}) => void) => () => void;
+			};
+			server: {
+				start: (config?: { token?: string; port?: number; apiKey?: string }) => Promise<{ ok: boolean; error?: string; port?: number }>;
+				stop: () => Promise<{ ok: boolean; error?: string }>;
+				status: () => Promise<{ isRunning: boolean }>;
+				getLogs: () => Promise<{ logs: string[] }>;
+				onLog: (callback: (msg: string) => void) => () => void;
+				onStatusChanged: (callback: (isRunning: boolean) => void) => () => void;
 			};
 			log?: (payload: unknown) => void;
 		};

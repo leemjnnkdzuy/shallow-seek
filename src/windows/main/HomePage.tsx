@@ -71,7 +71,10 @@ const HomePage: React.FC = () => {
 	};
 
 	useEffect(() => {
-		setConfig({ title: t('sidebar.home') });
+		setConfig({ 
+			title: t('sidebar.home'),
+			showBack: false 
+		});
 		fetchAccounts();
 		window.addEventListener("focus", fetchAccounts);
 		return () => window.removeEventListener("focus", fetchAccounts);
@@ -192,6 +195,7 @@ const HomePage: React.FC = () => {
 											<Button
 												variant='link'
 												className='h-auto p-0 text-primary text-xs font-bold flex items-center gap-1 group/btn'
+												onClick={() => window.location.hash = `/account/${account.id}`}
 											>
 												{t('common.use', { defaultValue: 'Sử dụng' })}{" "}
 												<ChevronRight className='w-3 h-3 transition-transform group-hover/btn:translate-x-1' />

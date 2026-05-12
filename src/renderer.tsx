@@ -34,7 +34,15 @@ const App = () => {
 
   try {
     const pathOnly = currentPath.split('?')[0];
-    const route = routes.find((r: any) => r.path === pathOnly) || (routes && routes.length > 0 ? routes[0] : null);
+    const route = routes.find((r: any) => {
+      if (r.path.includes('/:')) {
+        const routeParts = r.path.split('/');
+        const pathParts = pathOnly.split('/');
+        if (routeParts.length !== pathParts.length) return false;
+        return routeParts.every((part: string, i: number) => part.startsWith(':') || part === pathParts[i]);
+      }
+      return r.path === pathOnly;
+    }) || (routes && routes.length > 0 ? routes[0] : null);
     
     if (!route) {
       return (

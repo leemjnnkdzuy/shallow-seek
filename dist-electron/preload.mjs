@@ -53,7 +53,43 @@ electron.contextBridge.exposeInMainWorld("electron", {
     getAllSettings: () => electron.ipcRenderer.invoke("db-get-all-settings")
   },
   deepseek: {
-    login: (payload) => electron.ipcRenderer.invoke("deepseek-login", payload)
+    login: (payload) => electron.ipcRenderer.invoke("deepseek-login", payload),
+    fetchHistory: (payload) => electron.ipcRenderer.invoke("deepseek-fetch-history", payload),
+    fetchSessionMessages: (payload) => electron.ipcRenderer.invoke("deepseek-fetch-session-messages", payload),
+    createChatSession: (payload) => electron.ipcRenderer.invoke("deepseek-create-session", payload),
+    deleteChatSession: (payload) => electron.ipcRenderer.invoke("deepseek-delete-session", payload),
+    startChatStream: (payload) => electron.ipcRenderer.send("deepseek-chat-stream", payload),
+    onChatChunk: (callback) => {
+      const listener = (_event, chunk) => callback(chunk);
+      electron.ipcRenderer.on("deepseek-chat-chunk", listener);
+      return () => electron.ipcRenderer.off("deepseek-chat-chunk", listener);
+    },
+    onChatEnd: (callback) => {
+      const listener = () => callback();
+      electron.ipcRenderer.on("deepseek-chat-end", listener);
+      return () => electron.ipcRenderer.off("deepseek-chat-end", listener);
+    },
+    onChatError: (callback) => {
+      const listener = (_event, err) => callback(err);
+      electron.ipcRenderer.on("deepseek-chat-error", listener);
+      return () => electron.ipcRenderer.off("deepseek-chat-error", listener);
+    }
+  },
+  server: {
+    start: (config) => electron.ipcRenderer.invoke("server-start", config),
+    stop: () => electron.ipcRenderer.invoke("server-stop"),
+    status: () => electron.ipcRenderer.invoke("server-status"),
+    getLogs: () => electron.ipcRenderer.invoke("server-logs"),
+    onLog: (callback) => {
+      const listener = (_event, msg) => callback(msg);
+      electron.ipcRenderer.on("server-log", listener);
+      return () => electron.ipcRenderer.off("server-log", listener);
+    },
+    onStatusChanged: (callback) => {
+      const listener = (_event, isRunning) => callback(isRunning);
+      electron.ipcRenderer.on("server-status-changed", listener);
+      return () => electron.ipcRenderer.off("server-status-changed", listener);
+    }
   },
   log: (payload) => electron.ipcRenderer.send("renderer-log", payload)
 });

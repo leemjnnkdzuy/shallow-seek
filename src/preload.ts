@@ -69,6 +69,47 @@ contextBridge.exposeInMainWorld("electron", {
 	deepseek: {
 		login: (payload: {email: string; password: string; deviceId: string}) =>
 			ipcRenderer.invoke("deepseek-login", payload),
+		fetchHistory: (payload: {token: string; cookies?: string}) =>
+			ipcRenderer.invoke("deepseek-fetch-history", payload),
+		fetchSessionMessages: (payload: {token: string; cookies?: string; sessionId: string}) =>
+			ipcRenderer.invoke("deepseek-fetch-session-messages", payload),
+		createChatSession: (payload: {token: string; cookies?: string}) =>
+			ipcRenderer.invoke("deepseek-create-session", payload),
+		deleteChatSession: (payload: {token: string; cookies?: string; sessionId: string}) =>
+			ipcRenderer.invoke("deepseek-delete-session", payload),
+		startChatStream: (payload: {token: string; cookies?: string; payload: any}) =>
+			ipcRenderer.send("deepseek-chat-stream", payload),
+		onChatChunk: (callback: (chunk: string) => void) => {
+			const listener = (_event: any, chunk: string) => callback(chunk);
+			ipcRenderer.on("deepseek-chat-chunk", listener);
+			return () => ipcRenderer.off("deepseek-chat-chunk", listener);
+		},
+		onChatEnd: (callback: () => void) => {
+			const listener = () => callback();
+			ipcRenderer.on("deepseek-chat-end", listener);
+			return () => ipcRenderer.off("deepseek-chat-end", listener);
+		},
+		onChatError: (callback: (err: {message: string}) => void) => {
+			const listener = (_event: any, err: {message: string}) => callback(err);
+			ipcRenderer.on("deepseek-chat-error", listener);
+			return () => ipcRenderer.off("deepseek-chat-error", listener);
+		},
+	},
+	server: {
+		start: (config?: { token?: string; port?: number; apiKey?: string }) => ipcRenderer.invoke("server-start", config),
+		stop: () => ipcRenderer.invoke("server-stop"),
+		status: () => ipcRenderer.invoke("server-status"),
+		getLogs: () => ipcRenderer.invoke("server-logs"),
+		onLog: (callback: (msg: string) => void) => {
+			const listener = (_event: any, msg: string) => callback(msg);
+			ipcRenderer.on("server-log", listener);
+			return () => ipcRenderer.off("server-log", listener);
+		},
+		onStatusChanged: (callback: (isRunning: boolean) => void) => {
+			const listener = (_event: any, isRunning: boolean) => callback(isRunning);
+			ipcRenderer.on("server-status-changed", listener);
+			return () => ipcRenderer.off("server-status-changed", listener);
+		}
 	},
 	log: (payload: unknown) => ipcRenderer.send("renderer-log", payload),
 });

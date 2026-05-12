@@ -20,7 +20,7 @@ const ConfirmPage: React.FC = () => {
 		const hash = window.location.hash;
 		const searchParams = new URLSearchParams(hash.split("?")[1]);
 		
-		const title = searchParams.get("title") || "Xác nhận";
+		const title = searchParams.get("title") || "";
 		const message = searchParams.get("message") || "Bạn có chắc chắn muốn thực hiện hành động này?";
 		const confirmText = searchParams.get("confirmText") || "Xác nhận";
 		const cancelText = searchParams.get("cancelText") || "Hủy bỏ";

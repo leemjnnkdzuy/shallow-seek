@@ -17,6 +17,8 @@ import zlib from "zlib";
 import { EventEmitter } from "events";
 import Database from "better-sqlite3";
 import fs$1 from "node:fs";
+import http$2 from "node:http";
+import crypto$1 from "node:crypto";
 function registerWindowIpcs(__dirname, VITE_DEV_SERVER_URL2, RENDERER_DIST2) {
   ipcMain.on("window-minimize", (event) => {
     const webContents = event.sender;
@@ -12216,14 +12218,7 @@ var _eval = EvalError;
 var range = RangeError;
 var ref = ReferenceError;
 var syntax = SyntaxError;
-var type;
-var hasRequiredType;
-function requireType() {
-  if (hasRequiredType) return type;
-  hasRequiredType = 1;
-  type = TypeError;
-  return type;
-}
+var type = TypeError;
 var uri = URIError;
 var abs$1 = Math.abs;
 var floor$1 = Math.floor;
@@ -12469,7 +12464,7 @@ function requireCallBindApplyHelpers() {
   if (hasRequiredCallBindApplyHelpers) return callBindApplyHelpers;
   hasRequiredCallBindApplyHelpers = 1;
   var bind3 = functionBind;
-  var $TypeError2 = requireType();
+  var $TypeError2 = type;
   var $call2 = requireFunctionCall();
   var $actualApply = requireActualApply();
   callBindApplyHelpers = function callBindBasic(args) {
@@ -12542,7 +12537,7 @@ var $EvalError = _eval;
 var $RangeError = range;
 var $ReferenceError = ref;
 var $SyntaxError = syntax;
-var $TypeError$1 = requireType();
+var $TypeError$1 = type;
 var $URIError = uri;
 var abs = abs$1;
 var floor = floor$1;
@@ -12873,7 +12868,7 @@ var GetIntrinsic2 = getIntrinsic;
 var $defineProperty = GetIntrinsic2("%Object.defineProperty%", true);
 var hasToStringTag = requireShams()();
 var hasOwn$1 = hasown;
-var $TypeError = requireType();
+var $TypeError = type;
 var toStringTag = hasToStringTag ? Symbol.toStringTag : null;
 var esSetTostringtag = function setToStringTag(object, value) {
   var overrideIfSet = arguments.length > 2 && !!arguments[2] && arguments[2].force;
@@ -17909,11 +17904,41 @@ const getLoginHeaders = () => ({
   "content-type": "application/json",
   pragma: "no-cache",
   "user-agent": "DeepSeek/2.0.4 Android/35",
-  "x-app-version": "2.0.4",
   "x-client-locale": "zh_CN",
   "x-client-platform": "android",
   "x-client-timezone-offset": "28800",
   "x-client-version": "2.0.4"
+});
+const DEEPSEEK_HISTORY_URL = "https://chat.deepseek.com/api/v0/chat_session/fetch_page?lte_cursor.pinned=false";
+const DEEPSEEK_CREATE_POW_URL = "https://chat.deepseek.com/api/v0/chat/create_pow_challenge";
+const DEEPSEEK_COMPLETION_URL = "https://chat.deepseek.com/api/v0/chat/completion";
+const DEEPSEEK_HISTORY_MESSAGES_URL = "https://chat.deepseek.com/api/v0/chat/history_messages";
+const DEEPSEEK_CREATE_SESSION_URL = "https://chat.deepseek.com/api/v0/chat_session/create";
+const DEEPSEEK_DELETE_SESSION_URL = "https://chat.deepseek.com/api/v0/chat_session/delete";
+const DEEPSEEK_COMPLETION_TARGET_PATH = "/api/v0/chat/completion";
+const getHistoryHeaders = (token, cookies2) => {
+  const headers = {
+    "Accept": "application/json",
+    "Accept-Charset": "UTF-8",
+    "Authorization": `Bearer ${token}`,
+    "Cache-Control": "no-cache",
+    "Host": "chat.deepseek.com",
+    "Pragma": "no-cache",
+    "User-Agent": "DeepSeek/2.0.4 Android/35",
+    "x-client-locale": "zh_CN",
+    "x-client-platform": "android",
+    "x-client-timezone-offset": "28800",
+    "x-client-version": "2.0.4"
+  };
+  if (cookies2) {
+    headers["Cookie"] = cookies2;
+  }
+  return headers;
+};
+const getChatHeaders = (token, powResponse, cookies2) => ({
+  ...getHistoryHeaders(token, cookies2),
+  "x-ds-pow-response": powResponse,
+  "Content-Type": "application/json"
 });
 const maskIdentifier = (value) => {
   if (!value) return "";
@@ -17939,6 +17964,254 @@ const previewValue = (value, maxLen = 4e3) => {
     return String(value);
   }
 };
+const rc = [
+  0x0000000000000001n,
+  0x0000000000008082n,
+  0x800000000000808an,
+  0x8000000080008000n,
+  0x000000000000808bn,
+  0x0000000080000001n,
+  0x8000000080008081n,
+  0x8000000000008009n,
+  0x000000000000008an,
+  0x0000000000000088n,
+  0x0000000080008009n,
+  0x000000008000000an,
+  0x000000008000808bn,
+  0x800000000000008bn,
+  0x8000000000008089n,
+  0x8000000000008003n,
+  0x8000000000008002n,
+  0x8000000000000080n,
+  0x000000000000800an,
+  0x800000008000000an,
+  0x8000000080008081n,
+  0x8000000000008080n,
+  0x0000000080000001n,
+  0x8000000080008008n
+];
+function rotl64(v, k) {
+  return BigInt.asUintN(64, v << k | v >> 64n - k);
+}
+function keccakF23(s) {
+  let a0 = s[0], a1 = s[1], a2 = s[2], a3 = s[3], a4 = s[4];
+  let a5 = s[5], a6 = s[6], a7 = s[7], a8 = s[8], a9 = s[9];
+  let a10 = s[10], a11 = s[11], a12 = s[12], a13 = s[13], a14 = s[14];
+  let a15 = s[15], a16 = s[16], a17 = s[17], a18 = s[18], a19 = s[19];
+  let a20 = s[20], a21 = s[21], a22 = s[22], a23 = s[23], a24 = s[24];
+  for (let r = 1; r < 24; r++) {
+    const c0 = a0 ^ a5 ^ a10 ^ a15 ^ a20;
+    const c1 = a1 ^ a6 ^ a11 ^ a16 ^ a21;
+    const c2 = a2 ^ a7 ^ a12 ^ a17 ^ a22;
+    const c3 = a3 ^ a8 ^ a13 ^ a18 ^ a23;
+    const c4 = a4 ^ a9 ^ a14 ^ a19 ^ a24;
+    const d0 = c4 ^ rotl64(c1, 1n);
+    const d1 = c0 ^ rotl64(c2, 1n);
+    const d2 = c1 ^ rotl64(c3, 1n);
+    const d3 = c2 ^ rotl64(c4, 1n);
+    const d4 = c3 ^ rotl64(c0, 1n);
+    a0 ^= d0;
+    a5 ^= d0;
+    a10 ^= d0;
+    a15 ^= d0;
+    a20 ^= d0;
+    a1 ^= d1;
+    a6 ^= d1;
+    a11 ^= d1;
+    a16 ^= d1;
+    a21 ^= d1;
+    a2 ^= d2;
+    a7 ^= d2;
+    a12 ^= d2;
+    a17 ^= d2;
+    a22 ^= d2;
+    a3 ^= d3;
+    a8 ^= d3;
+    a13 ^= d3;
+    a18 ^= d3;
+    a23 ^= d3;
+    a4 ^= d4;
+    a9 ^= d4;
+    a14 ^= d4;
+    a19 ^= d4;
+    a24 ^= d4;
+    const b0 = a0;
+    const b10 = rotl64(a1, 1n);
+    const b20 = rotl64(a2, 62n);
+    const b5 = rotl64(a3, 28n);
+    const b15 = rotl64(a4, 27n);
+    const b16 = rotl64(a5, 36n);
+    const b1 = rotl64(a6, 44n);
+    const b11 = rotl64(a7, 6n);
+    const b21 = rotl64(a8, 55n);
+    const b6 = rotl64(a9, 20n);
+    const b7 = rotl64(a10, 3n);
+    const b17 = rotl64(a11, 10n);
+    const b2 = rotl64(a12, 43n);
+    const b12 = rotl64(a13, 25n);
+    const b22 = rotl64(a14, 39n);
+    const b23 = rotl64(a15, 41n);
+    const b8 = rotl64(a16, 45n);
+    const b18 = rotl64(a17, 15n);
+    const b3 = rotl64(a18, 21n);
+    const b13 = rotl64(a19, 8n);
+    const b14 = rotl64(a20, 18n);
+    const b24 = rotl64(a21, 2n);
+    const b9 = rotl64(a22, 61n);
+    const b19 = rotl64(a23, 56n);
+    const b4 = rotl64(a24, 14n);
+    a0 = b0 ^ ~b1 & b2;
+    a1 = b1 ^ ~b2 & b3;
+    a2 = b2 ^ ~b3 & b4;
+    a3 = b3 ^ ~b4 & b0;
+    a4 = b4 ^ ~b0 & b1;
+    a5 = b5 ^ ~b6 & b7;
+    a6 = b6 ^ ~b7 & b8;
+    a7 = b7 ^ ~b8 & b9;
+    a8 = b8 ^ ~b9 & b5;
+    a9 = b9 ^ ~b5 & b6;
+    a10 = b10 ^ ~b11 & b12;
+    a11 = b11 ^ ~b12 & b13;
+    a12 = b12 ^ ~b13 & b14;
+    a13 = b13 ^ ~b14 & b10;
+    a14 = b14 ^ ~b10 & b11;
+    a15 = b15 ^ ~b16 & b17;
+    a16 = b16 ^ ~b17 & b18;
+    a17 = b17 ^ ~b18 & b19;
+    a18 = b18 ^ ~b19 & b15;
+    a19 = b19 ^ ~b15 & b16;
+    a20 = b20 ^ ~b21 & b22;
+    a21 = b21 ^ ~b22 & b23;
+    a22 = b22 ^ ~b23 & b24;
+    a23 = b23 ^ ~b24 & b20;
+    a24 = b24 ^ ~b20 & b21;
+    a0 ^= rc[r];
+  }
+  s[0] = a0;
+  s[1] = a1;
+  s[2] = a2;
+  s[3] = a3;
+  s[4] = a4;
+  s[5] = a5;
+  s[6] = a6;
+  s[7] = a7;
+  s[8] = a8;
+  s[9] = a9;
+  s[10] = a10;
+  s[11] = a11;
+  s[12] = a12;
+  s[13] = a13;
+  s[14] = a14;
+  s[15] = a15;
+  s[16] = a16;
+  s[17] = a17;
+  s[18] = a18;
+  s[19] = a19;
+  s[20] = a20;
+  s[21] = a21;
+  s[22] = a22;
+  s[23] = a23;
+  s[24] = a24;
+}
+function solvePow(challengeHex, salt, expireAt, difficulty) {
+  if (challengeHex.length !== 64) {
+    throw new Error("pow: challenge must be 64 hex chars");
+  }
+  const target = Buffer.from(challengeHex, "hex");
+  const t0 = target.readBigUInt64LE(0);
+  const t1 = target.readBigUInt64LE(8);
+  const t2 = target.readBigUInt64LE(16);
+  const t3 = target.readBigUInt64LE(24);
+  const prefixStr = `${salt}_${expireAt}_`;
+  const prefix = Buffer.from(prefixStr, "utf-8");
+  const rate = 136;
+  let baseState = new Array(25).fill(0n);
+  let off = 0;
+  while (off + rate <= prefix.length) {
+    for (let i = 0; i < rate / 8; i++) {
+      baseState[i] ^= prefix.readBigUInt64LE(off + i * 8);
+    }
+    keccakF23(baseState);
+    off += rate;
+  }
+  const tailLen = prefix.length - off;
+  const tail = Buffer.alloc(rate);
+  prefix.copy(tail, 0, off);
+  let numBuf = Buffer.alloc(20);
+  for (let n = 0; n < difficulty; n++) {
+    let v = n;
+    let pos = 20;
+    if (v === 0) {
+      pos--;
+      numBuf[pos] = 48;
+    } else {
+      while (v > 0) {
+        pos--;
+        numBuf[pos] = 48 + v % 10;
+        v = Math.floor(v / 10);
+      }
+    }
+    const numLen = 20 - pos;
+    let s = [...baseState];
+    const totalTail = tailLen + numLen;
+    if (totalTail < rate) {
+      let buf = Buffer.alloc(rate);
+      tail.copy(buf, 0, 0, tailLen);
+      numBuf.copy(buf, tailLen, pos, 20);
+      buf[totalTail] = 6;
+      buf[rate - 1] |= 128;
+      for (let i = 0; i < rate / 8; i++) {
+        s[i] ^= buf.readBigUInt64LE(i * 8);
+      }
+      keccakF23(s);
+    } else {
+      let buf = Buffer.alloc(rate);
+      tail.copy(buf, 0, 0, tailLen);
+      numBuf.copy(buf, tailLen, pos, pos + (rate - tailLen));
+      for (let i = 0; i < rate / 8; i++) {
+        s[i] ^= buf.readBigUInt64LE(i * 8);
+      }
+      keccakF23(s);
+      let buf2 = Buffer.alloc(rate);
+      const rem = totalTail - rate;
+      numBuf.copy(buf2, 0, pos + (rate - tailLen), pos + (rate - tailLen) + rem);
+      buf2[rem] = 6;
+      buf2[rate - 1] |= 128;
+      for (let i = 0; i < rate / 8; i++) {
+        s[i] ^= buf2.readBigUInt64LE(i * 8);
+      }
+      keccakF23(s);
+    }
+    if (s[0] === t0 && s[1] === t1 && s[2] === t2 && s[3] === t3) {
+      return n;
+    }
+  }
+  throw new Error("pow: no solution within difficulty");
+}
+function buildPowHeader(challenge, answer) {
+  const payload = {
+    algorithm: challenge.algorithm,
+    challenge: challenge.challenge,
+    salt: challenge.salt,
+    answer,
+    signature: challenge.signature,
+    target_path: challenge.target_path
+  };
+  return Buffer.from(JSON.stringify(payload)).toString("base64");
+}
+function solveAndBuildHeader(challenge) {
+  if (challenge.algorithm !== "DeepSeekHashV1") {
+    throw new Error("pow: unsupported algorithm: " + challenge.algorithm);
+  }
+  const difficulty = challenge.difficulty || 144e3;
+  const answer = solvePow(
+    challenge.challenge,
+    challenge.salt,
+    challenge.expire_at,
+    difficulty
+  );
+  return buildPowHeader(challenge, answer);
+}
 function registerAccountIpcs(__dirname, VITE_DEV_SERVER_URL2, RENDERER_DIST2) {
   ipcMain.on("open-add-account", (event) => {
     const parentWindow = BrowserWindow.fromWebContents(event.sender) || void 0;
@@ -18032,6 +18305,162 @@ function registerAccountIpcs(__dirname, VITE_DEV_SERVER_URL2, RENDERER_DIST2) {
       }
     }
   );
+  ipcMain.handle(
+    "deepseek-fetch-history",
+    async (_event, payload) => {
+      console.log("[deepseek-fetch-history] Requesting history with token:", payload.token ? "present" : "missing");
+      try {
+        const response = await axios.get(
+          DEEPSEEK_HISTORY_URL,
+          {
+            headers: getHistoryHeaders(payload.token, payload.cookies),
+            validateStatus: () => true
+          }
+        );
+        console.log("[deepseek-fetch-history] Response status:", response.status);
+        if (response.status !== 200) {
+          console.error("[deepseek-fetch-history] Error response data:", response.data);
+        }
+        return { ok: true, data: response.data };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Unknown error";
+        console.error("[deepseek-fetch-history] Catch error:", message);
+        return { ok: false, error: { message } };
+      }
+    }
+  );
+  ipcMain.handle(
+    "deepseek-fetch-session-messages",
+    async (_event, payload) => {
+      var _a, _b, _c, _d, _e;
+      try {
+        const headers = getHistoryHeaders(payload.token, payload.cookies);
+        const res = await axios.get(
+          `${DEEPSEEK_HISTORY_MESSAGES_URL}?chat_session_id=${payload.sessionId}`,
+          {
+            headers
+          }
+        );
+        console.log("[deepseek-fetch-session-messages] Response status:", res.status);
+        if (((_d = (_c = (_b = (_a = res.data) == null ? void 0 : _a.data) == null ? void 0 : _b.biz_data) == null ? void 0 : _c.chat_messages) == null ? void 0 : _d.length) > 0) {
+          console.log("[deepseek-fetch-session-messages] Message keys:", Object.keys(res.data.data.biz_data.chat_messages[0]));
+          console.log("[deepseek-fetch-session-messages] Message sample:", JSON.stringify(res.data.data.biz_data.chat_messages[0]).substring(0, 1e3));
+        }
+        return { ok: true, data: res.data };
+      } catch (error) {
+        console.error("[deepseek-fetch-session-messages] error:", error == null ? void 0 : error.message);
+        return {
+          ok: false,
+          error: ((_e = error == null ? void 0 : error.response) == null ? void 0 : _e.data) || (error == null ? void 0 : error.message)
+        };
+      }
+    }
+  );
+  ipcMain.handle(
+    "deepseek-create-session",
+    async (_event, payload) => {
+      try {
+        const response = await axios.post(
+          DEEPSEEK_CREATE_SESSION_URL,
+          {},
+          {
+            headers: getHistoryHeaders(payload.token, payload.cookies),
+            validateStatus: () => true
+          }
+        );
+        console.log("[deepseek-create-session] Response status:", response.status);
+        return { ok: true, data: response.data };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Unknown error";
+        console.error("[deepseek-create-session] Catch error:", message);
+        return { ok: false, error: { message } };
+      }
+    }
+  );
+  ipcMain.handle(
+    "deepseek-delete-session",
+    async (_event, payload) => {
+      try {
+        const response = await axios.post(
+          DEEPSEEK_DELETE_SESSION_URL,
+          { chat_session_id: payload.sessionId },
+          {
+            headers: getHistoryHeaders(payload.token, payload.cookies),
+            validateStatus: () => true
+          }
+        );
+        console.log("[deepseek-delete-session] Response status:", response.status);
+        return { ok: true, data: response.data };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Unknown error";
+        console.error("[deepseek-delete-session] Catch error:", message);
+        return { ok: false, error: { message } };
+      }
+    }
+  );
+  ipcMain.on("deepseek-chat-stream", async (event, payload) => {
+    var _a, _b, _c, _d;
+    try {
+      const powResponse = await axios.post(
+        DEEPSEEK_CREATE_POW_URL,
+        { target_path: DEEPSEEK_COMPLETION_TARGET_PATH },
+        {
+          headers: getHistoryHeaders(payload.token, payload.cookies),
+          validateStatus: () => true
+        }
+      );
+      if (powResponse.status !== 200 || ((_a = powResponse.data) == null ? void 0 : _a.code) !== 0) {
+        event.sender.send("deepseek-chat-error", { message: "Failed to get PoW challenge" });
+        return;
+      }
+      const challenge = (_d = (_c = (_b = powResponse.data) == null ? void 0 : _b.data) == null ? void 0 : _c.biz_data) == null ? void 0 : _d.challenge;
+      if (!challenge) {
+        event.sender.send("deepseek-chat-error", { message: "Invalid PoW challenge response" });
+        return;
+      }
+      const powHeaderStr = solveAndBuildHeader(challenge);
+      const chatHeaders = getChatHeaders(payload.token, powHeaderStr, payload.cookies);
+      console.log("[deepseek-chat-stream] Request URL:", DEEPSEEK_COMPLETION_URL);
+      console.log("[deepseek-chat-stream] Request Headers:", JSON.stringify(chatHeaders));
+      console.log("[deepseek-chat-stream] Request Body:", JSON.stringify(payload.payload));
+      const response = await axios.post(
+        DEEPSEEK_COMPLETION_URL,
+        payload.payload,
+        {
+          headers: chatHeaders,
+          responseType: "stream",
+          validateStatus: () => true
+        }
+      );
+      if (response.status !== 200) {
+        const stream22 = response.data;
+        let errorData = "";
+        for await (const chunk of stream22) {
+          errorData += chunk.toString();
+        }
+        console.error("[deepseek-chat-stream] Error Status:", response.status);
+        console.error("[deepseek-chat-stream] Error Data:", errorData);
+        event.sender.send("deepseek-chat-error", {
+          message: `DeepSeek API Error: ${response.status}. ${errorData}`
+        });
+        return;
+      }
+      const stream2 = response.data;
+      stream2.on("data", (chunk) => {
+        const text = chunk.toString("utf-8");
+        event.sender.send("deepseek-chat-chunk", text);
+      });
+      stream2.on("end", () => {
+        event.sender.send("deepseek-chat-end");
+      });
+      stream2.on("error", (err) => {
+        event.sender.send("deepseek-chat-error", { message: err.message });
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      event.sender.send("deepseek-chat-error", { message });
+    }
+  });
 }
 const userDataPath = app.getPath("userData");
 const dbDir = path$1.join(userDataPath, "database");
@@ -18142,10 +18571,1059 @@ function registerDatabaseIpcs() {
     }
   });
 }
+function intFrom(v) {
+  if (typeof v === "number") return Math.floor(v);
+  return 0;
+}
+async function login(acc) {
+  var _a, _b, _c, _d, _e;
+  const body = getLoginRequestBody(acc.email.trim(), acc.password.trim());
+  const resp = await axios.post(DEEPSEEK_LOGIN_URL, body, {
+    headers: getLoginHeaders(),
+    validateStatus: () => true
+  });
+  const data = resp.data;
+  const code = intFrom(data == null ? void 0 : data.code);
+  if (code !== 0) throw new Error(`login failed: ${data == null ? void 0 : data.msg}`);
+  const bizCode = intFrom((_a = data == null ? void 0 : data.data) == null ? void 0 : _a.biz_code);
+  if (bizCode !== 0) throw new Error(`login failed: ${(_b = data == null ? void 0 : data.data) == null ? void 0 : _b.biz_msg}`);
+  const token = (_e = (_d = (_c = data == null ? void 0 : data.data) == null ? void 0 : _c.biz_data) == null ? void 0 : _d.user) == null ? void 0 : _e.token;
+  if (!token || typeof token !== "string" || !token.trim()) {
+    throw new Error("missing login token");
+  }
+  return token.trim();
+}
+async function createSession(token, maxAttempts = 3) {
+  var _a;
+  const headers = getHistoryHeaders(token);
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      const resp = await axios.post(DEEPSEEK_CREATE_SESSION_URL, { agent: "chat" }, {
+        headers,
+        validateStatus: () => true
+      });
+      const data = resp.data;
+      if (resp.status === 200 && intFrom(data == null ? void 0 : data.code) === 0 && intFrom((_a = data == null ? void 0 : data.data) == null ? void 0 : _a.biz_code) === 0) {
+        const sessionId = extractSessionId(data);
+        if (sessionId) return sessionId;
+      }
+      console.warn("[shallowseek-api] create_session failed", resp.status, data == null ? void 0 : data.msg);
+    } catch (err) {
+      console.warn("[shallowseek-api] create_session error", err.message);
+    }
+  }
+  throw new Error("create session failed after retries");
+}
+function extractSessionId(resp) {
+  var _a, _b;
+  const bizData = (_a = resp == null ? void 0 : resp.data) == null ? void 0 : _a.biz_data;
+  if (typeof (bizData == null ? void 0 : bizData.id) === "string" && bizData.id.trim()) return bizData.id.trim();
+  if (typeof ((_b = bizData == null ? void 0 : bizData.chat_session) == null ? void 0 : _b.id) === "string" && bizData.chat_session.id.trim()) {
+    return bizData.chat_session.id.trim();
+  }
+  return null;
+}
+async function getPow(token, maxAttempts = 3) {
+  var _a, _b, _c;
+  const headers = getHistoryHeaders(token);
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      const resp = await axios.post(
+        DEEPSEEK_CREATE_POW_URL,
+        { target_path: DEEPSEEK_COMPLETION_TARGET_PATH },
+        { headers, validateStatus: () => true }
+      );
+      const data = resp.data;
+      if (resp.status === 200 && intFrom(data == null ? void 0 : data.code) === 0 && intFrom((_a = data == null ? void 0 : data.data) == null ? void 0 : _a.biz_code) === 0) {
+        const challenge = (_c = (_b = data == null ? void 0 : data.data) == null ? void 0 : _b.biz_data) == null ? void 0 : _c.challenge;
+        if (!challenge) throw new Error("invalid pow challenge response");
+        return solveAndBuildHeader(challenge);
+      }
+      console.warn("[shallowseek-api] get_pow failed", resp.status, data == null ? void 0 : data.msg);
+    } catch (err) {
+      console.warn("[shallowseek-api] get_pow error", err.message);
+    }
+  }
+  throw new Error("get pow failed after retries");
+}
+async function callCompletion(token, payload, powResponse) {
+  const headers = getChatHeaders(token, powResponse);
+  return axios.post(DEEPSEEK_COMPLETION_URL, payload, {
+    headers,
+    responseType: "stream",
+    validateStatus: () => true
+  });
+}
+async function deleteSession(token, sessionId) {
+  try {
+    await axios.post(
+      DEEPSEEK_DELETE_SESSION_URL,
+      { chat_session_id: sessionId },
+      { headers: getHistoryHeaders(token), validateStatus: () => true }
+    );
+  } catch (err) {
+    console.warn("[shallowseek-api] delete_session error", err.message);
+  }
+}
+const SKIP_CONTAINS_PATTERNS = [
+  "quasi_status",
+  "elapsed_secs",
+  "token_usage",
+  "pending_fragment",
+  "conversation_mode",
+  "fragments/-1/status",
+  "fragments/-2/status",
+  "fragments/-3/status"
+];
+const SKIP_EXACT_PATHS = /* @__PURE__ */ new Set(["response/search_status"]);
+const THINK_CLOSE = /<\/\s*think\s*>/gi;
+const THINK_OPEN = /<\s*think\s*>/gi;
+function isFragmentStatusPath(path2) {
+  if (!path2 || path2 === "response/status") return false;
+  if (!path2.startsWith("response/fragments/") || !path2.endsWith("/status")) return false;
+  const mid = path2.slice("response/fragments/".length, path2.length - "/status".length).replace(/^-/, "");
+  return mid.length > 0 && /^\d+$/.test(mid);
+}
+function shouldSkipPath(path2) {
+  if (isFragmentStatusPath(path2)) return true;
+  if (SKIP_EXACT_PATHS.has(path2)) return true;
+  for (const p of SKIP_CONTAINS_PATTERNS) {
+    if (path2.includes(p)) return true;
+  }
+  return false;
+}
+function isStatusPath(path2) {
+  return path2 === "response/status" || path2 === "status";
+}
+function stripThinkTags(s) {
+  return s.replace(THINK_CLOSE, "").replace(THINK_OPEN, "");
+}
+function parseDeepSeekSSELine(raw) {
+  const line = raw.trim();
+  if (!line || !line.startsWith("data:")) return [null, false, false];
+  const dataStr = line.slice(5).trim();
+  if (dataStr === "[DONE]") return [null, true, true];
+  try {
+    const chunk = JSON.parse(dataStr);
+    return [chunk, false, true];
+  } catch {
+    return [null, false, false];
+  }
+}
+function parseSSEChunkForContent(chunk, thinkingEnabled, currentFragmentType) {
+  const v = chunk["v"];
+  if (v === void 0) {
+    return { parts: [], finished: false, nextType: currentFragmentType };
+  }
+  const path2 = chunk["p"] ?? "";
+  if (shouldSkipPath(path2)) {
+    return { parts: [], finished: false, nextType: currentFragmentType };
+  }
+  if (isStatusPath(path2) && typeof v === "string") {
+    if (v.trim().toUpperCase() === "FINISHED") {
+      return { parts: [], finished: true, nextType: currentFragmentType };
+    }
+    return { parts: [], finished: false, nextType: currentFragmentType };
+  }
+  let newType = currentFragmentType;
+  const parts = [];
+  if (path2 === "response/content") newType = "text";
+  else if (path2 === "response/thinking_content") {
+    if (!thinkingEnabled || newType !== "text") newType = "thinking";
+  }
+  if (path2 === "response/fragments" && (chunk["o"] ?? "").toString().toUpperCase() === "APPEND") {
+    const frags = Array.isArray(v) ? v : [];
+    for (const frag of frags) {
+      if (typeof frag !== "object" || !frag) continue;
+      const { typeName, content } = parseFragmentTypeContent(frag);
+      switch (typeName) {
+        case "THINK":
+        case "THINKING":
+          newType = "thinking";
+          if (content) parts.push({ text: content, type: "thinking" });
+          break;
+        case "RESPONSE":
+          newType = "text";
+          if (content) parts.push({ text: content, type: "text" });
+          break;
+        default:
+          if (content) parts.push({ text: content, type: "text" });
+      }
+    }
+  }
+  if (path2 === "response" && Array.isArray(v)) {
+    for (const it of v) {
+      if (typeof it !== "object" || !it) continue;
+      if (it.p !== "fragments" || it.o !== "APPEND") continue;
+      const frags = Array.isArray(it.v) ? it.v : [];
+      for (const frag of frags) {
+        if (typeof frag !== "object" || !frag) continue;
+        const { typeName } = parseFragmentTypeContent(frag);
+        if (typeName === "THINK" || typeName === "THINKING") newType = "thinking";
+        else if (typeName === "RESPONSE") newType = "text";
+      }
+    }
+  }
+  let partType;
+  if (path2 === "response/thinking_content") {
+    partType = !thinkingEnabled || newType !== "text" ? "thinking" : "text";
+  } else if (path2 === "response/content") {
+    partType = "text";
+  } else if (path2.includes("response/fragments") && path2.includes("/content")) {
+    partType = newType;
+  } else if (path2 === "") {
+    partType = newType || "text";
+  } else {
+    partType = "text";
+  }
+  const appendResult = appendChunkValueContent(v, partType, path2);
+  if (appendResult.finished) {
+    return { parts: [], finished: true, nextType: newType };
+  }
+  parts.push(...appendResult.parts);
+  if (appendResult.newType) newType = appendResult.newType;
+  const { parts: splitParts, transitioned } = splitThinkingParts(parts);
+  if (transitioned) newType = "text";
+  const finalParts = thinkingEnabled ? splitParts : splitParts.filter((p) => p.type !== "thinking");
+  return { parts: finalParts, finished: false, nextType: newType };
+}
+function parseFragmentTypeContent(m) {
+  const typeName = (m.type || "").toUpperCase();
+  const content = m.content || "";
+  return { typeName, content };
+}
+function appendChunkValueContent(v, partType, path2) {
+  const parts = [];
+  if (typeof v === "string") {
+    if (v === "FINISHED" && (path2 === "" || path2 === "status")) {
+      return { parts: [], finished: true };
+    }
+    if (isStatusPath(path2)) return { parts: [], finished: false };
+    if (v) parts.push({ text: v, type: partType });
+    return { parts, finished: false };
+  }
+  if (Array.isArray(v)) {
+    const result = extractContentRecursive(v, partType);
+    if (result.finished) return { parts: [], finished: true };
+    return { parts: result.parts, finished: false };
+  }
+  if (typeof v === "object" && v !== null) {
+    if (path2 === "response/content" || path2 === "response/thinking_content" || path2 === "") {
+      const text = v.text || v.content || "";
+      if (text) {
+        parts.push({ text, type: partType });
+        return { parts, finished: false };
+      }
+    }
+    const resp = v.response || v;
+    const frags = resp == null ? void 0 : resp.fragments;
+    if (Array.isArray(frags)) {
+      let newType;
+      for (const item of frags) {
+        if (typeof item !== "object" || !item) continue;
+        const { typeName, content } = parseFragmentTypeContent(item);
+        switch (typeName) {
+          case "THINK":
+          case "THINKING":
+            newType = "thinking";
+            if (content) parts.push({ text: content, type: "thinking" });
+            break;
+          case "RESPONSE":
+            newType = "text";
+            if (content) parts.push({ text: content, type: "text" });
+            break;
+          default:
+            if (content) parts.push({ text: content, type: partType });
+        }
+      }
+      return { parts, finished: false, newType };
+    }
+  }
+  return { parts, finished: false };
+}
+function extractContentRecursive(items, defaultType) {
+  const parts = [];
+  for (const it of items) {
+    if (typeof it !== "object" || !it) continue;
+    const itemPath = it.p || "";
+    const itemV = it.v;
+    if (itemV === void 0) continue;
+    if (isStatusPath(itemPath)) {
+      if (typeof itemV === "string" && itemV.trim().toUpperCase() === "FINISHED") {
+        return { parts: [], finished: true };
+      }
+      continue;
+    }
+    if (shouldSkipPath(itemPath)) continue;
+    if (typeof it.content === "string" && it.content) {
+      const typeName = (it.type || "").toUpperCase();
+      switch (typeName) {
+        case "THINK":
+        case "THINKING":
+          parts.push({ text: it.content, type: "thinking" });
+          break;
+        case "RESPONSE":
+          parts.push({ text: it.content, type: "text" });
+          break;
+        default:
+          parts.push({ text: it.content, type: defaultType });
+      }
+      continue;
+    }
+    const partType = itemPath.includes("thinking") ? "thinking" : itemPath.includes("content") || itemPath === "response" || itemPath === "fragments" ? "text" : defaultType;
+    if (typeof itemV === "string") {
+      if (isStatusPath(itemPath)) continue;
+      if (itemV && itemV !== "FINISHED") {
+        parts.push({ text: itemV, type: partType });
+      }
+    } else if (Array.isArray(itemV)) {
+      for (const inner of itemV) {
+        if (typeof inner === "object" && (inner == null ? void 0 : inner.content)) {
+          const typeName = (inner.type || "").toUpperCase();
+          switch (typeName) {
+            case "THINK":
+            case "THINKING":
+              parts.push({ text: inner.content, type: "thinking" });
+              break;
+            case "RESPONSE":
+              parts.push({ text: inner.content, type: "text" });
+              break;
+            default:
+              parts.push({ text: inner.content, type: partType });
+          }
+        } else if (typeof inner === "string" && inner) {
+          parts.push({ text: inner, type: partType });
+        }
+      }
+    }
+  }
+  return { parts, finished: false };
+}
+function splitThinkingParts(parts) {
+  const out = [];
+  let thinkingDone = false;
+  for (const p of parts) {
+    if (thinkingDone && p.type === "thinking") {
+      const cleaned = stripThinkTags(p.text);
+      if (cleaned) out.push({ text: cleaned, type: "text" });
+      continue;
+    }
+    if (p.type !== "thinking") {
+      const cleaned = stripThinkTags(p.text);
+      if (cleaned) out.push({ text: cleaned, type: p.type });
+      continue;
+    }
+    const match = THINK_CLOSE.exec(p.text);
+    THINK_CLOSE.lastIndex = 0;
+    if (!match) {
+      out.push(p);
+      continue;
+    }
+    thinkingDone = true;
+    const before = p.text.slice(0, match.index);
+    const after = stripThinkTags(p.text.slice(match.index + match[0].length));
+    if (before) out.push({ text: before, type: "thinking" });
+    if (after) out.push({ text: after, type: "text" });
+  }
+  return { parts: out, transitioned: thinkingDone };
+}
+function hasContentFilterStatus(chunk) {
+  const code = chunk.code;
+  if (typeof code === "string" && code.trim().toLowerCase() === "content_filter") return true;
+  return hasContentFilterStatusValue(chunk);
+}
+function hasContentFilterStatusValue(v) {
+  if (Array.isArray(v)) return v.some((item) => hasContentFilterStatusValue(item));
+  if (typeof v === "object" && v !== null) {
+    const p = v.p;
+    if (typeof p === "string" && p.toLowerCase().includes("status")) {
+      if (typeof v.v === "string" && v.v.trim().toLowerCase() === "content_filter") return true;
+    }
+    if (typeof v.code === "string" && v.code.trim().toLowerCase() === "content_filter") return true;
+    for (const val of Object.values(v)) {
+      if (hasContentFilterStatusValue(val)) return true;
+    }
+  }
+  return false;
+}
+const NO_THINKING_SUFFIX = "-nothinking";
+const DEEPSEEK_BASE_MODELS = [
+  { id: "deepseek-v4-flash", object: "model", created: 1677610602, owned_by: "deepseek" },
+  { id: "deepseek-v4-pro", object: "model", created: 1677610602, owned_by: "deepseek" },
+  { id: "deepseek-v4-flash-search", object: "model", created: 1677610602, owned_by: "deepseek" },
+  { id: "deepseek-v4-pro-search", object: "model", created: 1677610602, owned_by: "deepseek" },
+  { id: "deepseek-v4-vision", object: "model", created: 1677610602, owned_by: "deepseek" }
+];
+function appendNoThinkingVariants(models) {
+  const out = [];
+  for (const model of models) {
+    out.push(model);
+    out.push({ ...model, id: model.id + NO_THINKING_SUFFIX });
+  }
+  return out;
+}
+const ALL_MODELS = appendNoThinkingVariants(DEEPSEEK_BASE_MODELS);
+function getModelConfig(model) {
+  const { base, noThinking } = splitNoThinking(model);
+  switch (base) {
+    case "deepseek-v4-flash":
+    case "deepseek-v4-pro":
+    case "deepseek-v4-vision":
+      return { thinking: !noThinking, search: false, ok: true };
+    case "deepseek-v4-flash-search":
+    case "deepseek-v4-pro-search":
+      return { thinking: !noThinking, search: true, ok: true };
+    default:
+      return { thinking: false, search: false, ok: false };
+  }
+}
+function getModelType(model) {
+  const { base } = splitNoThinking(model);
+  switch (base) {
+    case "deepseek-v4-flash":
+    case "deepseek-v4-flash-search":
+      return "default";
+    case "deepseek-v4-pro":
+    case "deepseek-v4-pro-search":
+      return "expert";
+    case "deepseek-v4-vision":
+      return "vision";
+    default:
+      return null;
+  }
+}
+function isSupportedModel(model) {
+  return getModelConfig(model).ok;
+}
+const DEFAULT_MODEL_ALIASES = {
+  // OpenAI GPT
+  "gpt-4": "deepseek-v4-flash",
+  "gpt-4-turbo": "deepseek-v4-flash",
+  "gpt-4o": "deepseek-v4-flash",
+  "gpt-4o-mini": "deepseek-v4-flash",
+  "gpt-4.1": "deepseek-v4-flash",
+  "gpt-4.1-mini": "deepseek-v4-flash",
+  "gpt-4.1-nano": "deepseek-v4-flash",
+  "gpt-5": "deepseek-v4-flash",
+  "gpt-5.5": "deepseek-v4-flash",
+  "gpt-5.3-codex": "deepseek-v4-pro",
+  "gpt-5-codex": "deepseek-v4-pro",
+  "codex-mini-latest": "deepseek-v4-pro",
+  // Reasoning
+  "o1": "deepseek-v4-pro",
+  "o1-mini": "deepseek-v4-pro",
+  "o3": "deepseek-v4-pro",
+  "o3-mini": "deepseek-v4-pro",
+  "o4-mini": "deepseek-v4-pro",
+  // Claude
+  "claude-opus-4-6": "deepseek-v4-pro",
+  "claude-sonnet-4-6": "deepseek-v4-flash",
+  "claude-haiku-4-5": "deepseek-v4-flash",
+  "claude-sonnet-4-5": "deepseek-v4-flash",
+  "claude-opus-4-0": "deepseek-v4-pro",
+  "claude-3-5-sonnet-latest": "deepseek-v4-flash",
+  "claude-3-opus-20240229": "deepseek-v4-pro",
+  // Gemini
+  "gemini-2.5-pro": "deepseek-v4-pro",
+  "gemini-2.5-flash": "deepseek-v4-flash",
+  "gemini-2.0-flash": "deepseek-v4-flash",
+  "gemini-3.1-pro": "deepseek-v4-pro",
+  "gemini-3-flash": "deepseek-v4-flash"
+};
+function resolveModel(requested, customAliases) {
+  const model = requested.trim().toLowerCase();
+  if (!model) return null;
+  const aliases = { ...DEFAULT_MODEL_ALIASES, ...customAliases || {} };
+  if (isSupportedModel(model)) return model;
+  const mapped = aliases[model];
+  if (mapped && isSupportedModel(mapped)) return mapped;
+  const { base, noThinking } = splitNoThinking(model);
+  const baseMapped = aliases[base];
+  if (baseMapped && isSupportedModel(baseMapped)) {
+    return noThinking ? baseMapped + NO_THINKING_SUFFIX : baseMapped;
+  }
+  return null;
+}
+function splitNoThinking(model) {
+  const m = model.trim().toLowerCase();
+  if (m.endsWith(NO_THINKING_SUFFIX)) {
+    return { base: m.slice(0, -NO_THINKING_SUFFIX.length), noThinking: true };
+  }
+  return { base: m, noThinking: false };
+}
+function openAIModelsResponse() {
+  return { object: "list", data: ALL_MODELS };
+}
+let currentServer = null;
+let currentConfig = null;
+let accountTokens = /* @__PURE__ */ new Map();
+let accountIndex = 0;
+let _logCallback = null;
+function setLogCallback(cb) {
+  _logCallback = cb;
+}
+function serverLog(msg) {
+  console.log(msg);
+  if (_logCallback) _logCallback(msg);
+}
+async function startServer(config) {
+  if (currentServer) throw new Error("Server is already running");
+  currentConfig = config;
+  accountTokens = /* @__PURE__ */ new Map();
+  for (const acc of config.accounts) {
+    if (acc.token) {
+      accountTokens.set(acc.email, acc.token);
+    } else {
+      try {
+        const token = await login(acc);
+        accountTokens.set(acc.email, token);
+        serverLog(`[shallowseek-api] ✓ Logged in: ${acc.email.slice(0, 3)}***`);
+      } catch (err) {
+        serverLog(`[shallowseek-api] ✗ Login failed for ${acc.email}: ${err.message}`);
+      }
+    }
+  }
+  if (accountTokens.size === 0) {
+    throw new Error("No accounts available (all login attempts failed)");
+  }
+  const server = http$2.createServer(handleRequest);
+  return new Promise((resolve2, reject) => {
+    server.listen(config.port, () => {
+      currentServer = server;
+      serverLog(`[shallowseek-api] OpenAI-compatible API server listening on port ${config.port}`);
+      resolve2(config.port);
+    });
+    server.on("error", reject);
+  });
+}
+async function stopServer() {
+  if (!currentServer) throw new Error("Server is not running");
+  return new Promise((resolve2) => {
+    currentServer.close(() => {
+      currentServer = null;
+      serverLog("[shallowseek-api] Server stopped");
+      resolve2();
+    });
+  });
+}
+function isRunning() {
+  return currentServer !== null;
+}
+async function handleRequest(req, res) {
+  const startTime = Date.now();
+  const method = req.method || "GET";
+  setCORS(res, req);
+  if (method === "OPTIONS") {
+    res.writeHead(204);
+    res.end();
+    return;
+  }
+  const url2 = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
+  const path2 = url2.pathname;
+  const clientIP = req.socket.remoteAddress || "unknown";
+  const origEnd = res.end.bind(res);
+  res.end = function(...args) {
+    const duration = Date.now() - startTime;
+    const status = res.statusCode;
+    if (path2 !== "/healthz" && path2 !== "/readyz") {
+      serverLog(`[api] ${method} ${path2} → ${status} (${duration}ms) [${clientIP}]`);
+    }
+    return origEnd(...args);
+  };
+  try {
+    if (path2 === "/healthz" || path2 === "/readyz") {
+      jsonResponse(res, 200, { status: "ok" });
+      return;
+    }
+    if ((path2 === "/v1/models" || path2 === "/models") && method === "GET") {
+      jsonResponse(res, 200, openAIModelsResponse());
+      return;
+    }
+    const modelMatch = path2.match(/^\/(?:v1\/)?models\/(.+)$/);
+    if (modelMatch && method === "GET") {
+      const modelId = modelMatch[1];
+      const model = ALL_MODELS.find((m) => m.id === modelId);
+      if (model) {
+        jsonResponse(res, 200, model);
+      } else {
+        jsonResponse(res, 404, { error: { message: `Model '${modelId}' not found`, type: "invalid_request_error" } });
+      }
+      return;
+    }
+    if ((path2 === "/v1/chat/completions" || path2 === "/chat/completions") && method === "POST") {
+      if (!validateAuth(req, res)) return;
+      await handleChatCompletions(req, res);
+      return;
+    }
+    jsonResponse(res, 404, { error: { message: "Not found", type: "invalid_request_error" } });
+  } catch (err) {
+    serverLog(`[api] ✗ ${method} ${path2} — unhandled error: ${err.message}`);
+    jsonResponse(res, 500, { error: { message: "Internal Server Error", type: "api_error" } });
+  }
+}
+function validateAuth(req, res) {
+  if (!currentConfig || currentConfig.apiKeys.length === 0) return true;
+  const authHeader = req.headers["authorization"] || "";
+  let key = "";
+  if (authHeader.startsWith("Bearer ")) {
+    key = authHeader.slice(7).trim();
+  }
+  if (!key) {
+    const url2 = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
+    key = url2.searchParams.get("key") || url2.searchParams.get("api_key") || "";
+  }
+  if (!key || !currentConfig.apiKeys.includes(key)) {
+    jsonResponse(res, 401, {
+      error: { message: "Invalid API key", type: "invalid_request_error", code: "invalid_api_key" }
+    });
+    return false;
+  }
+  return true;
+}
+async function handleChatCompletions(req, res) {
+  var _a;
+  const reqStart = Date.now();
+  const body = await readBody(req);
+  let request;
+  try {
+    request = JSON.parse(body);
+  } catch {
+    jsonResponse(res, 400, { error: { message: "Invalid JSON", type: "invalid_request_error" } });
+    return;
+  }
+  const streamMode = request.stream ? "stream" : "sync";
+  const requestedModel = request.model || "(none)";
+  const resolvedModel = resolveModel(request.model, currentConfig == null ? void 0 : currentConfig.modelAliases);
+  if (!resolvedModel) {
+    serverLog(`[api] ✗ completion rejected — unsupported model: ${requestedModel}`);
+    jsonResponse(res, 400, {
+      error: { message: `Model '${request.model}' is not supported`, type: "invalid_request_error" }
+    });
+    return;
+  }
+  const modelAlias = requestedModel !== resolvedModel ? `${requestedModel} → ${resolvedModel}` : resolvedModel;
+  serverLog(`[api] ⟶ completion ${streamMode} | model: ${modelAlias} | msgs: ${((_a = request.messages) == null ? void 0 : _a.length) || 0}`);
+  const { thinking, search } = getModelConfig(resolvedModel);
+  const modelType = getModelType(resolvedModel);
+  const token = getNextToken();
+  if (!token) {
+    serverLog(`[api] ✗ completion failed — no available accounts`);
+    jsonResponse(res, 503, {
+      error: { message: "No available accounts", type: "api_error" }
+    });
+    return;
+  }
+  let sessionId;
+  try {
+    sessionId = await createSession(token);
+    serverLog(`[api]   session: ${sessionId.slice(0, 8)}...`);
+    const powResponse = await getPow(token);
+    serverLog(`[api]   pow: solved`);
+    const prompt = buildPromptText(request.messages);
+    const payload = {
+      chat_session_id: sessionId,
+      prompt,
+      ref_file_ids: [],
+      thinking_enabled: thinking,
+      search_enabled: search
+    };
+    if (modelType) {
+      payload.model_class = modelType;
+    }
+    const dsResponse = await callCompletion(token, payload, powResponse);
+    if (dsResponse.status !== 200) {
+      const errData = await streamToString(dsResponse.data);
+      serverLog(`[api] ✗ DeepSeek error ${dsResponse.status}: ${errData.slice(0, 200)}`);
+      jsonResponse(res, dsResponse.status, {
+        error: { message: `DeepSeek API error: ${dsResponse.status}`, type: "api_error" }
+      });
+      return;
+    }
+    serverLog(`[api]   streaming response...`);
+    if (request.stream) {
+      await handleStreamResponse(res, dsResponse.data, resolvedModel, thinking);
+    } else {
+      await handleNonStreamResponse(res, dsResponse.data, resolvedModel, prompt, thinking);
+    }
+    const elapsed = ((Date.now() - reqStart) / 1e3).toFixed(1);
+    serverLog(`[api] ✓ completion done | model: ${resolvedModel} | ${streamMode} | ${elapsed}s`);
+  } catch (err) {
+    const elapsed = ((Date.now() - reqStart) / 1e3).toFixed(1);
+    serverLog(`[api] ✗ completion error (${elapsed}s): ${err.message}`);
+    jsonResponse(res, 500, {
+      error: { message: err.message || "Completion failed", type: "api_error" }
+    });
+  } finally {
+    if (sessionId && token && (currentConfig == null ? void 0 : currentConfig.autoDeleteMode) === "single") {
+      deleteSession(token, sessionId).catch(() => {
+      });
+    }
+  }
+}
+async function handleStreamResponse(res, stream2, model, thinkingEnabled) {
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache, no-transform",
+    "Connection": "keep-alive",
+    "X-Accel-Buffering": "no"
+  });
+  const completionId = `chatcmpl-${crypto$1.randomUUID().replace(/-/g, "").slice(0, 24)}`;
+  const created = Math.floor(Date.now() / 1e3);
+  let currentType = thinkingEnabled ? "thinking" : "text";
+  let buffer = "";
+  let thinkingStartSent = false;
+  const sendSSE = (data) => {
+    res.write(`data: ${JSON.stringify(data)}
+
+`);
+  };
+  stream2.on("data", (chunk) => {
+    buffer += chunk.toString("utf-8");
+    const lines = buffer.split("\n");
+    buffer = lines.pop() || "";
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      const [parsed, isDone, isValid] = parseDeepSeekSSELine(trimmed);
+      if (!isValid) continue;
+      if (isDone) {
+        sendSSE({
+          id: completionId,
+          object: "chat.completion.chunk",
+          created,
+          model,
+          choices: [{
+            index: 0,
+            delta: {},
+            finish_reason: "stop"
+          }]
+        });
+        res.write("data: [DONE]\n\n");
+        res.end();
+        return;
+      }
+      if (!parsed) continue;
+      if (hasContentFilterStatus(parsed)) {
+        sendSSE({
+          id: completionId,
+          object: "chat.completion.chunk",
+          created,
+          model,
+          choices: [{
+            index: 0,
+            delta: {},
+            finish_reason: "content_filter"
+          }]
+        });
+        res.write("data: [DONE]\n\n");
+        res.end();
+        return;
+      }
+      const { parts, finished, nextType } = parseSSEChunkForContent(parsed, thinkingEnabled, currentType);
+      currentType = nextType;
+      if (finished) {
+        sendSSE({
+          id: completionId,
+          object: "chat.completion.chunk",
+          created,
+          model,
+          choices: [{
+            index: 0,
+            delta: {},
+            finish_reason: "stop"
+          }]
+        });
+        res.write("data: [DONE]\n\n");
+        res.end();
+        return;
+      }
+      for (const part of parts) {
+        if (part.type === "thinking") {
+          if (!thinkingStartSent) {
+            sendSSE({
+              id: completionId,
+              object: "chat.completion.chunk",
+              created,
+              model,
+              choices: [{
+                index: 0,
+                delta: { role: "assistant", reasoning_content: "" },
+                finish_reason: null
+              }]
+            });
+            thinkingStartSent = true;
+          }
+          sendSSE({
+            id: completionId,
+            object: "chat.completion.chunk",
+            created,
+            model,
+            choices: [{
+              index: 0,
+              delta: { reasoning_content: part.text },
+              finish_reason: null
+            }]
+          });
+        } else {
+          sendSSE({
+            id: completionId,
+            object: "chat.completion.chunk",
+            created,
+            model,
+            choices: [{
+              index: 0,
+              delta: { content: part.text },
+              finish_reason: null
+            }]
+          });
+        }
+      }
+    }
+  });
+  stream2.on("end", () => {
+    if (!res.writableEnded) {
+      sendSSE({
+        id: completionId,
+        object: "chat.completion.chunk",
+        created,
+        model,
+        choices: [{
+          index: 0,
+          delta: {},
+          finish_reason: "stop"
+        }]
+      });
+      res.write("data: [DONE]\n\n");
+      res.end();
+    }
+  });
+  stream2.on("error", (err) => {
+    console.error("[shallowseek-api] Stream error:", err.message);
+    if (!res.writableEnded) res.end();
+  });
+}
+async function handleNonStreamResponse(res, stream2, model, prompt, thinkingEnabled) {
+  const completionId = `chatcmpl-${crypto$1.randomUUID().replace(/-/g, "").slice(0, 24)}`;
+  const created = Math.floor(Date.now() / 1e3);
+  let thinkingText = "";
+  let contentText = "";
+  let currentType = thinkingEnabled ? "thinking" : "text";
+  let finishReason = "stop";
+  const raw = await streamToString(stream2);
+  const lines = raw.split("\n");
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    const [parsed, isDone, isValid] = parseDeepSeekSSELine(trimmed);
+    if (!isValid || isDone) continue;
+    if (!parsed) continue;
+    if (hasContentFilterStatus(parsed)) {
+      finishReason = "content_filter";
+      break;
+    }
+    const { parts, finished, nextType } = parseSSEChunkForContent(parsed, thinkingEnabled, currentType);
+    currentType = nextType;
+    if (finished) break;
+    for (const part of parts) {
+      if (part.type === "thinking") {
+        thinkingText += part.text;
+      } else {
+        contentText += part.text;
+      }
+    }
+  }
+  const responseBody = {
+    id: completionId,
+    object: "chat.completion",
+    created,
+    model,
+    choices: [{
+      index: 0,
+      message: {
+        role: "assistant",
+        content: contentText,
+        ...thinkingEnabled && thinkingText ? { reasoning_content: thinkingText } : {}
+      },
+      finish_reason: finishReason
+    }],
+    usage: {
+      prompt_tokens: estimateTokens(prompt),
+      completion_tokens: estimateTokens(contentText + thinkingText),
+      total_tokens: estimateTokens(prompt + contentText + thinkingText)
+    }
+  };
+  jsonResponse(res, 200, responseBody);
+}
+function getNextToken() {
+  if (accountTokens.size === 0) return null;
+  const entries = Array.from(accountTokens.entries());
+  const [, token] = entries[accountIndex % entries.length];
+  accountIndex = (accountIndex + 1) % entries.length;
+  return token;
+}
+function buildPromptText(messages) {
+  if (!Array.isArray(messages) || messages.length === 0) return "";
+  const parts = [];
+  for (const msg of messages) {
+    const role = msg.role || "user";
+    const content = typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content);
+    if (role === "system") {
+      parts.push(`[System]
+${content}`);
+    } else if (role === "user") {
+      parts.push(content);
+    } else if (role === "assistant") {
+      parts.push(`[Assistant]
+${content}`);
+    }
+  }
+  return parts.join("\n\n");
+}
+function readBody(req) {
+  return new Promise((resolve2, reject) => {
+    let body = "";
+    req.on("data", (chunk) => {
+      body += chunk.toString();
+    });
+    req.on("end", () => resolve2(body));
+    req.on("error", reject);
+  });
+}
+function streamToString(stream2) {
+  return new Promise((resolve2, reject) => {
+    let data = "";
+    stream2.on("data", (chunk) => {
+      data += chunk.toString();
+    });
+    stream2.on("end", () => resolve2(data));
+    stream2.on("error", reject);
+  });
+}
+function jsonResponse(res, status, data) {
+  res.writeHead(status, { "Content-Type": "application/json" });
+  res.end(JSON.stringify(data));
+}
+function setCORS(res, req) {
+  const origin2 = req.headers["origin"] || "*";
+  res.setHeader("Access-Control-Allow-Origin", origin2);
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-API-Key");
+  res.setHeader("Access-Control-Max-Age", "600");
+}
+function estimateTokens(text) {
+  return Math.ceil(text.length / 4);
+}
+let serverLogs = [];
+function broadcastServerStatus(isRunning2) {
+  for (const win2 of BrowserWindow.getAllWindows()) {
+    try {
+      win2.webContents.send("server-status-changed", isRunning2);
+    } catch {
+    }
+  }
+}
+function captureLog(msg) {
+  serverLogs.push(msg);
+  for (const win2 of BrowserWindow.getAllWindows()) {
+    try {
+      win2.webContents.send("server-log", msg);
+    } catch {
+    }
+  }
+}
+function getPortFromDB() {
+  const raw = getSetting("endpointPort");
+  if (raw) {
+    const parsed = parseInt(raw, 10);
+    if (!isNaN(parsed) && parsed > 0 && parsed < 65536) return parsed;
+  }
+  return 11434;
+}
+function getApiKeyFromDB() {
+  return getSetting("endpointApiKey");
+}
+function getAccountsFromDB() {
+  const dbAccounts = getAccounts();
+  return dbAccounts.map((acc) => ({
+    id: acc.id,
+    email: acc.email,
+    password: "",
+    token: acc.token
+  }));
+}
+function registerServerIpcs() {
+  setLogCallback(captureLog);
+  ipcMain.handle("server-start", async (_event, config) => {
+    if (isRunning()) {
+      return { ok: false, error: "Server is already running" };
+    }
+    serverLogs = [];
+    const port = (config == null ? void 0 : config.port) || getPortFromDB();
+    try {
+      let accounts = (config == null ? void 0 : config.accounts) || [];
+      if (accounts.length === 0) {
+        accounts = getAccountsFromDB();
+      }
+      if (accounts.length === 0 && (config == null ? void 0 : config.token)) {
+        accounts = [{
+          id: "direct-token",
+          email: "direct",
+          password: "",
+          token: config.token
+        }];
+      }
+      if (accounts.length === 0) {
+        return { ok: false, error: "No accounts configured" };
+      }
+      const apiKeys = [];
+      const apiKey = (config == null ? void 0 : config.apiKey) || getApiKeyFromDB();
+      if (apiKey) {
+        apiKeys.push(apiKey);
+      }
+      const serverConfig = {
+        port,
+        apiKeys,
+        accounts,
+        modelAliases: {},
+        autoDeleteMode: "single"
+      };
+      captureLog(`[shallowseek-api] Starting server on port ${port}...`);
+      await startServer(serverConfig);
+      captureLog(`[shallowseek-api] Server started successfully on port ${port}`);
+      captureLog(`[shallowseek-api] OpenAI base URL: http://localhost:${port}/v1`);
+      captureLog(`[shallowseek-api] ${accounts.length} account(s) loaded`);
+      broadcastServerStatus(true);
+      return { ok: true, port };
+    } catch (err) {
+      const msg = err.message || "Unknown error";
+      captureLog(`[shallowseek-api] Start failed: ${msg}`);
+      return { ok: false, error: msg };
+    }
+  });
+  ipcMain.handle("server-stop", async () => {
+    if (!isRunning()) {
+      return { ok: false, error: "Server is not running" };
+    }
+    try {
+      await stopServer();
+      broadcastServerStatus(false);
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: err.message };
+    }
+  });
+  ipcMain.handle("server-status", () => {
+    return { isRunning: isRunning() };
+  });
+  ipcMain.handle("server-logs", () => {
+    return { logs: serverLogs };
+  });
+}
 function registerIpcs(__dirname, VITE_DEV_SERVER_URL2, RENDERER_DIST2) {
   registerWindowIpcs(__dirname, VITE_DEV_SERVER_URL2, RENDERER_DIST2);
   registerAccountIpcs(__dirname, VITE_DEV_SERVER_URL2, RENDERER_DIST2);
   registerDatabaseIpcs();
+  registerServerIpcs();
 }
 const __filename$1 = fileURLToPath(import.meta.url);
 const __dirname$1 = path$1.dirname(__filename$1);

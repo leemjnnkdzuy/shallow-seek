@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
 
 interface TitleBarConfig {
   showMinimize: boolean;
@@ -29,16 +29,22 @@ const TitleBarContext = createContext<TitleBarContextType | undefined>(undefined
 export const TitleBarProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [config, setConfigState] = useState<TitleBarConfig>(defaultConfig);
 
-  const setConfig = (newConfig: Partial<TitleBarConfig>) => {
+  const setConfig = useCallback((newConfig: Partial<TitleBarConfig>) => {
     setConfigState(prev => ({ ...prev, ...newConfig }));
-  };
+  }, []);
 
-  const resetConfig = () => {
+  const resetConfig = useCallback(() => {
     setConfigState(defaultConfig);
-  };
+  }, []);
+
+  const contextValue = useMemo(() => ({
+    ...config,
+    setConfig,
+    resetConfig
+  }), [config, setConfig, resetConfig]);
 
   return (
-    <TitleBarContext.Provider value={{ ...config, setConfig, resetConfig }}>
+    <TitleBarContext.Provider value={contextValue}>
       {children}
     </TitleBarContext.Provider>
   );

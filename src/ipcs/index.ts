@@ -1,6 +1,7 @@
 import {registerWindowIpcs} from "./window";
 import {registerAccountIpcs} from "./account";
 import {registerDatabaseIpcs} from "./database";
+import {registerServerIpcs} from "./server";
 
 export function registerIpcs(
 	__dirname: string,
@@ -10,4 +11,5 @@ export function registerIpcs(
 	registerWindowIpcs(__dirname, VITE_DEV_SERVER_URL, RENDERER_DIST);
 	registerAccountIpcs(__dirname, VITE_DEV_SERVER_URL, RENDERER_DIST);
 	registerDatabaseIpcs();
+	registerServerIpcs();
 }

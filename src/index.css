@@ -76,7 +76,7 @@
 		@apply border-border;
 	}
 	body {
-		@apply bg-background text-foreground;
+		@apply bg-background text-foreground m-0 overflow-hidden;
 	}
 	button:not(:disabled),
 	[role="button"]:not(:disabled) {

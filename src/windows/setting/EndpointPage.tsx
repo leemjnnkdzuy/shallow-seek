@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -9,16 +9,51 @@ import { useTitleBar } from '@/hooks/useTitleBar';
 const EndpointPage: React.FC = () => {
   const { t } = useLanguage();
   const { setConfig } = useTitleBar();
-  const [port, setPort] = useState(localStorage.getItem('endpointPort') || '11434');
+  const [port, setPort] = useState('11434');
   const [isActive, setIsActive] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     setConfig({ title: t('sidebar.endpoint') });
   }, [t]);
 
-  const handleSave = () => {
-    localStorage.setItem('endpointPort', port);
-  };
+  useEffect(() => {
+    window.electron?.db.getSetting('endpointPort').then((res) => {
+      if (res.success && res.value) {
+        setPort(res.value);
+      }
+    });
+    window.electron?.server.status().then((res) => {
+      setIsActive(res.isRunning);
+    });
+  }, []);
+
+  useEffect(() => {
+    const cleanup = window.electron?.server.onStatusChanged((running: boolean) => {
+      setIsActive(running);
+    });
+    return cleanup;
+  }, []);
+
+  const handleSave = useCallback(async () => {
+    await window.electron?.db.setSetting('endpointPort', port);
+  }, [port]);
+
+  const handleToggle = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      if (isActive) {
+        const res = await window.electron?.server.stop();
+        if (res?.ok) setIsActive(false);
+      } else {
+        await window.electron?.db.setSetting('endpointPort', port);
+        const res = await window.electron?.server.start({ port: parseInt(port, 10) || 11434 });
+        if (res?.ok) setIsActive(true);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isActive, port]);
 
   return (
     <div className="p-8 max-w-4xl mx-auto space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -51,9 +86,14 @@ const EndpointPage: React.FC = () => {
                 value={port}
                 onChange={(e) => setPort(e.target.value)}
                 placeholder={t('settings.port_placeholder')}
-                className="max-w-[240px] h-12 rounded-xl border-2 border-border bg-transparent focus-visible:ring-primary/20 font-bold"
+                disabled={isActive}
+                className="max-w-[240px] h-12 rounded-xl border-2 border-border bg-transparent focus-visible:ring-primary/20 font-bold disabled:opacity-50"
               />
-              <Button onClick={handleSave} className="h-12 px-6 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-primary/10 transition-all hover:scale-105 active:scale-95">
+              <Button
+                onClick={handleSave}
+                disabled={isActive}
+                className="h-12 px-6 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-primary/10 transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
+              >
                 <Save className="w-4 h-4" />
                 {t('common.save')}
               </Button>
@@ -72,10 +112,11 @@ const EndpointPage: React.FC = () => {
           <Button 
             variant={isActive ? "destructive" : "default"}
             className={`h-11 px-8 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg ${isActive ? 'shadow-destructive/20' : 'shadow-primary/20'} hover:scale-105 active:scale-95`}
-            onClick={() => setIsActive(!isActive)}
+            onClick={handleToggle}
+            disabled={isLoading}
           >
             <Power className="w-4 h-4" />
-            {isActive ? "Stop" : "Start"}
+            {isLoading ? "..." : isActive ? "Stop" : "Start"}
           </Button>
         </div>
       </div>

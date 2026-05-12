@@ -28,9 +28,6 @@ const WarningPage: React.FC = () => {
 			<Card className='w-full max-w-2xl border-none shadow-none bg-transparent relative overflow-visible'>
 				<CardHeader className='space-y-4 pb-6 text-center sm:text-left'>
 					<div className='flex flex-col sm:flex-row items-center gap-4'>
-						<div className="p-3 bg-destructive/10 rounded-2xl text-destructive">
-							<ShieldAlert className="w-8 h-8" />
-						</div>
 						<div>
 							<CardTitle className='text-2xl font-bold tracking-tight text-primary uppercase'>
 								{t('warning.title')}

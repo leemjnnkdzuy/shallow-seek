@@ -2,7 +2,7 @@ import React from "react";
 
 // Layouts
 import NothingLayout from "@/components/layouts/NothingLayout";
-// import SidebarLayout from "@/components/layouts/SidebarLayout";
+import SidebarLayout from "@/components/layouts/SidebarLayout";
 
 // Pages
 import HomePage from "@/windows/main/HomePage";
@@ -11,7 +11,7 @@ import WarningPage from "@/windows/main/WarningPage";
 import ConfirmPage from "@/windows/popup/ConfirmPage";
 import EndpointPage from "@/windows/setting/EndpointPage";
 import InterfacePage from "@/windows/setting/InterfacePage";
-import SidebarLayout from "@/components/layouts/SidebarLayout";
+import AccountManagerPage from "@/windows/main/AccountManagerPage";
 
 export interface RouteConfig {
 	path: string;
@@ -48,6 +48,11 @@ const routes: RouteConfig[] = [
 	{
 		path: "/confirm",
 		component: ConfirmPage,
+		layout: NothingLayout,
+	},
+	{
+		path: "/account/:id",
+		component: AccountManagerPage,
 		layout: NothingLayout,
 	},
 ];
