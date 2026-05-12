@@ -27,6 +27,7 @@ import {
 import {AnimatePresence, motion} from "framer-motion";
 
 import {DEEPSEEK_LOGIN_URL} from "@/constants/DeepseekApi";
+import {maskIdentifier, previewValue} from "@/lib/utils";
 
 type DeepseekLoginResponse = {
 	code?: number;
@@ -50,43 +51,6 @@ const phaseVariants = {
 	exit: {opacity: 0, y: -8, scale: 0.995, transition: {duration: 0.18}},
 };
 
-const maskIdentifier = (value: string) => {
-	if (!value) return "";
-
-	if (value.includes("@")) {
-		const [localPart, domain] = value.split("@");
-		const localMasked =
-			localPart.length <= 2 ?
-				`${localPart[0] ?? "*"}*`
-			:	`${localPart.slice(0, 2)}***`;
-		return `${localMasked}@${domain}`;
-	}
-
-	if (value.length <= 4) {
-		return `${value[0] ?? "*"}***`;
-	}
-
-	return `${value.slice(0, 2)}***${value.slice(-2)}`;
-};
-
-const previewValue = (value: unknown, maxLen = 4000) => {
-	if (value == null) return "";
-
-	if (typeof value === "string") {
-		return value.length > maxLen ?
-				`${value.slice(0, maxLen)}…(truncated)`
-			:	value;
-	}
-
-	try {
-		const json = JSON.stringify(value);
-		return json.length > maxLen ?
-				`${json.slice(0, maxLen)}…(truncated)`
-			:	json;
-	} catch {
-		return String(value);
-	}
-};
 
 const buildLoginErrorLog = (params: {
 	err: unknown;
@@ -135,12 +99,13 @@ const AddAccountPage: React.FC = () => {
 		setEmailExists(false);
 		setErrorMessage("");
 
-		// Check if account already exists
-		const check = await window.electron?.db.checkAccountExists(username);
+		const check = await window.electron?.db.checkAccountExists(username.trim());
 		if (check?.success && check.exists) {
 			setEmailExists(true);
 			setErrorMessage("Tài khoản này đã tồn tại trong hệ thống.");
 			return;
+		} else if (check && !check.success) {
+			console.error("Failed to check account existence:", check.error);
 		}
 
 		setPhase(2);

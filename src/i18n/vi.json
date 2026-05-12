@@ -1,0 +1,62 @@
+{
+  "common": {
+    "confirm": "Xác nhận",
+    "cancel": "Hủy",
+    "save": "Lưu",
+    "delete": "Xóa",
+    "settings": "Cài đặt",
+    "back": "Quay lại",
+    "use": "Sử dụng",
+    "confirm_delete_account": "Bạn có chắc chắn muốn xóa tài khoản này? Hành động này không thể hoàn tác."
+  },
+  "sidebar": {
+    "home": "Trang chủ",
+    "accounts": "Tài khoản",
+    "settings": "Cài đặt",
+    "endpoint": "Endpoint",
+    "interface": "Giao diện"
+  },
+  "home": {
+    "added_accounts": "Tài khoản đã thêm",
+    "active_accounts": "Tổng cộng {{count}} tài khoản đang hoạt động",
+    "no_accounts": "Chưa có tài khoản nào",
+    "add_account": "Thêm tài khoản",
+    "warning_title": "Cảnh báo & Miễn trừ trách nhiệm",
+    "warning_desc": "DeepSeek là dịch vụ bên thứ ba. Việc sử dụng ShallowSeek có thể gây rủi ro cho tài khoản của bạn. Vui lòng đọc kỹ các điều khoản trước khi bắt đầu.",
+    "view_warning": "Xem cảnh báo rủi ro"
+  },
+  "settings": {
+    "endpoint_title": "Cài đặt Endpoint",
+    "endpoint_desc": "Cấu hình cổng local endpoint để các công cụ agent gọi tới.",
+    "port_label": "Cổng Local",
+    "port_placeholder": "Nhập cổng (VD: 8080)",
+    "status": "Trạng thái Endpoint",
+    "active": "Đang hoạt động",
+    "inactive": "Ngừng hoạt động",
+    "interface_title": "Cài đặt Giao diện",
+    "interface_desc": "Tùy chỉnh giao diện và ngôn ngữ của ShallowSeek.",
+    "theme_title": "Chủ đề",
+    "theme_desc": "Chọn giao diện sáng hoặc tối cho ứng dụng.",
+    "theme_light": "Sáng",
+    "theme_dark": "Tối",
+    "theme_system": "Hệ thống",
+    "lang_title": "Ngôn ngữ",
+    "lang_desc": "Chọn ngôn ngữ hiển thị cho ứng dụng.",
+    "lang_en": "Tiếng Anh",
+    "lang_vi": "Tiếng Việt",
+    "lang_zh": "Tiếng Trung",
+    "lang_placeholder": "Chọn ngôn ngữ"
+  },
+  "warning": {
+    "title": "CẢNH BÁO & MIỄN TRỪ TRÁCH NHIỆM",
+    "subtitle": "Vui lòng đọc kỹ các điều khoản dưới đây trước khi sử dụng ShallowSeek",
+    "purpose_title": "Mục đích sử dụng",
+    "purpose_desc": "Dự án ShallowSeek được xây dựng dựa trên phương pháp kỹ thuật đảo ngược (reverse engineering) giao diện web của DeepSeek. Ứng dụng này chỉ dành riêng cho mục đích học tập, nghiên cứu, thử nghiệm cá nhân và xác thực nội bộ. Chúng tôi không cung cấp bất kỳ hình thức ủy quyền thương mại, đảm bảo tính ổn định hay tính khả dụng nào đối với kết quả đầu ra.",
+    "risk_title": "Rủi ro tài khoản & Dữ liệu",
+    "risk_desc": "Tác giả và những người bảo trì kho lưu trữ ShallowSeek KHÔNG CHỊU TRÁCH NHIỆM đối với bất kỳ tổn thất trực tiếp hay gián tiếp nào phát sinh từ việc sử dụng, sửa đổi, phân phối, triển khai hoặc phụ thuộc vào dự án này. Điều này bao gồm nhưng không giới hạn ở: tài khoản bị khóa (ban), mất mát dữ liệu, rủi ro pháp lý, hoặc các khiếu nại từ bên thứ ba.",
+    "platform_title": "Quy định về nền tảng",
+    "platform_desc": "Tuyệt đối KHÔNG sử dụng ShallowSeek trong các tình huống vi phạm Điều khoản dịch vụ, Thỏa thuận người dùng, Luật pháp và quy định hiện hành hoặc quy tắc của các nền tảng liên quan.",
+    "commercial_title": "Sử dụng thương mại",
+    "commercial_desc": "Trước khi có ý định sử dụng dự án cho mục đích thương mại, bạn phải tự xác nhận giấy phép (LICENSE), các thỏa thuận liên quan và đảm bảo rằng bạn đã nhận được sự cho phép bằng văn bản từ tác giả gốc của dự án."
+  }
+}

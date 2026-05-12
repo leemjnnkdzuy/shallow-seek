@@ -17,7 +17,7 @@ import zlib from "zlib";
 import { EventEmitter } from "events";
 import Database from "better-sqlite3";
 import fs$1 from "node:fs";
-function registerWindowIpcs() {
+function registerWindowIpcs(__dirname, VITE_DEV_SERVER_URL2, RENDERER_DIST2) {
   ipcMain.on("window-minimize", (event) => {
     const webContents = event.sender;
     const win2 = BrowserWindow.fromWebContents(webContents);
@@ -56,6 +56,85 @@ function registerWindowIpcs() {
   });
   ipcMain.on("renderer-log", (_event, payload) => {
     console.log("[renderer-log]", payload);
+  });
+  let confirmResolve = null;
+  ipcMain.handle("open-confirm", async (event, options) => {
+    const parentWindow = BrowserWindow.fromWebContents(event.sender) || void 0;
+    const params = new URLSearchParams();
+    Object.entries(options).forEach(([key, value]) => {
+      params.append(key, String(value));
+    });
+    const popup = new BrowserWindow({
+      width: 500,
+      height: 240,
+      frame: false,
+      resizable: false,
+      parent: parentWindow,
+      modal: true,
+      show: false,
+      webPreferences: {
+        preload: path$1.join(__dirname, "preload.mjs")
+      }
+    });
+    if (VITE_DEV_SERVER_URL2) {
+      popup.loadURL(
+        `${VITE_DEV_SERVER_URL2}#/confirm?${params.toString()}`
+      );
+    } else {
+      popup.loadFile(path$1.join(RENDERER_DIST2, "index.html"), {
+        hash: `/confirm?${params.toString()}`
+      });
+    }
+    popup.once("ready-to-show", () => {
+      popup.show();
+    });
+    return new Promise((resolve2) => {
+      confirmResolve = resolve2;
+      popup.on("closed", () => {
+        if (confirmResolve) {
+          confirmResolve(false);
+          confirmResolve = null;
+        }
+      });
+    });
+  });
+  ipcMain.on("confirm-result", (event, result) => {
+    if (confirmResolve) {
+      confirmResolve(result);
+      confirmResolve = null;
+    }
+    const win2 = BrowserWindow.fromWebContents(event.sender);
+    win2 == null ? void 0 : win2.close();
+  });
+  ipcMain.on("open-settings", (event) => {
+    const parentWindow = BrowserWindow.fromWebContents(event.sender) || void 0;
+    const settingsWin = new BrowserWindow({
+      width: 900,
+      height: 600,
+      frame: false,
+      parent: parentWindow,
+      modal: true,
+      webPreferences: {
+        preload: path$1.join(__dirname, "preload.mjs")
+      }
+    });
+    if (VITE_DEV_SERVER_URL2) {
+      settingsWin.loadURL(`${VITE_DEV_SERVER_URL2}#/settings/interface`);
+    } else {
+      settingsWin.loadFile(path$1.join(RENDERER_DIST2, "index.html"), {
+        hash: "/settings/interface"
+      });
+    }
+  });
+  ipcMain.on("theme-changed", (_event, theme) => {
+    BrowserWindow.getAllWindows().forEach((win2) => {
+      win2.webContents.send("on-theme-changed", theme);
+    });
+  });
+  ipcMain.on("language-changed", (_event, lang) => {
+    BrowserWindow.getAllWindows().forEach((win2) => {
+      win2.webContents.send("on-language-changed", lang);
+    });
   });
 }
 function bind$2(fn, thisArg) {
@@ -12137,7 +12216,14 @@ var _eval = EvalError;
 var range = RangeError;
 var ref = ReferenceError;
 var syntax = SyntaxError;
-var type = TypeError;
+var type;
+var hasRequiredType;
+function requireType() {
+  if (hasRequiredType) return type;
+  hasRequiredType = 1;
+  type = TypeError;
+  return type;
+}
 var uri = URIError;
 var abs$1 = Math.abs;
 var floor$1 = Math.floor;
@@ -12383,7 +12469,7 @@ function requireCallBindApplyHelpers() {
   if (hasRequiredCallBindApplyHelpers) return callBindApplyHelpers;
   hasRequiredCallBindApplyHelpers = 1;
   var bind3 = functionBind;
-  var $TypeError2 = type;
+  var $TypeError2 = requireType();
   var $call2 = requireFunctionCall();
   var $actualApply = requireActualApply();
   callBindApplyHelpers = function callBindBasic(args) {
@@ -12456,7 +12542,7 @@ var $EvalError = _eval;
 var $RangeError = range;
 var $ReferenceError = ref;
 var $SyntaxError = syntax;
-var $TypeError$1 = type;
+var $TypeError$1 = requireType();
 var $URIError = uri;
 var abs = abs$1;
 var floor = floor$1;
@@ -12787,7 +12873,7 @@ var GetIntrinsic2 = getIntrinsic;
 var $defineProperty = GetIntrinsic2("%Object.defineProperty%", true);
 var hasToStringTag = requireShams()();
 var hasOwn$1 = hasown;
-var $TypeError = type;
+var $TypeError = requireType();
 var toStringTag = hasToStringTag ? Symbol.toStringTag : null;
 var esSetTostringtag = function setToStringTag(object, value) {
   var overrideIfSet = arguments.length > 2 && !!arguments[2] && arguments[2].force;
@@ -13373,7 +13459,7 @@ const transitionalDefaults = {
   clarifyTimeoutError: false,
   legacyInterceptorReqResOrdering: true
 };
-const URLSearchParams = require$$5.URLSearchParams;
+const URLSearchParams$1 = require$$5.URLSearchParams;
 const ALPHA = "abcdefghijklmnopqrstuvwxyz";
 const DIGIT = "0123456789";
 const ALPHABET = {
@@ -13394,7 +13480,7 @@ const generateString = (size = 16, alphabet = ALPHABET.ALPHA_DIGIT) => {
 const platform$1 = {
   isNode: true,
   classes: {
-    URLSearchParams,
+    URLSearchParams: URLSearchParams$1,
     FormData: FormData$2,
     Blob: typeof Blob !== "undefined" && Blob || null
   },
@@ -17841,7 +17927,7 @@ const maskIdentifier = (value) => {
   }
   return `${value.slice(0, 2)}***${value.slice(-2)}`;
 };
-const previewValue = (value, maxLen = 3e3) => {
+const previewValue = (value, maxLen = 4e3) => {
   if (value == null) return "";
   if (typeof value === "string") {
     return value.length > maxLen ? `${value.slice(0, maxLen)}…(truncated)` : value;
@@ -17904,11 +17990,6 @@ function registerAccountIpcs(__dirname, VITE_DEV_SERVER_URL2, RENDERER_DIST2) {
             validateStatus: () => true
           }
         );
-        console.log("[deepseek-login] response", {
-          status: response.status,
-          data: response.data,
-          emailMasked: maskIdentifier(email)
-        });
         if (response.status >= 400 || response.status === 202) {
           console.log("[deepseek-login] non-200", {
             status: response.status,
@@ -17965,7 +18046,12 @@ db.exec(`
     email TEXT NOT NULL,
     token TEXT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  )
+  );
+
+  CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  );
 `);
 const addAccount = (account) => {
   const stmt = db.prepare("INSERT OR REPLACE INTO accounts (id, email, token) VALUES (?, ?, ?)");
@@ -17980,9 +18066,23 @@ const deleteAccount = (id) => {
   return stmt.run(id);
 };
 const checkAccountExists = (email) => {
-  const stmt = db.prepare("SELECT COUNT(*) as count FROM accounts WHERE email = ?");
-  const result = stmt.get(email);
+  const stmt = db.prepare("SELECT COUNT(*) as count FROM accounts WHERE LOWER(email) = LOWER(?)");
+  const result = stmt.get(email.trim());
   return result.count > 0;
+};
+const getSetting = (key) => {
+  const stmt = db.prepare("SELECT value FROM settings WHERE key = ?");
+  const result = stmt.get(key);
+  return result ? result.value : null;
+};
+const setSetting = (key, value) => {
+  const stmt = db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)");
+  return stmt.run(key, value);
+};
+const getAllSettings = () => {
+  const stmt = db.prepare("SELECT * FROM settings");
+  const rows = stmt.all();
+  return rows.reduce((acc, row) => ({ ...acc, [row.key]: row.value }), {});
 };
 function registerDatabaseIpcs() {
   ipcMain.handle("db-add-account", async (_event, account) => {
@@ -18017,9 +18117,33 @@ function registerDatabaseIpcs() {
       return { success: false, error: error.message };
     }
   });
+  ipcMain.handle("db-get-setting", async (_event, key) => {
+    try {
+      const value = getSetting(key);
+      return { success: true, value };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  });
+  ipcMain.handle("db-set-setting", async (_event, key, value) => {
+    try {
+      setSetting(key, value);
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  });
+  ipcMain.handle("db-get-all-settings", async () => {
+    try {
+      const settings = getAllSettings();
+      return { success: true, data: settings };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  });
 }
 function registerIpcs(__dirname, VITE_DEV_SERVER_URL2, RENDERER_DIST2) {
-  registerWindowIpcs();
+  registerWindowIpcs(__dirname, VITE_DEV_SERVER_URL2, RENDERER_DIST2);
   registerAccountIpcs(__dirname, VITE_DEV_SERVER_URL2, RENDERER_DIST2);
   registerDatabaseIpcs();
 }

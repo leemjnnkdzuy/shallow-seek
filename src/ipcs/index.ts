@@ -7,7 +7,7 @@ export function registerIpcs(
 	VITE_DEV_SERVER_URL: string | undefined,
 	RENDERER_DIST: string,
 ) {
-	registerWindowIpcs();
+	registerWindowIpcs(__dirname, VITE_DEV_SERVER_URL, RENDERER_DIST);
 	registerAccountIpcs(__dirname, VITE_DEV_SERVER_URL, RENDERER_DIST);
 	registerDatabaseIpcs();
 }

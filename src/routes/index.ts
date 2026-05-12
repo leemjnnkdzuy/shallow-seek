@@ -8,6 +8,10 @@ import NothingLayout from "@/components/layouts/NothingLayout";
 import HomePage from "@/windows/main/HomePage";
 import AddAccountPage from "@/windows/popup/AddAccountPage";
 import WarningPage from "@/windows/main/WarningPage";
+import ConfirmPage from "@/windows/popup/ConfirmPage";
+import EndpointPage from "@/windows/setting/EndpointPage";
+import InterfacePage from "@/windows/setting/InterfacePage";
+import SidebarLayout from "@/components/layouts/SidebarLayout";
 
 export interface RouteConfig {
 	path: string;
@@ -27,8 +31,23 @@ const routes: RouteConfig[] = [
 		layout: NothingLayout,
 	},
 	{
+		path: "/settings/endpoint",
+		component: EndpointPage,
+		layout: SidebarLayout,
+	},
+	{
+		path: "/settings/interface",
+		component: InterfacePage,
+		layout: SidebarLayout,
+	},
+	{
 		path: "/add-account",
 		component: AddAccountPage,
+		layout: NothingLayout,
+	},
+	{
+		path: "/confirm",
+		component: ConfirmPage,
 		layout: NothingLayout,
 	},
 ];

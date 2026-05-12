@@ -1,0 +1,62 @@
+{
+  "common": {
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "settings": "Settings",
+    "back": "Back",
+    "use": "Use",
+    "confirm_delete_account": "Are you sure you want to delete this account? This action cannot be undone."
+  },
+  "sidebar": {
+    "home": "Home",
+    "accounts": "Accounts",
+    "settings": "Settings",
+    "endpoint": "Endpoint",
+    "interface": "Interface"
+  },
+  "home": {
+    "added_accounts": "Added Accounts",
+    "active_accounts": "Total {{count}} active accounts",
+    "no_accounts": "No accounts added yet",
+    "add_account": "Add Account",
+    "warning_title": "Warning & Disclaimer",
+    "warning_desc": "DeepSeek is a third-party service. Using ShallowSeek may pose risks to your account. Please read the terms carefully before starting.",
+    "view_warning": "View Risk Warning"
+  },
+  "settings": {
+    "endpoint_title": "Local Endpoint Config",
+    "endpoint_desc": "Configure the local endpoint port for agent tools to call.",
+    "port_label": "Local Port",
+    "port_placeholder": "Enter port (e.g., 8080)",
+    "status": "Endpoint Status",
+    "active": "Active",
+    "inactive": "Inactive",
+    "interface_title": "Interface Settings",
+    "interface_desc": "Customize the look and feel of ShallowSeek.",
+    "theme_title": "Theme",
+    "theme_desc": "Choose how ShallowSeek looks on your device.",
+    "theme_light": "Light",
+    "theme_dark": "Dark",
+    "theme_system": "System",
+    "lang_title": "Language",
+    "lang_desc": "Select your preferred language for the application.",
+    "lang_en": "English",
+    "lang_vi": "Vietnamese",
+    "lang_zh": "Chinese",
+    "lang_placeholder": "Select language"
+  },
+  "warning": {
+    "title": "WARNING & DISCLAIMER",
+    "subtitle": "Please read the following terms carefully before using ShallowSeek",
+    "purpose_title": "Intended Use",
+    "purpose_desc": "The ShallowSeek project is built based on reverse engineering of the DeepSeek web interface. This application is exclusively for learning, research, personal testing, and internal validation purposes. We do not provide any form of commercial authorization, stability guarantee, or availability guarantee for the outputs.",
+    "risk_title": "Account & Data Risk",
+    "risk_desc": "The authors and maintainers of the ShallowSeek repository ARE NOT RESPONSIBLE for any direct or indirect losses arising from the use, modification, distribution, deployment, or reliance on this project. This includes but is not limited to: account bans, data loss, legal risks, or third-party claims.",
+    "platform_title": "Platform Regulations",
+    "platform_desc": "Absolutely DO NOT use ShallowSeek in situations that violate the Terms of Service, User Agreement, applicable laws and regulations, or rules of related platforms.",
+    "commercial_title": "Commercial Use",
+    "commercial_desc": "Before intending to use the project for commercial purposes, you must verify the LICENSE, relevant agreements, and ensure that you have received written permission from the original author of the project."
+  }
+}

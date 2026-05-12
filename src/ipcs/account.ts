@@ -6,45 +6,7 @@ import {
 	getLoginHeaders,
 	getLoginRequestBody,
 } from "../constants/DeepseekApi";
-
-// Helpers moved from main.tsx
-const maskIdentifier = (value: string) => {
-	if (!value) return "";
-
-	if (value.includes("@")) {
-		const [localPart, domain] = value.split("@");
-		const localMasked =
-			localPart.length <= 2 ?
-				`${localPart[0] ?? "*"}*`
-			:	`${localPart.slice(0, 2)}***`;
-		return `${localMasked}@${domain}`;
-	}
-
-	if (value.length <= 4) {
-		return `${value[0] ?? "*"}***`;
-	}
-
-	return `${value.slice(0, 2)}***${value.slice(-2)}`;
-};
-
-const previewValue = (value: unknown, maxLen = 3000) => {
-	if (value == null) return "";
-
-	if (typeof value === "string") {
-		return value.length > maxLen ?
-				`${value.slice(0, maxLen)}…(truncated)`
-			:	value;
-	}
-
-	try {
-		const json = JSON.stringify(value);
-		return json.length > maxLen ?
-				`${json.slice(0, maxLen)}…(truncated)`
-			:	json;
-	} catch {
-		return String(value);
-	}
-};
+import {maskIdentifier, previewValue} from "../lib/utils";
 
 export function registerAccountIpcs(
 	__dirname: string,
@@ -127,11 +89,6 @@ export function registerAccountIpcs(
 					},
 				);
 
-				console.log("[deepseek-login] response", {
-					status: response.status,
-					data: response.data,
-					emailMasked: maskIdentifier(email),
-				});
 
 				if (response.status >= 400 || response.status === 202) {
 					console.log("[deepseek-login] non-200", {

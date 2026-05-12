@@ -18,6 +18,8 @@ import {
 } from "@/components/ui/card";
 import {Badge} from "@/components/ui/badge";
 import {logo} from "@/assets";
+import {useLanguage} from "@/hooks/useLanguage";
+import {useTitleBar} from "@/hooks/useTitleBar";
 
 interface Account {
 	id: string;
@@ -26,6 +28,8 @@ interface Account {
 }
 
 const HomePage: React.FC = () => {
+	const {t} = useLanguage();
+	const {setConfig} = useTitleBar();
 	const [accounts, setAccounts] = useState<Account[]>([]);
 	const [loading, setLoading] = useState(true);
 
@@ -44,7 +48,17 @@ const HomePage: React.FC = () => {
 	};
 
 	const handleDeleteAccount = async (id: string) => {
-		if (confirm("Bạn có chắc chắn muốn xóa tài khoản này?")) {
+		const confirmed = await window.electron?.windowControls.openConfirm({
+			title: "",
+			message: t('common.confirm_delete_account', { defaultValue: "Bạn có chắc chắn muốn xóa tài khoản này? Hành động này không thể hoàn tác." }),
+			confirmText: t('common.delete'),
+			cancelText: t('common.back'),
+			variant: "destructive",
+			type: "danger",
+			showTitle: false,
+		});
+
+		if (confirmed) {
 			try {
 				const res = await window.electron?.db.deleteAccount(id);
 				if (res?.success) {
@@ -57,10 +71,11 @@ const HomePage: React.FC = () => {
 	};
 
 	useEffect(() => {
+		setConfig({ title: t('sidebar.home') });
 		fetchAccounts();
 		window.addEventListener("focus", fetchAccounts);
 		return () => window.removeEventListener("focus", fetchAccounts);
-	}, []);
+	}, [t]);
 
 	return (
 		<div className='flex flex-col h-full bg-background transition-colors duration-300'>
@@ -70,17 +85,27 @@ const HomePage: React.FC = () => {
 					<Button
 						variant='default'
 						size='sm'
-						className='flex items-center gap-2 h-9'
+						className='flex items-center gap-2 h-9 px-5 rounded-xl'
 						onClick={() =>
 							window.electron?.windowControls.openAddAccount()
 						}
 					>
 						<Plus className='w-4 h-4' />
-						Thêm tài khoản
+						{t('home.add_account')}
 					</Button>
 				</div>
 
 				<div className='flex items-center gap-2'>
+					{accounts.length > 0 && (
+						<Button
+							variant='ghost'
+							size='icon'
+							className='rounded-full h-9 w-9'
+							onClick={() => (window.location.hash = "/warning")}
+						>
+							<ShieldAlert className='w-4 h-4 text-muted-foreground' />
+						</Button>
+					)}
 					<Button
 						variant='ghost'
 						size='icon'
@@ -96,6 +121,7 @@ const HomePage: React.FC = () => {
 						variant='ghost'
 						size='icon'
 						className='rounded-full h-9 w-9'
+						onClick={() => window.electron?.windowControls.openSettings()}
 					>
 						<Settings className='w-5 h-5 text-muted-foreground' />
 					</Button>
@@ -109,85 +135,98 @@ const HomePage: React.FC = () => {
 						<RefreshCw className='w-8 h-8 animate-spin text-primary' />
 					</div>
 				: accounts.length > 0 ?
-					<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
-						{accounts.map((account) => (
-							<Card
-								key={account.id}
-								className='group hover:border-primary transition-all duration-200 shadow-sm'
-							>
-								<CardHeader className='pb-2'>
-									<div className='flex items-start justify-between'>
-										<div className='flex items-center gap-3'>
-											<div className='p-2 bg-primary/10 rounded-lg text-primary'>
-												<User className='w-5 h-5' />
+					<div className='space-y-6'>
+						<div className='flex items-center justify-between'>
+							<div className='space-y-1'>
+								<h2 className='text-2xl font-bold tracking-tight'>
+									{t('home.added_accounts')}
+								</h2>
+								<p className='text-sm text-muted-foreground'>
+									{t('home.active_accounts', { count: accounts.length })}
+								</p>
+							</div>
+						</div>
+						<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
+							{accounts.map((account) => (
+								<Card
+									key={account.id}
+									className='group hover:border-primary transition-all duration-300 shadow-sm hover:shadow-xl hover:shadow-primary/5 rounded-2xl overflow-hidden'
+								>
+									<CardHeader className='pb-3'>
+										<div className='flex items-start justify-between'>
+											<div className='flex items-center gap-4'>
+												<div className='p-3 bg-primary/10 rounded-xl text-primary transition-transform group-hover:scale-110 duration-300'>
+													<User className='w-5 h-5' />
+												</div>
+												<div className='flex flex-col'>
+													<CardTitle className='text-base font-bold truncate max-w-[150px]'>
+														{account.email}
+													</CardTitle>
+													<CardDescription className='text-[10px] uppercase font-bold tracking-wider mt-1 opacity-60'>
+														ID: {account.id.slice(0, 8)}
+													</CardDescription>
+												</div>
 											</div>
-											<div>
-												<CardTitle className='text-base truncate max-w-[180px]'>
-													{account.email}
-												</CardTitle>
-												<CardDescription className='text-xs mt-0.5'>
-													ID: {account.id.slice(0, 8)}
-													...
-												</CardDescription>
-											</div>
+											<Button
+												variant='ghost'
+												size='icon'
+												className='h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all duration-200 rounded-lg'
+												onClick={() =>
+													handleDeleteAccount(
+														account.id,
+													)
+												}
+											>
+												<Trash2 className='w-4 h-4' />
+											</Button>
 										</div>
-										<Button
-											variant='ghost'
-											size='icon'
-											className='h-8 w-8 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity'
-											onClick={() =>
-												handleDeleteAccount(account.id)
-											}
-										>
-											<Trash2 className='w-4 h-4' />
-										</Button>
-									</div>
-								</CardHeader>
-								<CardContent>
-									<div className='flex items-center justify-between'>
-										<Badge
-											variant='secondary'
-											className='font-normal text-[10px] h-5'
-										>
-											Sẵn sàng
-										</Badge>
-										<Button
-											variant='link'
-											className='h-auto p-0 text-primary text-xs flex items-center gap-1'
-										>
-											Sử dụng{" "}
-											<ChevronRight className='w-3 h-3' />
-										</Button>
-									</div>
-								</CardContent>
-							</Card>
-						))}
+									</CardHeader>
+									<CardContent className='pt-0'>
+										<div className='flex items-center justify-between mt-2'>
+											<Badge
+												variant='secondary'
+												className='font-bold text-[10px] h-5 px-2 rounded-md bg-green-500/10 text-green-600 border-none'
+											>
+												Online
+											</Badge>
+											<Button
+												variant='link'
+												className='h-auto p-0 text-primary text-xs font-bold flex items-center gap-1 group/btn'
+											>
+												{t('common.use', { defaultValue: 'Sử dụng' })}{" "}
+												<ChevronRight className='w-3 h-3 transition-transform group-hover/btn:translate-x-1' />
+											</Button>
+										</div>
+									</CardContent>
+								</Card>
+							))}
+						</div>
 					</div>
-				:	<div className='h-full flex flex-col items-center justify-center text-center max-w-lg mx-auto space-y-6'>
-						<img
-							src={logo}
-							alt='Logo'
-							className='w-20 h-20 object-contain'
-						/>
-						<div className='space-y-2'>
-							<h1 className='text-3xl font-bold tracking-tight text-primary'>
-								Cảnh báo & Miễn trừ trách nhiệm
+				:	<div className='h-full flex flex-col items-center justify-center text-center max-w-lg mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700'>
+						<div className='relative'>
+							<div className='absolute inset-0 bg-primary/20 blur-3xl rounded-full scale-150 animate-pulse' />
+							<img
+								src={logo}
+								alt='Logo'
+								className='w-24 h-24 object-contain relative z-10'
+							/>
+						</div>
+						<div className='space-y-3 relative z-10'>
+							<h1 className='text-3xl font-extrabold tracking-tight text-primary'>
+								{t('home.warning_title')}
 							</h1>
-							<p className='text-muted-foreground'>
-								DeepSeek là dịch vụ của bên thứ ba. Việc sử dụng
-								ShallowSeek có thể tiềm ẩn rủi ro cho tài khoản
-								của bạn. Vui lòng đọc kỹ các điều khoản và quy
-								định trước khi bắt đầu.
+							<p className='text-muted-foreground leading-relaxed'>
+								{t('home.warning_desc')}
 							</p>
 						</div>
 						<Button
 							variant='default'
 							size='lg'
-							className='rounded-full px-8 font-semibold shadow-lg shadow-primary/20'
+							className='rounded-full px-10 h-12 font-bold shadow-xl shadow-primary/20 transition-all hover:scale-105 active:scale-95'
 							onClick={() => (window.location.hash = "/warning")}
 						>
-							<ShieldAlert className='w-5 h-5 mr-2' />
-							Xem cảnh báo rủi ro
+							<ShieldAlert className='w-5 h-5 mr-3' />
+							{t('home.view_warning')}
 						</Button>
 					</div>
 				}

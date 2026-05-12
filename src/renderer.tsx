@@ -3,8 +3,12 @@ import ReactDOM from 'react-dom/client';
 import '@fontsource-variable/inter';
 import './index.css';
 import routes from './routes';
+import { useTheme } from './hooks/useTheme';
+import { useLanguage } from './hooks/useLanguage';
 
 const App = () => {
+  useTheme();
+  useLanguage();
   const [currentPath, setCurrentPath] = React.useState(() => {
     const hash = window.location.hash;
     if (hash && hash.startsWith('#')) {
@@ -29,7 +33,8 @@ const App = () => {
   }, []);
 
   try {
-    const route = routes.find((r: any) => r.path === currentPath) || (routes && routes.length > 0 ? routes[0] : null);
+    const pathOnly = currentPath.split('?')[0];
+    const route = routes.find((r: any) => r.path === pathOnly) || (routes && routes.length > 0 ? routes[0] : null);
     
     if (!route) {
       return (

@@ -28,6 +28,30 @@ contextBridge.exposeInMainWorld("electron", {
 			);
 		},
 		openAddAccount: () => ipcRenderer.send("open-add-account"),
+		openSettings: () => ipcRenderer.send("open-settings"),
+		notifyThemeChanged: (theme: string) => ipcRenderer.send("theme-changed", theme),
+		onThemeChanged: (callback: (theme: string) => void) => {
+			const listener = (_event: any, theme: string) => callback(theme);
+			ipcRenderer.on("on-theme-changed", listener);
+			return () => ipcRenderer.off("on-theme-changed", listener);
+		},
+		notifyLanguageChanged: (lang: string) => ipcRenderer.send("language-changed", lang),
+		onLanguageChanged: (callback: (lang: string) => void) => {
+			const listener = (_event: any, lang: string) => callback(lang);
+			ipcRenderer.on("on-language-changed", listener);
+			return () => ipcRenderer.off("on-language-changed", listener);
+		},
+		openConfirm: (options: {
+			title?: string;
+			message?: string;
+			confirmText?: string;
+			cancelText?: string;
+			variant?: "default" | "destructive" | "warning";
+			type?: "question" | "danger" | "warning" | "success";
+			showTitle?: boolean;
+		}) => ipcRenderer.invoke("open-confirm", options),
+		confirmResult: (result: boolean) =>
+			ipcRenderer.send("confirm-result", result),
 	},
 	db: {
 		addAccount: (account: any) =>
@@ -37,6 +61,10 @@ contextBridge.exposeInMainWorld("electron", {
 			ipcRenderer.invoke("db-delete-account", id),
 		checkAccountExists: (email: string) =>
 			ipcRenderer.invoke("db-check-account-exists", email),
+		getSetting: (key: string) => ipcRenderer.invoke("db-get-setting", key),
+		setSetting: (key: string, value: string) =>
+			ipcRenderer.invoke("db-set-setting", key, value),
+		getAllSettings: () => ipcRenderer.invoke("db-get-all-settings"),
 	},
 	deepseek: {
 		login: (payload: {email: string; password: string; deviceId: string}) =>

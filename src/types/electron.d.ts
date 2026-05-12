@@ -16,6 +16,21 @@ declare global {
 					callback: (state: "maximized" | "unmaximized") => void,
 				) => void;
 				openAddAccount: () => void;
+				openSettings: () => void;
+				notifyThemeChanged: (theme: string) => void;
+				onThemeChanged: (callback: (theme: string) => void) => () => void;
+				notifyLanguageChanged: (lang: string) => void;
+				onLanguageChanged: (callback: (lang: string) => void) => () => void;
+				openConfirm: (options: {
+					title?: string;
+					message?: string;
+					confirmText?: string;
+					cancelText?: string;
+					variant?: "default" | "destructive" | "warning";
+					type?: "question" | "danger" | "warning" | "success";
+					showTitle?: boolean;
+				}) => Promise<boolean>;
+				confirmResult: (result: boolean) => void;
 			};
 			db: {
 				addAccount: (account: {
@@ -34,6 +49,9 @@ declare global {
 				checkAccountExists: (
 					email: string,
 				) => Promise<{success: boolean; exists: boolean; error?: string}>;
+				getSetting: (key: string) => Promise<{success: boolean; value?: string; error?: string}>;
+				setSetting: (key: string, value: string) => Promise<{success: boolean; error?: string}>;
+				getAllSettings: () => Promise<{success: boolean; data?: Record<string, string>; error?: string}>;
 			};
 			deepseek?: {
 				login: (payload: {

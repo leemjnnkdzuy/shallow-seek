@@ -8,111 +8,84 @@ import {
 } from "@/components/ui/card";
 import {ShieldAlert, AlertCircle} from "lucide-react";
 import {useTitleBar} from "@/hooks/useTitleBar";
+import {useLanguage} from "@/hooks/useLanguage";
 
 const WarningPage: React.FC = () => {
+	const {t} = useLanguage();
 	const {setConfig, resetConfig} = useTitleBar();
 
 	useEffect(() => {
 		setConfig({
 			showBack: true,
 			onBack: () => (window.location.hash = "/"),
-			title: "Điều khoản sử dụng",
+			title: t('common.terms_of_use', { defaultValue: "Điều khoản sử dụng" }),
 		});
 		return () => resetConfig();
-	}, []);
+	}, [t]);
 
 	return (
 		<div className='w-full h-full min-h-screen flex flex-col items-center justify-center bg-background p-6 relative'>
 			<Card className='w-full max-w-2xl border-none shadow-none bg-transparent relative overflow-visible'>
-				<CardHeader className='space-y-4 pb-6'>
-					<div className='flex items-center gap-3'>
+				<CardHeader className='space-y-4 pb-6 text-center sm:text-left'>
+					<div className='flex flex-col sm:flex-row items-center gap-4'>
+						<div className="p-3 bg-destructive/10 rounded-2xl text-destructive">
+							<ShieldAlert className="w-8 h-8" />
+						</div>
 						<div>
-							<CardTitle className='text-2xl font-bold tracking-tight text-primary'>
-								CẢNH BÁO & MIỄN TRỪ TRÁCH NHIỆM
+							<CardTitle className='text-2xl font-bold tracking-tight text-primary uppercase'>
+								{t('warning.title')}
 							</CardTitle>
 							<CardDescription className='text-sm font-medium mt-1'>
-								Vui lòng đọc kỹ các điều khoản dưới đây trước
-								khi sử dụng ShallowSeek
+								{t('warning.subtitle')}
 							</CardDescription>
 						</div>
 					</div>
 				</CardHeader>
 
 				<CardContent className='space-y-6'>
-					<div className='p-4 bg-muted/50 rounded-lg border border-border/50 space-y-3 text-sm leading-relaxed'>
-						<p className='font-semibold text-foreground flex items-center gap-2'>
-							<ShieldAlert className='w-4 h-4 text-amber-500' />
-							Mục đích sử dụng
+					<div className='p-6 bg-muted/30 rounded-3xl border border-border/50 space-y-4 text-sm leading-relaxed backdrop-blur-sm'>
+						<p className='font-bold text-foreground flex items-center gap-2 text-base'>
+							<ShieldAlert className='w-5 h-5 text-amber-500' />
+							{t('warning.purpose_title')}
 						</p>
 						<p className='text-muted-foreground'>
-							Dự án <strong>ShallowSeek</strong> được xây dựng dựa
-							trên phương pháp kỹ thuật đảo ngược (reverse
-							engineering) giao diện web của DeepSeek. Ứng dụng
-							này{" "}
-							<strong>
-								chỉ dành riêng cho mục đích học tập, nghiên cứu,
-								thử nghiệm cá nhân và xác thực nội bộ
-							</strong>
-							. Chúng tôi không cung cấp bất kỳ hình thức ủy quyền
-							thương mại, đảm bảo tính ổn định hay tính khả dụng
-							nào đối với kết quả đầu ra.
+							{t('warning.purpose_desc')}
 						</p>
 					</div>
 
-					<div className='space-y-4 text-sm text-muted-foreground px-1'>
-						<div className='flex gap-3'>
-							<AlertCircle className='w-5 h-5 text-destructive shrink-0 mt-0.5' />
-							<div className='space-y-1'>
-								<h4 className='font-semibold text-foreground'>
-									Rủi ro tài khoản & Dữ liệu
+					<div className='grid grid-cols-1 gap-6 text-sm text-muted-foreground px-1'>
+						<div className='flex gap-4 p-4 rounded-2xl hover:bg-muted/20 transition-colors'>
+							<AlertCircle className='w-6 h-6 text-destructive shrink-0 mt-0.5' />
+							<div className='space-y-1.5'>
+								<h4 className='font-bold text-foreground text-base'>
+									{t('warning.risk_title')}
 								</h4>
-								<p>
-									Tác giả và những người bảo trì kho lưu trữ
-									ShallowSeek{" "}
-									<strong>KHÔNG CHỊU TRÁCH NHIỆM</strong> đối
-									với bất kỳ tổn thất trực tiếp hay gián tiếp
-									nào phát sinh từ việc sử dụng, sửa đổi, phân
-									phối, triển khai hoặc phụ thuộc vào dự án
-									này. Điều này bao gồm nhưng không giới hạn
-									ở:{" "}
-									<strong>
-										tài khoản bị khóa (ban), mất mát dữ
-										liệu, rủi ro pháp lý, hoặc các khiếu nại
-										từ bên thứ ba
-									</strong>
-									.
+								<p className="leading-relaxed">
+									{t('warning.risk_desc')}
 								</p>
 							</div>
 						</div>
 
-						<div className='flex gap-3'>
-							<AlertCircle className='w-5 h-5 text-destructive shrink-0 mt-0.5' />
-							<div className='space-y-1'>
-								<h4 className='font-semibold text-foreground'>
-									Quy định về nền tảng
+						<div className='flex gap-4 p-4 rounded-2xl hover:bg-muted/20 transition-colors'>
+							<AlertCircle className='w-6 h-6 text-destructive shrink-0 mt-0.5' />
+							<div className='space-y-1.5'>
+								<h4 className='font-bold text-foreground text-base'>
+									{t('warning.platform_title')}
 								</h4>
-								<p>
-									Tuyệt đối <strong>KHÔNG</strong> sử dụng
-									ShallowSeek trong các tình huống vi phạm
-									Điều khoản dịch vụ, Thỏa thuận người dùng,
-									Luật pháp và quy định hiện hành hoặc quy tắc
-									của các nền tảng liên quan.
+								<p className="leading-relaxed">
+									{t('warning.platform_desc')}
 								</p>
 							</div>
 						</div>
 
-						<div className='flex gap-3'>
-							<AlertCircle className='w-5 h-5 text-destructive shrink-0 mt-0.5' />
-							<div className='space-y-1'>
-								<h4 className='font-semibold text-foreground'>
-									Sử dụng thương mại
+						<div className='flex gap-4 p-4 rounded-2xl hover:bg-muted/20 transition-colors'>
+							<AlertCircle className='w-6 h-6 text-destructive shrink-0 mt-0.5' />
+							<div className='space-y-1.5'>
+								<h4 className='font-bold text-foreground text-base'>
+									{t('warning.commercial_title')}
 								</h4>
-								<p>
-									Trước khi có ý định sử dụng dự án cho mục
-									đích thương mại, bạn phải tự xác nhận giấy
-									phép (LICENSE), các thỏa thuận liên quan và
-									đảm bảo rằng bạn đã nhận được sự cho phép
-									bằng văn bản từ tác giả gốc của dự án.
+								<p className="leading-relaxed">
+									{t('warning.commercial_desc')}
 								</p>
 							</div>
 						</div>

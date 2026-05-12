@@ -1,5 +1,5 @@
 import {ipcMain} from "electron";
-import {addAccount, getAccounts, deleteAccount, checkAccountExists} from "../services/QueryDB";
+import {addAccount, getAccounts, deleteAccount, checkAccountExists, getSetting, setSetting, getAllSettings} from "../services/QueryDB";
 
 export function registerDatabaseIpcs() {
 	ipcMain.handle("db-add-account", async (_event, account) => {
@@ -33,6 +33,33 @@ export function registerDatabaseIpcs() {
 		try {
 			const exists = checkAccountExists(email);
 			return {success: true, exists};
+		} catch (error: any) {
+			return {success: false, error: error.message};
+		}
+	});
+
+	ipcMain.handle("db-get-setting", async (_event, key) => {
+		try {
+			const value = getSetting(key);
+			return {success: true, value};
+		} catch (error: any) {
+			return {success: false, error: error.message};
+		}
+	});
+
+	ipcMain.handle("db-set-setting", async (_event, key, value) => {
+		try {
+			setSetting(key, value);
+			return {success: true};
+		} catch (error: any) {
+			return {success: false, error: error.message};
+		}
+	});
+
+	ipcMain.handle("db-get-all-settings", async () => {
+		try {
+			const settings = getAllSettings();
+			return {success: true, data: settings};
 		} catch (error: any) {
 			return {success: false, error: error.message};
 		}

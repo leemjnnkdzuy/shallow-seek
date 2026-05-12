@@ -19,7 +19,12 @@ db.exec(`
     email TEXT NOT NULL,
     token TEXT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  )
+  );
+
+  CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  );
 `);
 
 export interface Account {
@@ -44,7 +49,24 @@ export const deleteAccount = (id: string) => {
 };
 
 export const checkAccountExists = (email: string): boolean => {
-  const stmt = db.prepare('SELECT COUNT(*) as count FROM accounts WHERE email = ?');
-  const result = stmt.get(email) as { count: number };
+  const stmt = db.prepare('SELECT COUNT(*) as count FROM accounts WHERE LOWER(email) = LOWER(?)');
+  const result = stmt.get(email.trim()) as { count: number };
   return result.count > 0;
+};
+
+export const getSetting = (key: string): string | null => {
+  const stmt = db.prepare('SELECT value FROM settings WHERE key = ?');
+  const result = stmt.get(key) as { value: string } | undefined;
+  return result ? result.value : null;
+};
+
+export const setSetting = (key: string, value: string) => {
+  const stmt = db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)');
+  return stmt.run(key, value);
+};
+
+export const getAllSettings = (): Record<string, string> => {
+  const stmt = db.prepare('SELECT * FROM settings');
+  const rows = stmt.all() as { key: string; value: string }[];
+  return rows.reduce((acc, row) => ({ ...acc, [row.key]: row.value }), {});
 };
