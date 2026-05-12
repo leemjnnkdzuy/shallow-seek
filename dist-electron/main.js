@@ -1,4 +1,4 @@
-import { ipcMain, BrowserWindow, app, Menu } from "electron";
+import { ipcMain, BrowserWindow, session, app, Menu } from "electron";
 import path$1 from "node:path";
 import { fileURLToPath } from "node:url";
 import require$$1 from "util";
@@ -12909,9 +12909,9 @@ var asynckit = asynckit$1;
 var setToStringTag2 = esSetTostringtag;
 var hasOwn = hasown;
 var populate = populate$1;
-function FormData$1(options) {
-  if (!(this instanceof FormData$1)) {
-    return new FormData$1(options);
+function FormData$2(options) {
+  if (!(this instanceof FormData$2)) {
+    return new FormData$2(options);
   }
   this._overheadLength = 0;
   this._valueLength = 0;
@@ -12922,10 +12922,10 @@ function FormData$1(options) {
     this[option] = options[option];
   }
 }
-util.inherits(FormData$1, CombinedStream);
-FormData$1.LINE_BREAK = "\r\n";
-FormData$1.DEFAULT_CONTENT_TYPE = "application/octet-stream";
-FormData$1.prototype.append = function(field, value, options) {
+util.inherits(FormData$2, CombinedStream);
+FormData$2.LINE_BREAK = "\r\n";
+FormData$2.DEFAULT_CONTENT_TYPE = "application/octet-stream";
+FormData$2.prototype.append = function(field, value, options) {
   options = options || {};
   if (typeof options === "string") {
     options = { filename: options };
@@ -12945,7 +12945,7 @@ FormData$1.prototype.append = function(field, value, options) {
   append2(footer);
   this._trackLength(header, value, options);
 };
-FormData$1.prototype._trackLength = function(header, value, options) {
+FormData$2.prototype._trackLength = function(header, value, options) {
   var valueLength = 0;
   if (options.knownLength != null) {
     valueLength += Number(options.knownLength);
@@ -12955,7 +12955,7 @@ FormData$1.prototype._trackLength = function(header, value, options) {
     valueLength = Buffer.byteLength(value);
   }
   this._valueLength += valueLength;
-  this._overheadLength += Buffer.byteLength(header) + FormData$1.LINE_BREAK.length;
+  this._overheadLength += Buffer.byteLength(header) + FormData$2.LINE_BREAK.length;
   if (!value || !value.path && !(value.readable && hasOwn(value, "httpVersion")) && !(value instanceof Stream)) {
     return;
   }
@@ -12963,7 +12963,7 @@ FormData$1.prototype._trackLength = function(header, value, options) {
     this._valuesToMeasure.push(value);
   }
 };
-FormData$1.prototype._lengthRetriever = function(value, callback) {
+FormData$2.prototype._lengthRetriever = function(value, callback) {
   if (hasOwn(value, "fd")) {
     if (value.end != void 0 && value.end != Infinity && value.start != void 0) {
       callback(null, value.end + 1 - (value.start ? value.start : 0));
@@ -12989,7 +12989,7 @@ FormData$1.prototype._lengthRetriever = function(value, callback) {
     callback("Unknown stream");
   }
 };
-FormData$1.prototype._multiPartHeader = function(field, value, options) {
+FormData$2.prototype._multiPartHeader = function(field, value, options) {
   if (typeof options.header === "string") {
     return options.header;
   }
@@ -13016,13 +13016,13 @@ FormData$1.prototype._multiPartHeader = function(field, value, options) {
         header = [header];
       }
       if (header.length) {
-        contents += prop + ": " + header.join("; ") + FormData$1.LINE_BREAK;
+        contents += prop + ": " + header.join("; ") + FormData$2.LINE_BREAK;
       }
     }
   }
-  return "--" + this.getBoundary() + FormData$1.LINE_BREAK + contents + FormData$1.LINE_BREAK;
+  return "--" + this.getBoundary() + FormData$2.LINE_BREAK + contents + FormData$2.LINE_BREAK;
 };
-FormData$1.prototype._getContentDisposition = function(value, options) {
+FormData$2.prototype._getContentDisposition = function(value, options) {
   var filename;
   if (typeof options.filepath === "string") {
     filename = path.normalize(options.filepath).replace(/\\/g, "/");
@@ -13035,7 +13035,7 @@ FormData$1.prototype._getContentDisposition = function(value, options) {
     return 'filename="' + filename + '"';
   }
 };
-FormData$1.prototype._getContentType = function(value, options) {
+FormData$2.prototype._getContentType = function(value, options) {
   var contentType = options.contentType;
   if (!contentType && value && value.name) {
     contentType = mime.lookup(value.name);
@@ -13050,13 +13050,13 @@ FormData$1.prototype._getContentType = function(value, options) {
     contentType = mime.lookup(options.filepath || options.filename);
   }
   if (!contentType && value && typeof value === "object") {
-    contentType = FormData$1.DEFAULT_CONTENT_TYPE;
+    contentType = FormData$2.DEFAULT_CONTENT_TYPE;
   }
   return contentType;
 };
-FormData$1.prototype._multiPartFooter = function() {
+FormData$2.prototype._multiPartFooter = function() {
   return (function(next) {
-    var footer = FormData$1.LINE_BREAK;
+    var footer = FormData$2.LINE_BREAK;
     var lastPart = this._streams.length === 0;
     if (lastPart) {
       footer += this._lastBoundary();
@@ -13064,10 +13064,10 @@ FormData$1.prototype._multiPartFooter = function() {
     next(footer);
   }).bind(this);
 };
-FormData$1.prototype._lastBoundary = function() {
-  return "--" + this.getBoundary() + "--" + FormData$1.LINE_BREAK;
+FormData$2.prototype._lastBoundary = function() {
+  return "--" + this.getBoundary() + "--" + FormData$2.LINE_BREAK;
 };
-FormData$1.prototype.getHeaders = function(userHeaders) {
+FormData$2.prototype.getHeaders = function(userHeaders) {
   var header;
   var formHeaders = {
     "content-type": "multipart/form-data; boundary=" + this.getBoundary()
@@ -13079,19 +13079,19 @@ FormData$1.prototype.getHeaders = function(userHeaders) {
   }
   return formHeaders;
 };
-FormData$1.prototype.setBoundary = function(boundary) {
+FormData$2.prototype.setBoundary = function(boundary) {
   if (typeof boundary !== "string") {
     throw new TypeError("FormData boundary must be a string");
   }
   this._boundary = boundary;
 };
-FormData$1.prototype.getBoundary = function() {
+FormData$2.prototype.getBoundary = function() {
   if (!this._boundary) {
     this._generateBoundary();
   }
   return this._boundary;
 };
-FormData$1.prototype.getBuffer = function() {
+FormData$2.prototype.getBuffer = function() {
   var dataBuffer = new Buffer.alloc(0);
   var boundary = this.getBoundary();
   for (var i = 0, len = this._streams.length; i < len; i++) {
@@ -13102,16 +13102,16 @@ FormData$1.prototype.getBuffer = function() {
         dataBuffer = Buffer.concat([dataBuffer, Buffer.from(this._streams[i])]);
       }
       if (typeof this._streams[i] !== "string" || this._streams[i].substring(2, boundary.length + 2) !== boundary) {
-        dataBuffer = Buffer.concat([dataBuffer, Buffer.from(FormData$1.LINE_BREAK)]);
+        dataBuffer = Buffer.concat([dataBuffer, Buffer.from(FormData$2.LINE_BREAK)]);
       }
     }
   }
   return Buffer.concat([dataBuffer, Buffer.from(this._lastBoundary())]);
 };
-FormData$1.prototype._generateBoundary = function() {
+FormData$2.prototype._generateBoundary = function() {
   this._boundary = "--------------------------" + crypto.randomBytes(12).toString("hex");
 };
-FormData$1.prototype.getLengthSync = function() {
+FormData$2.prototype.getLengthSync = function() {
   var knownLength = this._overheadLength + this._valueLength;
   if (this._streams.length) {
     knownLength += this._lastBoundary().length;
@@ -13121,14 +13121,14 @@ FormData$1.prototype.getLengthSync = function() {
   }
   return knownLength;
 };
-FormData$1.prototype.hasKnownLength = function() {
+FormData$2.prototype.hasKnownLength = function() {
   var hasKnownLength = true;
   if (this._valuesToMeasure.length) {
     hasKnownLength = false;
   }
   return hasKnownLength;
 };
-FormData$1.prototype.getLength = function(cb) {
+FormData$2.prototype.getLength = function(cb) {
   var knownLength = this._overheadLength + this._valueLength;
   if (this._streams.length) {
     knownLength += this._lastBoundary().length;
@@ -13148,7 +13148,7 @@ FormData$1.prototype.getLength = function(cb) {
     cb(null, knownLength);
   });
 };
-FormData$1.prototype.submit = function(params, cb) {
+FormData$2.prototype.submit = function(params, cb) {
   var request;
   var options;
   var defaults2 = { method: "post" };
@@ -13195,19 +13195,19 @@ FormData$1.prototype.submit = function(params, cb) {
   }).bind(this));
   return request;
 };
-FormData$1.prototype._error = function(err) {
+FormData$2.prototype._error = function(err) {
   if (!this.error) {
     this.error = err;
     this.pause();
     this.emit("error", err);
   }
 };
-FormData$1.prototype.toString = function() {
+FormData$2.prototype.toString = function() {
   return "[object FormData]";
 };
-setToStringTag2(FormData$1.prototype, "FormData");
-var form_data = FormData$1;
-const FormData$2 = /* @__PURE__ */ getDefaultExportFromCjs(form_data);
+setToStringTag2(FormData$2.prototype, "FormData");
+var form_data = FormData$2;
+const FormData$1 = /* @__PURE__ */ getDefaultExportFromCjs(form_data);
 function isVisitable(thing) {
   return utils$1.isPlainObject(thing) || utils$1.isArray(thing);
 }
@@ -13231,7 +13231,7 @@ function toFormData$1(obj, formData, options) {
   if (!utils$1.isObject(obj)) {
     throw new TypeError("target must be an object");
   }
-  formData = formData || new (FormData$2 || FormData)();
+  formData = formData || new (FormData$1 || FormData)();
   options = utils$1.toFlatObject(
     options,
     {
@@ -13476,7 +13476,7 @@ const platform$1 = {
   isNode: true,
   classes: {
     URLSearchParams: URLSearchParams$1,
-    FormData: FormData$2,
+    FormData: FormData$1,
     Blob: typeof Blob !== "undefined" && Blob || null
   },
   ALPHABET,
@@ -15728,7 +15728,7 @@ class Http2Sessions {
         }
       }
     }
-    const session = http2.connect(authority, options);
+    const session2 = http2.connect(authority, options);
     let removed;
     const removeSession = () => {
       if (removed) {
@@ -15737,25 +15737,25 @@ class Http2Sessions {
       removed = true;
       let entries = authoritySessions, len = entries.length, i = len;
       while (i--) {
-        if (entries[i][0] === session) {
+        if (entries[i][0] === session2) {
           if (len === 1) {
             delete this.sessions[authority];
           } else {
             entries.splice(i, 1);
           }
-          if (!session.closed) {
-            session.close();
+          if (!session2.closed) {
+            session2.close();
           }
           return;
         }
       }
     };
-    const originalRequestFn = session.request;
+    const originalRequestFn = session2.request;
     const { sessionTimeout } = options;
     if (sessionTimeout != null) {
       let timer;
       let streamsCount = 0;
-      session.request = function() {
+      session2.request = function() {
         const stream2 = originalRequestFn.apply(this, arguments);
         streamsCount++;
         if (timer) {
@@ -15773,10 +15773,10 @@ class Http2Sessions {
         return stream2;
       };
     }
-    session.once("close", removeSession);
-    let entry = [session, options];
+    session2.once("close", removeSession);
+    let entry = [session2, options];
     authoritySessions ? authoritySessions.push(entry) : authoritySessions = this.sessions[authority] = [entry];
-    return session;
+    return session2;
   }
 }
 const http2Sessions = new Http2Sessions();
@@ -15886,7 +15886,7 @@ const http2Transport = {
   request(options, cb) {
     const authority = options.protocol + "//" + options.hostname + ":" + (options.port || (options.protocol === "https:" ? 443 : 80));
     const { http2Options, headers } = options;
-    const session = http2Sessions.getSession(authority, http2Options);
+    const session2 = http2Sessions.getSession(authority, http2Options);
     const { HTTP2_HEADER_SCHEME, HTTP2_HEADER_METHOD, HTTP2_HEADER_PATH, HTTP2_HEADER_STATUS } = http2.constants;
     const http2Headers = {
       [HTTP2_HEADER_SCHEME]: options.protocol.replace(":", ""),
@@ -15896,7 +15896,7 @@ const http2Transport = {
     utils$1.forEach(headers, (header, name) => {
       name.charAt(0) !== ":" && (http2Headers[name] = header);
     });
-    const req = session.request(http2Headers);
+    const req = session2.request(http2Headers);
     req.once("response", (responseHeaders) => {
       const response = req;
       responseHeaders = Object.assign({}, responseHeaders);
@@ -17889,6 +17889,15 @@ const {
   create
 } = axios;
 const DEEPSEEK_LOGIN_URL = "https://chat.deepseek.com/api/v0/users/login";
+const DEEPSEEK_HISTORY_URL = "https://chat.deepseek.com/api/v0/chat_session/fetch_page?lte_cursor.pinned=false";
+const DEEPSEEK_CREATE_POW_URL = "https://chat.deepseek.com/api/v0/chat/create_pow_challenge";
+const DEEPSEEK_COMPLETION_URL = "https://chat.deepseek.com/api/v0/chat/completion";
+const DEEPSEEK_HISTORY_MESSAGES_URL = "https://chat.deepseek.com/api/v0/chat/history_messages";
+const DEEPSEEK_CREATE_SESSION_URL = "https://chat.deepseek.com/api/v0/chat_session/create";
+const DEEPSEEK_DELETE_SESSION_URL = "https://chat.deepseek.com/api/v0/chat_session/delete";
+const DEEPSEEK_COMPLETION_TARGET_PATH = "/api/v0/chat/completion";
+const DEEPSEEK_PLATFORM_GET_API_KEYS_URL = "https://platform.deepseek.com/api/v0/users/get_api_keys";
+const DEEPSEEK_PLATFORM_EDIT_API_KEYS_URL = "https://platform.deepseek.com/api/v0/users/edit_api_keys";
 const getLoginRequestBody = (email, password, _deviceId) => ({
   email,
   mobile: "",
@@ -17909,13 +17918,6 @@ const getLoginHeaders = () => ({
   "x-client-timezone-offset": "28800",
   "x-client-version": "2.0.4"
 });
-const DEEPSEEK_HISTORY_URL = "https://chat.deepseek.com/api/v0/chat_session/fetch_page?lte_cursor.pinned=false";
-const DEEPSEEK_CREATE_POW_URL = "https://chat.deepseek.com/api/v0/chat/create_pow_challenge";
-const DEEPSEEK_COMPLETION_URL = "https://chat.deepseek.com/api/v0/chat/completion";
-const DEEPSEEK_HISTORY_MESSAGES_URL = "https://chat.deepseek.com/api/v0/chat/history_messages";
-const DEEPSEEK_CREATE_SESSION_URL = "https://chat.deepseek.com/api/v0/chat_session/create";
-const DEEPSEEK_DELETE_SESSION_URL = "https://chat.deepseek.com/api/v0/chat_session/delete";
-const DEEPSEEK_COMPLETION_TARGET_PATH = "/api/v0/chat/completion";
 const getHistoryHeaders = (token, cookies2) => {
   const headers = {
     "Accept": "application/json",
@@ -17939,6 +17941,22 @@ const getChatHeaders = (token, powResponse, cookies2) => ({
   ...getHistoryHeaders(token, cookies2),
   "x-ds-pow-response": powResponse,
   "Content-Type": "application/json"
+});
+const getPlatformHeaders = (token) => ({
+  "accept": "*/*",
+  "accept-language": "vi,vi-VN;q=0.9,en;q=0.8",
+  "authorization": `Bearer ${token}`,
+  "cache-control": "no-cache",
+  "pragma": "no-cache",
+  "sec-ch-ua": '"Chromium";v="148", "Google Chrome";v="148", "Not/A)Brand";v="99"',
+  "sec-ch-ua-mobile": "?0",
+  "sec-ch-ua-platform": '"Windows"',
+  "sec-fetch-dest": "empty",
+  "sec-fetch-mode": "cors",
+  "sec-fetch-site": "same-origin",
+  "x-app-version": "1.0.0",
+  "Referer": "https://platform.deepseek.com/api_keys",
+  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"
 });
 const maskIdentifier = (value) => {
   if (!value) return "";
@@ -18212,6 +18230,180 @@ function solveAndBuildHeader(challenge) {
   );
   return buildPowHeader(challenge, answer);
 }
+async function acquirePlatformToken(email, password, deviceId) {
+  const partitionName = `platform-waf-${Date.now()}`;
+  const ses = session.fromPartition(partitionName, { cache: false });
+  const win2 = new BrowserWindow({
+    width: 800,
+    height: 600,
+    show: true,
+    // visible for debugging - change to false once working
+    webPreferences: {
+      session: ses,
+      nodeIntegration: false,
+      contextIsolation: true,
+      webSecurity: true
+    }
+  });
+  try {
+    console.log("[platform-token] Loading platform sign_in page...");
+    const tokenPromise = new Promise((resolve2) => {
+      const timeout = setTimeout(() => {
+        console.log("[platform-token] Login response timeout (60s)");
+        resolve2(null);
+      }, 6e4);
+      ses.webRequest.onCompleted(
+        { urls: ["*://platform.deepseek.com/auth-api/*"] },
+        (details) => {
+          console.log(`[platform-token] AUTH API response: ${details.statusCode} ${details.url}`);
+        }
+      );
+      ses.webRequest.onBeforeSendHeaders(
+        { urls: ["*://platform.deepseek.com/auth-api/*"] },
+        (details, callback) => {
+          console.log(`[platform-token] AUTH API request: ${details.method} ${details.url}`);
+          const cookieHeader = details.requestHeaders["Cookie"] || details.requestHeaders["cookie"];
+          if (cookieHeader) {
+            console.log(`[platform-token] Request cookies: ${cookieHeader.substring(0, 100)}`);
+          }
+          callback({ cancel: false, requestHeaders: details.requestHeaders });
+        }
+      );
+      ses.webRequest.onBeforeRequest((details, callback) => {
+        const url2 = details.url;
+        if (url2.includes("awswaf") || url2.includes("aws-waf") || url2.includes("mp_verify")) {
+          console.log(`[platform-token] WAF-related: ${details.method} ${url2}`);
+        }
+        callback({ cancel: false });
+      });
+      win2.webContents.session.webRequest.onHeadersReceived(
+        { urls: ["*://platform.deepseek.com/auth-api/v0/users/login"] },
+        (details, callback) => {
+          console.log(`[platform-token] Login response headers received: ${details.statusCode}`);
+          callback({ cancel: false, responseHeaders: details.responseHeaders });
+        }
+      );
+      win2.webContents.on("console-message", (_event, _level, message) => {
+        if (message.startsWith("__PLATFORM_TOKEN__:")) {
+          const token2 = message.replace("__PLATFORM_TOKEN__:", "").trim();
+          if (token2 && token2 !== "null" && token2 !== "undefined") {
+            console.log(`[platform-token] Got token via console: ${token2.substring(0, 15)}... (len: ${token2.length})`);
+            clearTimeout(timeout);
+            resolve2(token2);
+          }
+        } else if (message.startsWith("__PLATFORM_LOGIN_ERROR__:")) {
+          console.log(`[platform-token] Login error: ${message}`);
+        } else if (message.startsWith("__PLATFORM_LOGIN_STATUS__:")) {
+          console.log(`[platform-token] Login status: ${message}`);
+        }
+      });
+    });
+    await win2.loadURL("https://platform.deepseek.com/sign_in");
+    console.log("[platform-token] Page loaded, checking for WAF SDK...");
+    await new Promise((resolve2) => setTimeout(resolve2, 3e3));
+    const scriptSrcs = await win2.webContents.executeJavaScript(`
+			Array.from(document.querySelectorAll('script[src]')).map(s => s.src)
+		`);
+    console.log("[platform-token] Page scripts:", JSON.stringify(scriptSrcs));
+    const hasWafScript = await win2.webContents.executeJavaScript(`
+			!!document.querySelector('script[src*="awswaf"]') || 
+			!!document.querySelector('script[src*="challenge"]') ||
+			!!window.AwsWafIntegration ||
+			!!window.AwsWafCaptcha
+		`);
+    console.log("[platform-token] Has WAF SDK on page:", hasWafScript);
+    console.log("[platform-token] Injecting login fetch...");
+    await win2.webContents.executeJavaScript(`
+			(async () => {
+				try {
+					await new Promise(r => setTimeout(r, 2000));
+					
+					const loginPayload = {
+						email: ${JSON.stringify(email)},
+						mobile: "",
+						password: ${JSON.stringify(password)},
+						area_code: "",
+						device_id: ${JSON.stringify(deviceId)},
+						os: "web"
+					};
+					const fetchOpts = {
+						method: "POST",
+						headers: {
+							"accept": "*/*",
+							"content-type": "application/json",
+							"x-app-version": "1.0.0",
+						},
+						credentials: "include",
+						body: JSON.stringify(loginPayload)
+					};
+
+					// Attempt 1: This will likely return 202 and trigger the WAF challenge
+					console.log("__PLATFORM_LOGIN_STATUS__: Attempt 1 - triggering WAF challenge...");
+					const firstResponse = await fetch("https://platform.deepseek.com/auth-api/v0/users/login", fetchOpts);
+					console.log("__PLATFORM_LOGIN_STATUS__: Attempt 1 status = " + firstResponse.status);
+					
+					if (firstResponse.status === 200) {
+						// Lucky - no WAF challenge needed
+						const data = await firstResponse.json();
+						if (data?.code === 0 && data?.data?.biz_data?.user?.token) {
+							console.log("__PLATFORM_TOKEN__:" + data.data.biz_data.user.token);
+							return;
+						}
+						console.log("__PLATFORM_LOGIN_ERROR__: " + JSON.stringify(data).substring(0, 300));
+						return;
+					}
+
+					// Got 202 - WAF challenge has been triggered.
+					// Wait for the WAF SDK to complete the challenge and set the cookie.
+					console.log("__PLATFORM_LOGIN_STATUS__: Got 202, waiting for WAF challenge to complete...");
+					
+					// Poll for aws-waf-token cookie (WAF SDK sets it after challenge)
+					for (let i = 0; i < 20; i++) {
+						await new Promise(r => setTimeout(r, 1000));
+						if (document.cookie.includes("aws-waf-token")) {
+							console.log("__PLATFORM_LOGIN_STATUS__: WAF token cookie found after " + (i+1) + "s");
+							break;
+						}
+						if (i === 19) {
+							console.log("__PLATFORM_LOGIN_STATUS__: WAF cookie not found after 20s, retrying anyway...");
+						}
+					}
+
+					// Retry with the WAF token cookie now set
+					console.log("__PLATFORM_LOGIN_STATUS__: Attempt 2 - retrying with WAF cookie...");
+					console.log("__PLATFORM_LOGIN_STATUS__: cookies = " + document.cookie.substring(0, 200));
+					
+					const retryResponse = await fetch("https://platform.deepseek.com/auth-api/v0/users/login", {
+						...fetchOpts,
+						body: JSON.stringify(loginPayload) // fresh body
+					});
+					
+					console.log("__PLATFORM_LOGIN_STATUS__: Attempt 2 status = " + retryResponse.status);
+					
+					if (retryResponse.status === 200) {
+						const data = await retryResponse.json();
+						console.log("__PLATFORM_LOGIN_STATUS__: Response code = " + (data?.code ?? "unknown"));
+						if (data?.code === 0 && data?.data?.biz_data?.user?.token) {
+							console.log("__PLATFORM_TOKEN__:" + data.data.biz_data.user.token);
+						} else {
+							console.log("__PLATFORM_LOGIN_ERROR__: " + JSON.stringify(data).substring(0, 300));
+						}
+					} else {
+						console.log("__PLATFORM_LOGIN_ERROR__: Retry also returned " + retryResponse.status);
+					}
+				} catch (err) {
+					console.log("__PLATFORM_LOGIN_ERROR__: " + err.message);
+				}
+			})();
+		`);
+    const token = await tokenPromise;
+    return token;
+  } finally {
+    win2.destroy();
+    ses.clearStorageData().catch(() => {
+    });
+  }
+}
 function registerAccountIpcs(__dirname, VITE_DEV_SERVER_URL2, RENDERER_DIST2) {
   ipcMain.on("open-add-account", (event) => {
     const parentWindow = BrowserWindow.fromWebContents(event.sender) || void 0;
@@ -18235,10 +18427,35 @@ function registerAccountIpcs(__dirname, VITE_DEV_SERVER_URL2, RENDERER_DIST2) {
       });
     }
   });
+  ipcMain.on("open-create-api-key", (event, token) => {
+    const parentWindow = BrowserWindow.fromWebContents(event.sender) || void 0;
+    const popup = new BrowserWindow({
+      width: 450,
+      height: 560,
+      frame: false,
+      resizable: false,
+      parent: parentWindow,
+      modal: true,
+      icon: path$1.join(process.env.VITE_PUBLIC || "", "logo.png"),
+      webPreferences: {
+        preload: path$1.join(__dirname, "preload.mjs")
+      }
+    });
+    const encodedToken = encodeURIComponent(token);
+    if (VITE_DEV_SERVER_URL2) {
+      popup.loadURL(
+        `${VITE_DEV_SERVER_URL2}#/create-api-key/${encodedToken}`
+      );
+    } else {
+      popup.loadFile(path$1.join(RENDERER_DIST2, "index.html"), {
+        hash: `/create-api-key/${encodedToken}`
+      });
+    }
+  });
   ipcMain.handle(
     "deepseek-login",
     async (_event, payload) => {
-      var _a, _b;
+      var _a, _b, _c, _d, _e, _f;
       const body = payload;
       const email = typeof (body == null ? void 0 : body.email) === "string" ? body.email : "";
       const password = typeof (body == null ? void 0 : body.password) === "string" ? body.password : "";
@@ -18269,12 +18486,27 @@ function registerAccountIpcs(__dirname, VITE_DEV_SERVER_URL2, RENDERER_DIST2) {
             dataPreview: previewValue(response.data)
           });
         }
-        return { ok: true, status: response.status, data: response.data };
+        let platformToken = null;
+        try {
+          platformToken = await acquirePlatformToken(email, password, deviceId);
+        } catch (platformErr) {
+          console.warn("[deepseek-login] Platform token acquisition failed:", platformErr);
+        }
+        const chatToken = ((_d = (_c = (_b = (_a = response.data) == null ? void 0 : _a.data) == null ? void 0 : _b.biz_data) == null ? void 0 : _c.user) == null ? void 0 : _d.token) || "NULL";
+        console.log(`[deepseek-login] Login Success!`);
+        console.log(`- Chat Token: ${chatToken.substring(0, 15)}... (len: ${chatToken.length})`);
+        console.log(`- Platform Token: ${platformToken ? `${platformToken.substring(0, 15)}... (len: ${platformToken.length})` : "NULL"}`);
+        return {
+          ok: true,
+          status: response.status,
+          data: response.data,
+          platformToken
+        };
       } catch (err) {
         if (axios.isAxiosError(err)) {
-          const status = (_a = err.response) == null ? void 0 : _a.status;
+          const status = (_e = err.response) == null ? void 0 : _e.status;
           const code = err.code;
-          const dataPreview = previewValue((_b = err.response) == null ? void 0 : _b.data);
+          const dataPreview = previewValue((_f = err.response) == null ? void 0 : _f.data);
           console.log("[deepseek-login] network error", {
             emailMasked: maskIdentifier(email),
             deviceIdPrefix: deviceId ? deviceId.slice(0, 8) : "",
@@ -18308,18 +18540,24 @@ function registerAccountIpcs(__dirname, VITE_DEV_SERVER_URL2, RENDERER_DIST2) {
   ipcMain.handle(
     "deepseek-fetch-history",
     async (_event, payload) => {
-      console.log("[deepseek-fetch-history] Requesting history with token:", payload.token ? "present" : "missing");
+      console.log(
+        "[deepseek-fetch-history] Requesting history with token:",
+        payload.token ? "present" : "missing"
+      );
       try {
-        const response = await axios.get(
-          DEEPSEEK_HISTORY_URL,
-          {
-            headers: getHistoryHeaders(payload.token, payload.cookies),
-            validateStatus: () => true
-          }
+        const response = await axios.get(DEEPSEEK_HISTORY_URL, {
+          headers: getHistoryHeaders(payload.token, payload.cookies),
+          validateStatus: () => true
+        });
+        console.log(
+          "[deepseek-fetch-history] Response status:",
+          response.status
         );
-        console.log("[deepseek-fetch-history] Response status:", response.status);
         if (response.status !== 200) {
-          console.error("[deepseek-fetch-history] Error response data:", response.data);
+          console.error(
+            "[deepseek-fetch-history] Error response data:",
+            response.data
+          );
         }
         return { ok: true, data: response.data };
       } catch (err) {
@@ -18334,21 +18572,38 @@ function registerAccountIpcs(__dirname, VITE_DEV_SERVER_URL2, RENDERER_DIST2) {
     async (_event, payload) => {
       var _a, _b, _c, _d, _e;
       try {
-        const headers = getHistoryHeaders(payload.token, payload.cookies);
+        const headers = getHistoryHeaders(
+          payload.token,
+          payload.cookies
+        );
         const res = await axios.get(
           `${DEEPSEEK_HISTORY_MESSAGES_URL}?chat_session_id=${payload.sessionId}`,
           {
             headers
           }
         );
-        console.log("[deepseek-fetch-session-messages] Response status:", res.status);
+        console.log(
+          "[deepseek-fetch-session-messages] Response status:",
+          res.status
+        );
         if (((_d = (_c = (_b = (_a = res.data) == null ? void 0 : _a.data) == null ? void 0 : _b.biz_data) == null ? void 0 : _c.chat_messages) == null ? void 0 : _d.length) > 0) {
-          console.log("[deepseek-fetch-session-messages] Message keys:", Object.keys(res.data.data.biz_data.chat_messages[0]));
-          console.log("[deepseek-fetch-session-messages] Message sample:", JSON.stringify(res.data.data.biz_data.chat_messages[0]).substring(0, 1e3));
+          console.log(
+            "[deepseek-fetch-session-messages] Message keys:",
+            Object.keys(res.data.data.biz_data.chat_messages[0])
+          );
+          console.log(
+            "[deepseek-fetch-session-messages] Message sample:",
+            JSON.stringify(
+              res.data.data.biz_data.chat_messages[0]
+            ).substring(0, 1e3)
+          );
         }
         return { ok: true, data: res.data };
       } catch (error) {
-        console.error("[deepseek-fetch-session-messages] error:", error == null ? void 0 : error.message);
+        console.error(
+          "[deepseek-fetch-session-messages] error:",
+          error == null ? void 0 : error.message
+        );
         return {
           ok: false,
           error: ((_e = error == null ? void 0 : error.response) == null ? void 0 : _e.data) || (error == null ? void 0 : error.message)
@@ -18364,15 +18619,24 @@ function registerAccountIpcs(__dirname, VITE_DEV_SERVER_URL2, RENDERER_DIST2) {
           DEEPSEEK_CREATE_SESSION_URL,
           {},
           {
-            headers: getHistoryHeaders(payload.token, payload.cookies),
+            headers: getHistoryHeaders(
+              payload.token,
+              payload.cookies
+            ),
             validateStatus: () => true
           }
         );
-        console.log("[deepseek-create-session] Response status:", response.status);
+        console.log(
+          "[deepseek-create-session] Response status:",
+          response.status
+        );
         return { ok: true, data: response.data };
       } catch (err) {
         const message = err instanceof Error ? err.message : "Unknown error";
-        console.error("[deepseek-create-session] Catch error:", message);
+        console.error(
+          "[deepseek-create-session] Catch error:",
+          message
+        );
         return { ok: false, error: { message } };
       }
     }
@@ -18385,82 +18649,186 @@ function registerAccountIpcs(__dirname, VITE_DEV_SERVER_URL2, RENDERER_DIST2) {
           DEEPSEEK_DELETE_SESSION_URL,
           { chat_session_id: payload.sessionId },
           {
-            headers: getHistoryHeaders(payload.token, payload.cookies),
+            headers: getHistoryHeaders(
+              payload.token,
+              payload.cookies
+            ),
             validateStatus: () => true
           }
         );
-        console.log("[deepseek-delete-session] Response status:", response.status);
+        console.log(
+          "[deepseek-delete-session] Response status:",
+          response.status
+        );
         return { ok: true, data: response.data };
       } catch (err) {
         const message = err instanceof Error ? err.message : "Unknown error";
-        console.error("[deepseek-delete-session] Catch error:", message);
+        console.error(
+          "[deepseek-delete-session] Catch error:",
+          message
+        );
         return { ok: false, error: { message } };
       }
     }
   );
-  ipcMain.on("deepseek-chat-stream", async (event, payload) => {
-    var _a, _b, _c, _d;
-    try {
-      const powResponse = await axios.post(
-        DEEPSEEK_CREATE_POW_URL,
-        { target_path: DEEPSEEK_COMPLETION_TARGET_PATH },
-        {
-          headers: getHistoryHeaders(payload.token, payload.cookies),
-          validateStatus: () => true
-        }
+  ipcMain.handle(
+    "deepseek-get-api-keys",
+    async (_event, payload) => {
+      console.log(
+        "[deepseek-get-api-keys] Request with token prefix:",
+        payload.token ? `${payload.token.substring(0, 10)}... (len: ${payload.token.length})` : "missing"
       );
-      if (powResponse.status !== 200 || ((_a = powResponse.data) == null ? void 0 : _a.code) !== 0) {
-        event.sender.send("deepseek-chat-error", { message: "Failed to get PoW challenge" });
-        return;
+      try {
+        const response = await axios.get(
+          DEEPSEEK_PLATFORM_GET_API_KEYS_URL,
+          {
+            headers: getPlatformHeaders(payload.token),
+            validateStatus: () => true
+          }
+        );
+        console.log(
+          "[deepseek-get-api-keys] Response status:",
+          response.status,
+          "body:",
+          JSON.stringify(response.data)
+        );
+        return { ok: true, data: response.data };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Unknown error";
+        console.error("[deepseek-get-api-keys] Catch error:", message);
+        return { ok: false, error: { message } };
       }
-      const challenge = (_d = (_c = (_b = powResponse.data) == null ? void 0 : _b.data) == null ? void 0 : _c.biz_data) == null ? void 0 : _d.challenge;
-      if (!challenge) {
-        event.sender.send("deepseek-chat-error", { message: "Invalid PoW challenge response" });
-        return;
-      }
-      const powHeaderStr = solveAndBuildHeader(challenge);
-      const chatHeaders = getChatHeaders(payload.token, powHeaderStr, payload.cookies);
-      console.log("[deepseek-chat-stream] Request URL:", DEEPSEEK_COMPLETION_URL);
-      console.log("[deepseek-chat-stream] Request Headers:", JSON.stringify(chatHeaders));
-      console.log("[deepseek-chat-stream] Request Body:", JSON.stringify(payload.payload));
-      const response = await axios.post(
-        DEEPSEEK_COMPLETION_URL,
-        payload.payload,
-        {
-          headers: chatHeaders,
-          responseType: "stream",
-          validateStatus: () => true
-        }
-      );
-      if (response.status !== 200) {
-        const stream22 = response.data;
-        let errorData = "";
-        for await (const chunk of stream22) {
-          errorData += chunk.toString();
-        }
-        console.error("[deepseek-chat-stream] Error Status:", response.status);
-        console.error("[deepseek-chat-stream] Error Data:", errorData);
-        event.sender.send("deepseek-chat-error", {
-          message: `DeepSeek API Error: ${response.status}. ${errorData}`
-        });
-        return;
-      }
-      const stream2 = response.data;
-      stream2.on("data", (chunk) => {
-        const text = chunk.toString("utf-8");
-        event.sender.send("deepseek-chat-chunk", text);
-      });
-      stream2.on("end", () => {
-        event.sender.send("deepseek-chat-end");
-      });
-      stream2.on("error", (err) => {
-        event.sender.send("deepseek-chat-error", { message: err.message });
-      });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Unknown error";
-      event.sender.send("deepseek-chat-error", { message });
     }
-  });
+  );
+  ipcMain.handle(
+    "deepseek-edit-api-keys",
+    async (_event, payload) => {
+      console.log(
+        "[deepseek-edit-api-keys] Request with token prefix:",
+        payload.token ? `${payload.token.substring(0, 10)}... (len: ${payload.token.length})` : "missing",
+        "body:",
+        JSON.stringify(payload.body)
+      );
+      try {
+        const response = await axios.post(
+          DEEPSEEK_PLATFORM_EDIT_API_KEYS_URL,
+          payload.body,
+          {
+            headers: {
+              ...getPlatformHeaders(payload.token),
+              "Content-Type": "application/json"
+            },
+            validateStatus: () => true
+          }
+        );
+        console.log(
+          "[deepseek-edit-api-keys] Response status:",
+          response.status,
+          "body:",
+          JSON.stringify(response.data)
+        );
+        return { ok: true, data: response.data };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Unknown error";
+        console.error("[deepseek-edit-api-keys] Catch error:", message);
+        return { ok: false, error: { message } };
+      }
+    }
+  );
+  ipcMain.on(
+    "deepseek-chat-stream",
+    async (event, payload) => {
+      var _a, _b, _c, _d;
+      try {
+        const powResponse = await axios.post(
+          DEEPSEEK_CREATE_POW_URL,
+          { target_path: DEEPSEEK_COMPLETION_TARGET_PATH },
+          {
+            headers: getHistoryHeaders(
+              payload.token,
+              payload.cookies
+            ),
+            validateStatus: () => true
+          }
+        );
+        if (powResponse.status !== 200 || ((_a = powResponse.data) == null ? void 0 : _a.code) !== 0) {
+          event.sender.send("deepseek-chat-error", {
+            message: "Failed to get PoW challenge"
+          });
+          return;
+        }
+        const challenge = (_d = (_c = (_b = powResponse.data) == null ? void 0 : _b.data) == null ? void 0 : _c.biz_data) == null ? void 0 : _d.challenge;
+        if (!challenge) {
+          event.sender.send("deepseek-chat-error", {
+            message: "Invalid PoW challenge response"
+          });
+          return;
+        }
+        const powHeaderStr = solveAndBuildHeader(challenge);
+        const chatHeaders = getChatHeaders(
+          payload.token,
+          powHeaderStr,
+          payload.cookies
+        );
+        console.log(
+          "[deepseek-chat-stream] Request URL:",
+          DEEPSEEK_COMPLETION_URL
+        );
+        console.log(
+          "[deepseek-chat-stream] Request Headers:",
+          JSON.stringify(chatHeaders)
+        );
+        console.log(
+          "[deepseek-chat-stream] Request Body:",
+          JSON.stringify(payload.payload)
+        );
+        const response = await axios.post(
+          DEEPSEEK_COMPLETION_URL,
+          payload.payload,
+          {
+            headers: chatHeaders,
+            responseType: "stream",
+            validateStatus: () => true
+          }
+        );
+        if (response.status !== 200) {
+          const stream22 = response.data;
+          let errorData = "";
+          for await (const chunk of stream22) {
+            errorData += chunk.toString();
+          }
+          console.error(
+            "[deepseek-chat-stream] Error Status:",
+            response.status
+          );
+          console.error(
+            "[deepseek-chat-stream] Error Data:",
+            errorData
+          );
+          event.sender.send("deepseek-chat-error", {
+            message: `DeepSeek API Error: ${response.status}. ${errorData}`
+          });
+          return;
+        }
+        const stream2 = response.data;
+        stream2.on("data", (chunk) => {
+          const text = chunk.toString("utf-8");
+          event.sender.send("deepseek-chat-chunk", text);
+        });
+        stream2.on("end", () => {
+          event.sender.send("deepseek-chat-end");
+        });
+        stream2.on("error", (err) => {
+          event.sender.send("deepseek-chat-error", {
+            message: err.message
+          });
+        });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Unknown error";
+        event.sender.send("deepseek-chat-error", { message });
+      }
+    }
+  );
 }
 const userDataPath = app.getPath("userData");
 const dbDir = path$1.join(userDataPath, "database");

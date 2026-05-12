@@ -3,6 +3,7 @@ import { useTitleBar } from "@/hooks/useTitleBar";
 import AccountManagerLayout from "@/components/layouts/AccountManagerLayout";
 import ChatAccountManager from "@/components/common/AccountManager/ChatAccountManager";
 import LogAccountManager from "@/components/common/AccountManager/LogAccountManager";
+import KeyAccountManager from "@/components/common/AccountManager/KeyAccountManager";
 import { Button } from "@/components/ui/button";
 import { Plus, Trash2, RefreshCw } from "lucide-react";
 
@@ -227,6 +228,9 @@ export default function AccountManagerPage() {
       )}
       {activeTab === "logs" && (
         <LogAccountManager logs={logs} onClear={() => setLogs([])} />
+      )}
+      {activeTab === "api-keys" && account && (
+        <KeyAccountManager account={account} />
       )}
       {activeTab === "tokens" && (
         <div className="space-y-4">

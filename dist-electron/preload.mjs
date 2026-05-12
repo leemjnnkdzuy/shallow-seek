@@ -27,6 +27,7 @@ electron.contextBridge.exposeInMainWorld("electron", {
       );
     },
     openAddAccount: () => electron.ipcRenderer.send("open-add-account"),
+    openCreateApiKey: (token) => electron.ipcRenderer.send("open-create-api-key", token),
     openSettings: () => electron.ipcRenderer.send("open-settings"),
     notifyThemeChanged: (theme) => electron.ipcRenderer.send("theme-changed", theme),
     onThemeChanged: (callback) => {
@@ -58,6 +59,8 @@ electron.contextBridge.exposeInMainWorld("electron", {
     fetchSessionMessages: (payload) => electron.ipcRenderer.invoke("deepseek-fetch-session-messages", payload),
     createChatSession: (payload) => electron.ipcRenderer.invoke("deepseek-create-session", payload),
     deleteChatSession: (payload) => electron.ipcRenderer.invoke("deepseek-delete-session", payload),
+    getApiKeys: (payload) => electron.ipcRenderer.invoke("deepseek-get-api-keys", payload),
+    editApiKeys: (payload) => electron.ipcRenderer.invoke("deepseek-edit-api-keys", payload),
     startChatStream: (payload) => electron.ipcRenderer.send("deepseek-chat-stream", payload),
     onChatChunk: (callback) => {
       const listener = (_event, chunk) => callback(chunk);

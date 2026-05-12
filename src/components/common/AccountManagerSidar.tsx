@@ -14,6 +14,7 @@ import {
 	Settings2,
 	Code,
 	ChevronRight,
+	KeyRound,
 } from "lucide-react";
 
 interface AccountManagerSidarProps {
@@ -28,6 +29,7 @@ export default function AccountManagerSidar({
 	const tabs = [
 		{id: "logs", title: "Logs", icon: Activity},
 		{id: "history", title: "Lịch sử", icon: History},
+		{id: "api-keys", title: "API Keys", icon: KeyRound},
 		{id: "tokens", title: "Token Usage", icon: Code},
 		{id: "prompt", title: "System Prompt", icon: Settings2},
 	];

@@ -28,6 +28,7 @@ contextBridge.exposeInMainWorld("electron", {
 			);
 		},
 		openAddAccount: () => ipcRenderer.send("open-add-account"),
+		openCreateApiKey: (token: string) => ipcRenderer.send("open-create-api-key", token),
 		openSettings: () => ipcRenderer.send("open-settings"),
 		notifyThemeChanged: (theme: string) => ipcRenderer.send("theme-changed", theme),
 		onThemeChanged: (callback: (theme: string) => void) => {
@@ -77,6 +78,10 @@ contextBridge.exposeInMainWorld("electron", {
 			ipcRenderer.invoke("deepseek-create-session", payload),
 		deleteChatSession: (payload: {token: string; cookies?: string; sessionId: string}) =>
 			ipcRenderer.invoke("deepseek-delete-session", payload),
+		getApiKeys: (payload: {token: string}) =>
+			ipcRenderer.invoke("deepseek-get-api-keys", payload),
+		editApiKeys: (payload: {token: string; body: any}) =>
+			ipcRenderer.invoke("deepseek-edit-api-keys", payload),
 		startChatStream: (payload: {token: string; cookies?: string; payload: any}) =>
 			ipcRenderer.send("deepseek-chat-stream", payload),
 		onChatChunk: (callback: (chunk: string) => void) => {

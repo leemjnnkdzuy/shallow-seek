@@ -12,6 +12,7 @@ import ConfirmPage from "@/windows/popup/ConfirmPage";
 import EndpointPage from "@/windows/setting/EndpointPage";
 import InterfacePage from "@/windows/setting/InterfacePage";
 import AccountManagerPage from "@/windows/main/AccountManagerPage";
+import CreateAPIKeyPage from "@/windows/popup/CreateAPIKeyPage";
 
 export interface RouteConfig {
 	path: string;
@@ -53,6 +54,11 @@ const routes: RouteConfig[] = [
 	{
 		path: "/account/:id",
 		component: AccountManagerPage,
+		layout: NothingLayout,
+	},
+	{
+		path: "/create-api-key/:token",
+		component: CreateAPIKeyPage,
 		layout: NothingLayout,
 	},
 ];

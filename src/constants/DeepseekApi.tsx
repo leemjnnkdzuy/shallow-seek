@@ -1,6 +1,3 @@
-export const DEEPSEEK_LOGIN_URL =
-	"https://chat.deepseek.com/api/v0/users/login";
-
 export const getLoginRequestBody = (
 	email: string,
 	password: string,
@@ -34,19 +31,6 @@ export const getLoginHeaders = () => ({
 	"x-client-version": "2.0.4",
 });
 
-export const DEEPSEEK_HISTORY_URL =
-	"https://chat.deepseek.com/api/v0/chat_session/fetch_page?lte_cursor.pinned=false";
-
-export const DEEPSEEK_CREATE_POW_URL =
-	"https://chat.deepseek.com/api/v0/chat/create_pow_challenge";
-
-export const DEEPSEEK_COMPLETION_URL = "https://chat.deepseek.com/api/v0/chat/completion";
-export const DEEPSEEK_HISTORY_MESSAGES_URL = "https://chat.deepseek.com/api/v0/chat/history_messages";
-export const DEEPSEEK_CREATE_SESSION_URL = "https://chat.deepseek.com/api/v0/chat_session/create";
-export const DEEPSEEK_DELETE_SESSION_URL = "https://chat.deepseek.com/api/v0/chat_session/delete";
-
-export const DEEPSEEK_COMPLETION_TARGET_PATH = "/api/v0/chat/completion";
-
 export const getHistoryHeaders = (token: string, cookies?: string) => {
 	const headers: any = {
 		"Accept": "application/json",
@@ -71,4 +55,38 @@ export const getChatHeaders = (token: string, powResponse: string, cookies?: str
 	...getHistoryHeaders(token, cookies),
 	"x-ds-pow-response": powResponse,
 	"Content-Type": "application/json",
+});
+
+export const getPlatformHeaders = (token: string) => ({
+	"accept": "*/*",
+	"accept-language": "vi,vi-VN;q=0.9,en;q=0.8",
+	"authorization": `Bearer ${token}`,
+	"cache-control": "no-cache",
+	"pragma": "no-cache",
+	"sec-ch-ua": "\"Chromium\";v=\"148\", \"Google Chrome\";v=\"148\", \"Not/A)Brand\";v=\"99\"",
+	"sec-ch-ua-mobile": "?0",
+	"sec-ch-ua-platform": "\"Windows\"",
+	"sec-fetch-dest": "empty",
+	"sec-fetch-mode": "cors",
+	"sec-fetch-site": "same-origin",
+	"x-app-version": "1.0.0",
+	"Referer": "https://platform.deepseek.com/api_keys",
+	"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"
+});
+
+export const getPlatformLoginHeaders = () => ({
+	"accept": "*/*",
+	"accept-language": "vi,vi-VN;q=0.9,en;q=0.8",
+	"cache-control": "no-cache",
+	"content-type": "application/json",
+	"pragma": "no-cache",
+	"sec-ch-ua": "\"Chromium\";v=\"148\", \"Google Chrome\";v=\"148\", \"Not/A)Brand\";v=\"99\"",
+	"sec-ch-ua-mobile": "?0",
+	"sec-ch-ua-platform": "\"Windows\"",
+	"sec-fetch-dest": "empty",
+	"sec-fetch-mode": "cors",
+	"sec-fetch-site": "same-origin",
+	"x-app-version": "1.0.0",
+	"Referer": "https://platform.deepseek.com/sign_in",
+	"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"
 });

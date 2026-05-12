@@ -16,6 +16,7 @@ declare global {
 					callback: (state: "maximized" | "unmaximized") => void,
 				) => void;
 				openAddAccount: () => void;
+				openCreateApiKey: (token: string) => void;
 				openSettings: () => void;
 				notifyThemeChanged: (theme: string) => void;
 				onThemeChanged: (callback: (theme: string) => void) => () => void;
@@ -62,6 +63,7 @@ declare global {
 					ok: boolean;
 					status?: number;
 					data?: unknown;
+					platformToken?: string | null;
 					error?: {
 						message: string;
 						code?: string;
@@ -80,6 +82,8 @@ declare global {
 				}) => Promise<{ok: boolean; data?: any; error?: any}>;
 				createChatSession: (payload: {token: string; cookies?: string}) => Promise<{ok: boolean; data?: any; error?: any}>;
 				deleteChatSession: (payload: {token: string; cookies?: string; sessionId: string}) => Promise<{ok: boolean; data?: any; error?: any}>;
+				getApiKeys: (payload: {token: string}) => Promise<{ok: boolean; data?: any; error?: any}>;
+				editApiKeys: (payload: {token: string; body: any}) => Promise<{ok: boolean; data?: any; error?: any}>;
 				startChatStream: (payload: {
 					token: string;
 					cookies?: string;

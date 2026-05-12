@@ -6,6 +6,8 @@ import {
 	DEEPSEEK_COMPLETION_URL,
 	DEEPSEEK_COMPLETION_TARGET_PATH,
 	DEEPSEEK_DELETE_SESSION_URL,
+} from "../constants/DeepseekURL";
+import {
 	getLoginHeaders,
 	getLoginRequestBody,
 	getHistoryHeaders,

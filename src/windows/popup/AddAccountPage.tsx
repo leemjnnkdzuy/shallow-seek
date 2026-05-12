@@ -26,7 +26,7 @@ import {
 
 import {AnimatePresence, motion} from "framer-motion";
 
-import {DEEPSEEK_LOGIN_URL} from "@/constants/DeepseekApi";
+import {DEEPSEEK_LOGIN_URL} from "@/constants/DeepseekURL";
 import {maskIdentifier, previewValue} from "@/lib/utils";
 
 type DeepseekLoginResponse = {
@@ -171,6 +171,15 @@ const AddAccountPage: React.FC = () => {
 				});
 
 				if (res?.success) {
+					console.log(`[AddAccountPage] Successfully added account. Chat Token: ${user.token.substring(0, 15)}... (len: ${user.token.length}), Platform Token: ${result.platformToken ? `${result.platformToken.substring(0, 15)}... (len: ${result.platformToken.length})` : 'NULL'}`);
+					
+					if (result.platformToken) {
+						await window.electron?.db.setSetting(
+							`platform_token_${user.id}`, 
+							result.platformToken
+						);
+					}
+
 					setStatus("success");
 					setTimeout(() => {
 						window.electron?.windowControls.close();
