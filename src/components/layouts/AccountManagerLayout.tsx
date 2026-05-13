@@ -11,6 +11,7 @@ interface AccountManagerLayoutProps {
   onToggleStartStop: () => void;
   onRestart: () => void;
   email?: string;
+  port?: number;
 }
 
 export default function AccountManagerLayout({
@@ -20,7 +21,8 @@ export default function AccountManagerLayout({
   isRunning,
   onToggleStartStop,
   onRestart,
-  email
+  email,
+  port
 }: AccountManagerLayoutProps) {
   return (
     <SidebarProvider className="h-full min-h-0 w-full overflow-hidden bg-background">
@@ -31,6 +33,7 @@ export default function AccountManagerLayout({
           onToggleStartStop={onToggleStartStop} 
           onRestart={onRestart}
           email={email}
+          port={port}
         />
         <div className="flex-1 overflow-y-auto p-6">
           {children}

@@ -8,6 +8,8 @@ import {
 	RefreshCw,
 	ChevronRight,
 	ShieldAlert,
+	Copy,
+	Check,
 } from "lucide-react";
 import {
 	Card,
@@ -16,7 +18,6 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import {Badge} from "@/components/ui/badge";
 import {logo} from "@/assets";
 import {useLanguage} from "@/hooks/useLanguage";
 import {useTitleBar} from "@/hooks/useTitleBar";
@@ -33,6 +34,16 @@ const HomePage: React.FC = () => {
 	const {setConfig} = useTitleBar();
 	const [accounts, setAccounts] = useState<Account[]>([]);
 	const [loading, setLoading] = useState(true);
+	const [isServerRunning, setIsServerRunning] = useState(false);
+	const [serverPort, setServerPort] = useState(11434);
+	const [copiedId, setCopiedId] = useState<string | null>(null);
+
+	const handleCopyEndpoint = (id: string, port: number) => {
+		const endpoint = `http://localhost:${port}/v1`;
+		navigator.clipboard.writeText(endpoint);
+		setCopiedId(id);
+		setTimeout(() => setCopiedId(null), 2000);
+	};
 
 	const fetchAccounts = async () => {
 		setLoading(true);
@@ -111,6 +122,28 @@ const HomePage: React.FC = () => {
 		return () => window.removeEventListener("focus", fetchAccounts);
 	}, [t]);
 
+	useEffect(() => {
+		const checkStatus = async () => {
+			const res = await window.electron?.server?.status();
+			setIsServerRunning(res?.isRunning || false);
+			if (res?.port) {
+				setServerPort(res.port);
+			}
+		};
+		checkStatus();
+
+		const cleanupStatus = window.electron?.server?.onStatusChanged((running, p) => {
+			setIsServerRunning(running);
+			if (p) {
+				setServerPort(p);
+			}
+		});
+
+		return () => {
+			if (cleanupStatus) cleanupStatus();
+		};
+	}, []);
+
 	return (
 		<div className='flex flex-col h-full bg-background transition-colors duration-300'>
 			{/* Header / Top Bar */}
@@ -187,9 +220,6 @@ const HomePage: React.FC = () => {
 									<CardHeader className='pb-3'>
 										<div className='flex items-start justify-between'>
 											<div className='flex items-center gap-4'>
-												<div className='p-3 bg-primary/10 rounded-xl text-primary transition-transform group-hover:scale-110 duration-300'>
-													<User className='w-5 h-5' />
-												</div>
 												<div className='flex flex-col'>
 													<CardTitle className='text-base font-bold truncate max-w-[150px]'>
 														{account.email}
@@ -214,21 +244,50 @@ const HomePage: React.FC = () => {
 										</div>
 									</CardHeader>
 									<CardContent className='pt-0'>
-										<div className='flex items-center justify-between mt-2'>
-											<Badge
-												variant='secondary'
-												className='font-bold text-[10px] h-5 px-2 rounded-md bg-green-500/10 text-green-600 border-none'
-											>
-												Online
-											</Badge>
-											<Button
-												variant='link'
-												className='h-auto p-0 text-primary text-xs font-bold flex items-center gap-1 group/btn'
-												onClick={() => window.location.hash = `/account/${account.id}`}
-											>
-												{t('common.use', { defaultValue: 'Sử dụng' })}{" "}
-												<ChevronRight className='w-3 h-3 transition-transform group-hover/btn:translate-x-1' />
-											</Button>
+										<div className='flex flex-col gap-2 w-full mt-2 border-t pt-2.5 border-dashed border-border'>
+											<div className='flex items-center justify-between'>
+												<div className='flex items-center gap-1.5'>
+													<span className='relative flex h-2 w-2'>
+														{isServerRunning ? (
+															<>
+																<span className='animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75'></span>
+																<span className='relative inline-flex rounded-full h-2 w-2 bg-emerald-500'></span>
+															</>
+														) : (
+															<span className='relative inline-flex rounded-full h-2 w-2 bg-muted-foreground'></span>
+														)}
+													</span>
+													<span className={`text-[11px] font-bold ${isServerRunning ? 'text-emerald-500' : 'text-muted-foreground'}`}>
+														{isServerRunning ? 'Running' : 'Stopped'}
+													</span>
+												</div>
+												<Button
+													variant='link'
+													className='h-auto p-0 text-primary text-xs font-bold flex items-center gap-1 group/btn'
+													onClick={() => window.location.hash = `/account/${account.id}`}
+												>
+													{t('common.use', { defaultValue: 'Sử dụng' })}{" "}
+													<ChevronRight className='w-3 h-3 transition-transform group-hover/btn:translate-x-1' />
+												</Button>
+											</div>
+											{isServerRunning && (
+												<div className='flex items-center justify-between bg-muted/50 rounded-lg px-2.5 py-1.5 text-[11px] font-mono text-muted-foreground border border-border/40 mt-1 shadow-inner'>
+													<span className="truncate max-w-[180px]">http://localhost:{serverPort}/v1</span>
+													<Button
+														variant='ghost'
+														size='icon'
+														className='h-5 w-5 text-muted-foreground hover:text-foreground rounded-md hover:bg-background transition-all p-0 flex items-center justify-center shrink-0'
+														onClick={() => handleCopyEndpoint(account.id, serverPort)}
+														title="Copy API Endpoint"
+													>
+														{copiedId === account.id ? (
+															<Check className='w-3 h-3 text-emerald-500' />
+														) : (
+															<Copy className='w-3 h-3' />
+														)}
+													</Button>
+												</div>
+											)}
 										</div>
 									</CardContent>
 								</Card>

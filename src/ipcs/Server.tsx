@@ -8,9 +8,10 @@ let serverLogs: string[] = [];
 
 /** Broadcast server status to all renderer windows. */
 function broadcastServerStatus(isRunning: boolean) {
+	const port = getPortFromDB();
 	for (const win of BrowserWindow.getAllWindows()) {
 		try {
-			win.webContents.send("server-status-changed", isRunning);
+			win.webContents.send("server-status-changed", isRunning, port);
 		} catch {
 			// window might be destroyed
 		}
@@ -136,7 +137,7 @@ export function registerServerIpcs() {
 	});
 
 	ipcMain.handle("server-status", () => {
-		return { isRunning: apiServer.isRunning() };
+		return { isRunning: apiServer.isRunning(), port: getPortFromDB() };
 	});
 
 	ipcMain.handle("server-logs", () => {

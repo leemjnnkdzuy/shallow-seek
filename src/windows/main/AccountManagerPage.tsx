@@ -11,6 +11,7 @@ export default function AccountManagerPage() {
   const id = window.location.hash.split("/").pop();
   const [activeTab, setActiveTab] = useState("logs");
   const [isRunning, setIsRunning] = useState(false);
+  const [port, setPort] = useState<number>(11434);
   const [account, setAccount] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
@@ -45,6 +46,9 @@ export default function AccountManagerPage() {
     const checkStatus = async () => {
       const res = await window.electron?.server?.status();
       setIsRunning(res?.isRunning || false);
+      if (res?.port) {
+        setPort(res.port);
+      }
       const logRes = await window.electron?.server?.getLogs();
       if (logRes?.logs) {
         setLogs(logRes.logs);
@@ -52,7 +56,12 @@ export default function AccountManagerPage() {
     };
     checkStatus();
 
-    const cleanupStatus = window.electron?.server?.onStatusChanged((running) => setIsRunning(running));
+    const cleanupStatus = window.electron?.server?.onStatusChanged((running, p) => {
+      setIsRunning(running);
+      if (p) {
+        setPort(p);
+      }
+    });
     const cleanupLog = window.electron?.server?.onLog((msg) => {
       setLogs((prev) => [...prev, msg]);
     });
@@ -149,6 +158,7 @@ export default function AccountManagerPage() {
       onToggleStartStop={handleToggleStartStop}
       onRestart={handleRestart}
       email={account?.email}
+      port={port}
     >
       {activeTab === "history" && (
         <div className="flex h-full gap-4 overflow-hidden">

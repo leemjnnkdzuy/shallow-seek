@@ -125,8 +125,8 @@ contextBridge.exposeInMainWorld("electron", {
 			ipcRenderer.on("server-log", listener);
 			return () => ipcRenderer.off("server-log", listener);
 		},
-		onStatusChanged: (callback: (isRunning: boolean) => void) => {
-			const listener = (_event: any, isRunning: boolean) => callback(isRunning);
+		onStatusChanged: (callback: (isRunning: boolean, port?: number) => void) => {
+			const listener = (_event: any, isRunning: boolean, port?: number) => callback(isRunning, port);
 			ipcRenderer.on("server-status-changed", listener);
 			return () => ipcRenderer.off("server-status-changed", listener);
 		}

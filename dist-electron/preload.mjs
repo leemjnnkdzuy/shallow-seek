@@ -100,7 +100,7 @@ electron.contextBridge.exposeInMainWorld("electron", {
       return () => electron.ipcRenderer.off("server-log", listener);
     },
     onStatusChanged: (callback) => {
-      const listener = (_event, isRunning) => callback(isRunning);
+      const listener = (_event, isRunning, port) => callback(isRunning, port);
       electron.ipcRenderer.on("server-status-changed", listener);
       return () => electron.ipcRenderer.off("server-status-changed", listener);
     }
