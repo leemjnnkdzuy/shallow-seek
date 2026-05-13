@@ -3,3 +3,4 @@ export * from "./ConnectPlatform";
 export * from "./DeleteApiKey";
 export * from "./RenameApiKey";
 export * from "./ParseStreamLine";
+export * from "./UploadFile";

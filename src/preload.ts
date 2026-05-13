@@ -99,6 +99,12 @@ contextBridge.exposeInMainWorld("electron", {
 			ipcRenderer.invoke("deepseek-get-api-keys", payload),
 		editApiKeys: (payload: {token: string; body: any}) =>
 			ipcRenderer.invoke("deepseek-edit-api-keys", payload),
+		uploadFile: (payload: {token: string; cookies?: string; filePath: string; fileName: string; fileSize?: number}) =>
+			ipcRenderer.invoke("deepseek-upload-file", payload),
+		fetchFiles: (payload: {token: string; cookies?: string; fileIds: string[]}) =>
+			ipcRenderer.invoke("deepseek-fetch-files", payload),
+		saveTempFile: (payload: {base64Data: string; fileName: string}) =>
+			ipcRenderer.invoke("deepseek-save-temp-file", payload),
 		startChatStream: (payload: {token: string; cookies?: string; payload: any}) =>
 			ipcRenderer.send("deepseek-chat-stream", payload),
 		onChatChunk: (callback: (chunk: string) => void) => {

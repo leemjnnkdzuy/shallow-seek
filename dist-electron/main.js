@@ -18,8 +18,8 @@ import require$$1$2 from "tty";
 import require$$0$1 from "os";
 import zlib from "zlib";
 import { EventEmitter } from "events";
-import Database from "better-sqlite3";
 import fs$1 from "node:fs";
+import Database from "better-sqlite3";
 import http$2 from "node:http";
 import crypto$1 from "node:crypto";
 function registerWindowIpcs(__dirname, VITE_DEV_SERVER_URL2, RENDERER_DIST2) {
@@ -12224,14 +12224,7 @@ var _eval = EvalError;
 var range = RangeError;
 var ref = ReferenceError;
 var syntax = SyntaxError;
-var type;
-var hasRequiredType;
-function requireType() {
-  if (hasRequiredType) return type;
-  hasRequiredType = 1;
-  type = TypeError;
-  return type;
-}
+var type = TypeError;
 var uri = URIError;
 var abs$1 = Math.abs;
 var floor$1 = Math.floor;
@@ -12477,7 +12470,7 @@ function requireCallBindApplyHelpers() {
   if (hasRequiredCallBindApplyHelpers) return callBindApplyHelpers;
   hasRequiredCallBindApplyHelpers = 1;
   var bind3 = functionBind;
-  var $TypeError2 = requireType();
+  var $TypeError2 = type;
   var $call2 = requireFunctionCall();
   var $actualApply = requireActualApply();
   callBindApplyHelpers = function callBindBasic(args) {
@@ -12550,7 +12543,7 @@ var $EvalError = _eval;
 var $RangeError = range;
 var $ReferenceError = ref;
 var $SyntaxError = syntax;
-var $TypeError$1 = requireType();
+var $TypeError$1 = type;
 var $URIError = uri;
 var abs = abs$1;
 var floor = floor$1;
@@ -12881,7 +12874,7 @@ var GetIntrinsic2 = getIntrinsic;
 var $defineProperty = GetIntrinsic2("%Object.defineProperty%", true);
 var hasToStringTag = requireShams()();
 var hasOwn$1 = hasown;
-var $TypeError = requireType();
+var $TypeError = type;
 var toStringTag = hasToStringTag ? Symbol.toStringTag : null;
 var esSetTostringtag = function setToStringTag(object, value) {
   var overrideIfSet = arguments.length > 2 && !!arguments[2] && arguments[2].force;
@@ -17911,6 +17904,8 @@ const DEEPSEEK_DELETE_SESSION_URL = "https://chat.deepseek.com/api/v0/chat_sessi
 const DEEPSEEK_COMPLETION_TARGET_PATH = "/api/v0/chat/completion";
 const DEEPSEEK_PLATFORM_GET_API_KEYS_URL = "https://platform.deepseek.com/api/v0/users/get_api_keys";
 const DEEPSEEK_PLATFORM_EDIT_API_KEYS_URL = "https://platform.deepseek.com/api/v0/users/edit_api_keys";
+const DEEPSEEK_UPLOAD_FILE_URL = "https://chat.deepseek.com/api/v0/file/upload_file";
+const DEEPSEEK_FETCH_FILES_URL = "https://chat.deepseek.com/api/v0/file/fetch_files";
 const getLoginRequestBody = (email, password, _deviceId) => ({
   email,
   mobile: "",
@@ -18812,6 +18807,85 @@ function registerAccountIpcs(__dirname, VITE_DEV_SERVER_URL2, RENDERER_DIST2) {
       } catch (err) {
         const message = err instanceof Error ? err.message : "Unknown error";
         console.error("[deepseek-edit-api-keys] Catch error:", message);
+        return { ok: false, error: { message } };
+      }
+    }
+  );
+  ipcMain.handle(
+    "deepseek-upload-file",
+    async (_event, payload) => {
+      var _a, _b, _c, _d, _e;
+      try {
+        const powResponse = await axios.post(
+          DEEPSEEK_CREATE_POW_URL,
+          { target_path: "/api/v0/file/upload_file" },
+          {
+            headers: getHistoryHeaders(
+              payload.token,
+              payload.cookies
+            ),
+            validateStatus: () => true
+          }
+        );
+        if (powResponse.status !== 200 || ((_a = powResponse.data) == null ? void 0 : _a.code) !== 0) {
+          return { ok: false, error: { message: "Failed to get PoW challenge for upload" } };
+        }
+        const challenge = (_d = (_c = (_b = powResponse.data) == null ? void 0 : _b.data) == null ? void 0 : _c.biz_data) == null ? void 0 : _d.challenge;
+        const powHeaderStr = solveAndBuildHeader(challenge);
+        const formData = new FormData$2();
+        formData.append("file", fs$1.createReadStream(payload.filePath), payload.fileName);
+        const headers = {
+          ...getHistoryHeaders(payload.token, payload.cookies),
+          "x-ds-pow-response": powHeaderStr,
+          ...formData.getHeaders()
+        };
+        const response = await axios.post(DEEPSEEK_UPLOAD_FILE_URL, formData, {
+          headers,
+          maxBodyLength: Infinity,
+          maxContentLength: Infinity,
+          validateStatus: () => true
+        });
+        if (response.status !== 200 || ((_e = response.data) == null ? void 0 : _e.code) !== 0) {
+          return { ok: false, error: response.data || { message: "Upload failed" } };
+        }
+        return { ok: true, data: response.data };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Unknown error";
+        return { ok: false, error: { message } };
+      }
+    }
+  );
+  ipcMain.handle(
+    "deepseek-fetch-files",
+    async (_event, payload) => {
+      var _a;
+      try {
+        const query = payload.fileIds.map((id) => `file_ids=${encodeURIComponent(id)}`).join("&");
+        const response = await axios.get(`${DEEPSEEK_FETCH_FILES_URL}?${query}`, {
+          headers: getHistoryHeaders(payload.token),
+          validateStatus: () => true
+        });
+        if (response.status !== 200 || ((_a = response.data) == null ? void 0 : _a.code) !== 0) {
+          return { ok: false, error: response.data || { message: "Fetch files failed" } };
+        }
+        return { ok: true, data: response.data };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Unknown error";
+        return { ok: false, error: { message } };
+      }
+    }
+  );
+  ipcMain.handle(
+    "deepseek-save-temp-file",
+    async (_event, payload) => {
+      try {
+        const tempDir = app.getPath("temp");
+        const filePath = path$1.join(tempDir, payload.fileName);
+        const buffer = Buffer.from(payload.base64Data, "base64");
+        await fs$1.promises.writeFile(filePath, buffer);
+        return { ok: true, filePath };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Unknown error";
         return { ok: false, error: { message } };
       }
     }

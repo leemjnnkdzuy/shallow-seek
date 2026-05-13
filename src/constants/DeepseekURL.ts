@@ -29,3 +29,10 @@ export const DEEPSEEK_PLATFORM_EDIT_API_KEYS_URL =
 
 export const DEEPSEEK_PLATFORM_LOGIN_URL =
 	"https://platform.deepseek.com/auth-api/v0/users/login";
+
+export const DEEPSEEK_UPLOAD_FILE_URL =
+	"https://chat.deepseek.com/api/v0/file/upload_file";
+
+export const DEEPSEEK_FETCH_FILES_URL =
+	"https://chat.deepseek.com/api/v0/file/fetch_files";
+

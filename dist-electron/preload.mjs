@@ -73,6 +73,9 @@ electron.contextBridge.exposeInMainWorld("electron", {
     deleteChatSession: (payload) => electron.ipcRenderer.invoke("deepseek-delete-session", payload),
     getApiKeys: (payload) => electron.ipcRenderer.invoke("deepseek-get-api-keys", payload),
     editApiKeys: (payload) => electron.ipcRenderer.invoke("deepseek-edit-api-keys", payload),
+    uploadFile: (payload) => electron.ipcRenderer.invoke("deepseek-upload-file", payload),
+    fetchFiles: (payload) => electron.ipcRenderer.invoke("deepseek-fetch-files", payload),
+    saveTempFile: (payload) => electron.ipcRenderer.invoke("deepseek-save-temp-file", payload),
     startChatStream: (payload) => electron.ipcRenderer.send("deepseek-chat-stream", payload),
     onChatChunk: (callback) => {
       const listener = (_event, chunk) => callback(chunk);

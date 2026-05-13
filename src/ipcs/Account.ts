@@ -1,6 +1,8 @@
-import {ipcMain, BrowserWindow, session} from "electron";
+import {ipcMain, BrowserWindow, session, app} from "electron";
 import path from "node:path";
 import axios from "axios";
+import fs from "node:fs";
+import FormData from "form-data";
 import {
 	DEEPSEEK_HISTORY_URL,
 	DEEPSEEK_COMPLETION_TARGET_PATH,
@@ -11,6 +13,8 @@ import {
 	DEEPSEEK_DELETE_SESSION_URL,
 	DEEPSEEK_PLATFORM_GET_API_KEYS_URL,
 	DEEPSEEK_PLATFORM_EDIT_API_KEYS_URL,
+	DEEPSEEK_UPLOAD_FILE_URL,
+	DEEPSEEK_FETCH_FILES_URL,
 } from "../constants/DeepseekURL";
 import {
 	getHistoryHeaders,
@@ -580,6 +584,98 @@ export function registerAccountIpcs(
 				return {ok: false, error: {message}};
 			}
 		},
+	);
+
+	ipcMain.handle(
+		"deepseek-upload-file",
+		async (_event, payload: {token: string; cookies?: string; filePath: string; fileName: string; fileSize?: number}) => {
+			try {
+				// 1. Get PoW challenge
+				const powResponse = await axios.post(
+					DEEPSEEK_CREATE_POW_URL,
+					{target_path: "/api/v0/file/upload_file"},
+					{
+						headers: getHistoryHeaders(
+							payload.token,
+							payload.cookies,
+						),
+						validateStatus: () => true,
+					},
+				);
+
+				if (powResponse.status !== 200 || powResponse.data?.code !== 0) {
+					return {ok: false, error: {message: "Failed to get PoW challenge for upload"}};
+				}
+
+				const challenge = powResponse.data?.data?.biz_data?.challenge;
+				const powHeaderStr = solveAndBuildHeader(challenge);
+
+				// 2. Read file and create form data
+				const formData = new FormData();
+				formData.append('file', fs.createReadStream(payload.filePath), payload.fileName);
+
+				// 3. Upload file
+				const headers = {
+					...getHistoryHeaders(payload.token, payload.cookies),
+					"x-ds-pow-response": powHeaderStr,
+					...formData.getHeaders()
+				};
+
+				const response = await axios.post(DEEPSEEK_UPLOAD_FILE_URL, formData, {
+					headers,
+					maxBodyLength: Infinity,
+					maxContentLength: Infinity,
+					validateStatus: () => true,
+				});
+
+				if (response.status !== 200 || response.data?.code !== 0) {
+					return {ok: false, error: response.data || {message: "Upload failed"}};
+				}
+
+				return {ok: true, data: response.data};
+			} catch (err: unknown) {
+				const message = err instanceof Error ? err.message : "Unknown error";
+				return {ok: false, error: {message}};
+			}
+		}
+	);
+
+	ipcMain.handle(
+		"deepseek-fetch-files",
+		async (_event, payload: {token: string; fileIds: string[]}) => {
+			try {
+				const query = payload.fileIds.map(id => `file_ids=${encodeURIComponent(id)}`).join('&');
+				const response = await axios.get(`${DEEPSEEK_FETCH_FILES_URL}?${query}`, {
+					headers: getHistoryHeaders(payload.token),
+					validateStatus: () => true,
+				});
+
+				if (response.status !== 200 || response.data?.code !== 0) {
+					return {ok: false, error: response.data || {message: "Fetch files failed"}};
+				}
+
+				return {ok: true, data: response.data};
+			} catch (err: unknown) {
+				const message = err instanceof Error ? err.message : "Unknown error";
+				return {ok: false, error: {message}};
+			}
+		}
+	);
+
+	ipcMain.handle(
+		"deepseek-save-temp-file",
+		async (_event, payload: {base64Data: string; fileName: string}) => {
+			try {
+				const tempDir = app.getPath("temp");
+				const filePath = path.join(tempDir, payload.fileName);
+				const buffer = Buffer.from(payload.base64Data, "base64");
+				await fs.promises.writeFile(filePath, buffer);
+				return {ok: true, filePath};
+			} catch (err: unknown) {
+				const message = err instanceof Error ? err.message : "Unknown error";
+				return {ok: false, error: {message}};
+			}
+		}
 	);
 
 	ipcMain.on(
