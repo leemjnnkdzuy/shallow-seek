@@ -4,7 +4,7 @@ import remarkGfm from "remark-gfm";
 import Editor from "@monaco-editor/react";
 import type {FormattedMessage} from "@/types";
 
-import { Copy, Check } from "lucide-react";
+import { Copy, Check, Globe } from "lucide-react";
 
 interface ChatMessageProps {
 	message: FormattedMessage;
@@ -274,6 +274,45 @@ const ChatMessage: React.FC<ChatMessageProps> = React.memo(
 						:	"bg-muted/40 border border-border/40 rounded-tl-none backdrop-blur-sm"
 					}`}
 				>
+					{message.search_results && message.search_results.length > 0 && (
+						<div className="flex flex-col gap-1.5 mb-1 pb-2 border-b border-border/40">
+							<div className="text-[10px] font-semibold uppercase tracking-wider opacity-60 flex items-center gap-1.5">
+								<Globe className="w-3 h-3" />
+								Đã tìm kiếm {message.search_results.length} nguồn
+							</div>
+							<div className="flex flex-wrap gap-1.5">
+								{message.search_results.map((res: any, idx: number) => {
+									let domain = "";
+									try {
+										domain = new URL(res.url).hostname.replace("www.", "");
+									} catch {
+										domain = res.url;
+									}
+									return (
+										<a
+											key={idx}
+											href={res.url}
+											title={res.title || domain}
+											target="_blank"
+											rel="noopener noreferrer"
+											className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-background/50 hover:bg-background/80 border border-border/50 text-[10px] text-muted-foreground transition-colors max-w-[200px] cursor-pointer"
+											onClick={(e) => {
+												if (res.url) {
+													e.preventDefault();
+													window.electron?.windowControls?.openExternal(res.url);
+												}
+											}}
+										>
+											<span className="w-3.5 h-3.5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[8px] font-bold shrink-0">
+												{idx + 1}
+											</span>
+											<span className="truncate">{res.title || res.site_name || domain}</span>
+										</a>
+									);
+								})}
+							</div>
+						</div>
+					)}
 					<div
 						className={`text-[13px] leading-relaxed tracking-tight markdown-content ${isUser ? "prose-user" : "prose-assistant"}`}
 					>

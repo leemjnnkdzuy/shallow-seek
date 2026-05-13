@@ -119,6 +119,27 @@ export default function ChatAccountManager({
 								}
 								return newMsgs;
 							});
+						},
+						onUpdateSearchResults: (results, messageId) => {
+							setMessages((prev) => {
+								const newMsgs = [...prev];
+								const lastIdx = newMsgs.length - 1;
+								const last = lastIdx >= 0 ? {...newMsgs[lastIdx]} : null;
+								
+								if (last && last.role === "assistant") {
+									const existing = last.search_results || [];
+									last.search_results = [...existing, ...results];
+									newMsgs[lastIdx] = last;
+								} else {
+									newMsgs.push({
+										role: "assistant",
+										content: "",
+										search_results: results,
+										id: messageId,
+									});
+								}
+								return newMsgs;
+							});
 						}
 					});
 				}

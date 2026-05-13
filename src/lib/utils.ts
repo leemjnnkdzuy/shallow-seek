@@ -51,6 +51,11 @@ export function formatDeepSeekMessages(msgs: DeepSeekMessage[]): FormattedMessag
   return msgs.map((m) => {
     let content = m.content || m.text || "";
     const files: string[] = [];
+    const search_results: any[] = [];
+    
+    if (m.search_results && Array.isArray(m.search_results)) {
+      search_results.push(...m.search_results);
+    }
     
     if (m.fragments) {
       m.fragments.forEach((f) => {
@@ -58,6 +63,9 @@ export function formatDeepSeekMessages(msgs: DeepSeekMessage[]): FormattedMessag
           f.files.forEach((file) => {
             if (file.file_name) files.push(file.file_name);
           });
+        }
+        if (f.type === "SEARCH" && f.search_results) {
+          search_results.push(...f.search_results);
         }
         if (!content && (f.type === "REQUEST" || f.type === "RESPONSE" || f.type === "TEXT" || f.type === "THINK")) {
           content += (content ? "\n" : "") + (f.content || "");
@@ -69,6 +77,7 @@ export function formatDeepSeekMessages(msgs: DeepSeekMessage[]): FormattedMessag
       role: m.role?.toLowerCase() || "assistant",
       content,
       files,
+      search_results,
       id: m.message_id || m.id
     };
   });

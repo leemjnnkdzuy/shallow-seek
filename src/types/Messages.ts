@@ -1,7 +1,15 @@
+export interface SearchResult {
+	url: string;
+	title: string;
+	snippet?: string;
+	site_name?: string;
+}
+
 export interface ChatFragment {
 	type: string;
 	files?: { file_name: string }[];
 	content?: string;
+	search_results?: SearchResult[];
 }
 
 export interface DeepSeekMessage {
@@ -11,6 +19,7 @@ export interface DeepSeekMessage {
 	message_id?: string | number;
 	id?: string | number;
 	fragments?: ChatFragment[];
+	search_results?: SearchResult[];
 }
 
 export interface FormattedMessage {
@@ -18,4 +27,5 @@ export interface FormattedMessage {
 	content: string;
 	files?: string[];
 	id?: number | string;
+	search_results?: SearchResult[];
 }

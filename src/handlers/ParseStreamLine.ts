@@ -39,6 +39,7 @@ export function parseStreamLine(
 			}
 
 			let textDelta = "";
+			let searchResultsDelta: any[] = [];
 			let responseMessageId: number | undefined;
 			let isFinished = false;
 
@@ -47,26 +48,42 @@ export function parseStreamLine(
 				if (resp.message_id) {
 					responseMessageId = resp.message_id;
 				}
+				if (resp.search_results && Array.isArray(resp.search_results)) {
+					searchResultsDelta.push(...resp.search_results);
+				}
 				if (resp.fragments && Array.isArray(resp.fragments)) {
 					for (const frag of resp.fragments) {
 						if (frag.content) {
 							textDelta += frag.content;
+						}
+						if (frag.type === "SEARCH" && frag.search_results) {
+							searchResultsDelta.push(...frag.search_results);
 						}
 					}
 				}
 				if (resp.status === "FINISHED") {
 					isFinished = true;
 				}
-			} else if (parsed?.o === "APPEND" && typeof parsed?.v === "string") {
-				textDelta = parsed.v;
+			} else if (parsed?.o === "APPEND" || parsed?.o === "ADD") {
+				if (typeof parsed?.v === "string") {
+					textDelta = parsed.v;
+				} else if (parsed?.p && parsed.p.includes("response/search_results")) {
+					searchResultsDelta.push(parsed.v);
+				}
 			} else if (parsed?.o === "SET") {
 				if (parsed.p === "response/status" && parsed.v === "FINISHED") {
 					isFinished = true;
+				}
+				if (parsed.p === "response/search_results" && Array.isArray(parsed.v)) {
+					searchResultsDelta.push(...parsed.v);
 				}
 			} else if (parsed?.o === "BATCH" && Array.isArray(parsed?.v)) {
 				for (const patch of parsed.v) {
 					if (patch.p === "quasi_status" && patch.v === "FINISHED") {
 						isFinished = true;
+					}
+					if (patch.p === "response/search_results" && Array.isArray(patch.v)) {
+						searchResultsDelta.push(...patch.v);
 					}
 				}
 			} else if (typeof parsed?.v === "string" && !parsed?.p && !parsed?.o) {
@@ -95,6 +112,13 @@ export function parseStreamLine(
 			if (textDelta) {
 				callbacks.onAppendText(
 					textDelta,
+					responseMessageId || parsed.message_id || parsed.id
+				);
+			}
+
+			if (searchResultsDelta.length > 0 && callbacks.onUpdateSearchResults) {
+				callbacks.onUpdateSearchResults(
+					searchResultsDelta,
 					responseMessageId || parsed.message_id || parsed.id
 				);
 			}
