@@ -10,46 +10,74 @@ import {
 	getErrorMessage,
 } from "../handlers/ServerHelpers";
 
-let currentServers: ServerInstance[] = [];
+/** Map of accountId → running ServerInstance */
+const runningServers = new Map<string, ServerInstance>();
 
 export function setLogCallback(cb: (msg: string) => void) {
 	_setLogCallback(cb);
 }
 
-export async function startServer(config: ServerConfig): Promise<number> {
-	if (currentServers.length > 0) throw new Error("Server is already running");
+/**
+ * Start a server for a single account.
+ * Returns the port the server is listening on.
+ */
+export async function startServerForAccount(
+	accountId: string,
+	config: ServerConfig,
+): Promise<number> {
+	if (runningServers.has(accountId)) {
+		throw new Error(`Server for account ${accountId} is already running`);
+	}
 	if (!config.accounts || config.accounts.length === 0) {
-		throw new Error("No accounts configured");
+		throw new Error("No account configured");
 	}
 
-	const basePort = config.port;
-	const accounts = config.accounts;
-	const started: ServerInstance[] = [];
-
-	try {
-		for (let i = 0; i < accounts.length; i++) {
-			const port = basePort + i;
-			if (port <= 0 || port >= 65536) {
-				throw new Error(`Port out of range: ${port}`);
-			}
-			const serverConfig: ServerConfig = {
-				...config,
-				port,
-				accounts: [accounts[i]],
-			};
-			const instance = await startServerInstance(serverConfig);
-			started.push(instance);
-		}
-	} catch (err) {
-		await Promise.all(
-			started.map((instance) => stopServerInstance(instance)),
-		);
-		currentServers = [];
-		throw err;
+	const port = config.port;
+	if (port <= 0 || port >= 65536) {
+		throw new Error(`Port out of range: ${port}`);
 	}
 
-	currentServers = started;
-	return basePort;
+	const instance = await startServerInstance(config);
+	runningServers.set(accountId, instance);
+	return port;
+}
+
+/**
+ * Stop a specific account's server.
+ */
+export async function stopServerForAccount(accountId: string): Promise<void> {
+	const instance = runningServers.get(accountId);
+	if (!instance) {
+		throw new Error(`Server for account ${accountId} is not running`);
+	}
+	runningServers.delete(accountId);
+	await stopServerInstance(instance);
+}
+
+/**
+ * Check if a specific account's server is running.
+ */
+export function isAccountRunning(accountId: string): boolean {
+	return runningServers.has(accountId);
+}
+
+/**
+ * Get the port of a running account's server.
+ */
+export function getAccountPort(accountId: string): number | null {
+	const instance = runningServers.get(accountId);
+	return instance ? instance.state.port : null;
+}
+
+/**
+ * Get all running account IDs and their ports.
+ */
+export function getAllRunningAccounts(): Record<string, number> {
+	const result: Record<string, number> = {};
+	for (const [id, instance] of runningServers) {
+		result[id] = instance.state.port;
+	}
+	return result;
 }
 
 async function startServerInstance(
@@ -114,15 +142,4 @@ async function stopServerInstance(instance: ServerInstance): Promise<void> {
 			resolve();
 		});
 	});
-}
-
-export async function stopServer(): Promise<void> {
-	if (currentServers.length === 0) throw new Error("Server is not running");
-	const servers = currentServers;
-	currentServers = [];
-	await Promise.all(servers.map((instance) => stopServerInstance(instance)));
-}
-
-export function isRunning(): boolean {
-	return currentServers.length > 0;
 }

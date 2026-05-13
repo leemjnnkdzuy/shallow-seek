@@ -4,20 +4,18 @@ import {setLogCallback} from "../server/index";
 import {getSetting, getAccounts} from "../services/QueryDB";
 import type {ServerConfig, AccountConfig} from "../types";
 
-let serverLogs: string[] = [];
-let serverAccountPorts: Record<string, number> = {};
-let runningBasePort: number | null = null;
+/** Per-account logs: accountId → string[] */
+const accountLogs = new Map<string, string[]>();
 
-/** Broadcast server status to all renderer windows. */
-function broadcastServerStatus(isRunning: boolean) {
-	const port = runningBasePort ?? getPortFromDB();
+/** Broadcast account server status to all renderer windows. */
+function broadcastAccountStatus(accountId: string, isRunning: boolean, port: number) {
 	for (const win of BrowserWindow.getAllWindows()) {
 		try {
 			win.webContents.send(
-				"server-status-changed",
+				"server-account-status-changed",
+				accountId,
 				isRunning,
 				port,
-				serverAccountPorts,
 			);
 		} catch {
 			// window might be destroyed
@@ -25,11 +23,16 @@ function broadcastServerStatus(isRunning: boolean) {
 	}
 }
 
-function captureLog(msg: string) {
-	serverLogs.push(msg);
+function captureLog(accountId: string, msg: string) {
+	let logs = accountLogs.get(accountId);
+	if (!logs) {
+		logs = [];
+		accountLogs.set(accountId, logs);
+	}
+	logs.push(msg);
 	for (const win of BrowserWindow.getAllWindows()) {
 		try {
-			win.webContents.send("server-log", msg);
+			win.webContents.send("server-account-log", accountId, msg);
 		} catch {
 			// window might be destroyed
 		}
@@ -51,76 +54,79 @@ function getApiKeyFromDB(): string | null {
 	return getSetting("endpointApiKey");
 }
 
-/** Build account list from DB accounts table. */
-function getAccountsFromDB(): AccountConfig[] {
-	const dbAccounts = getAccounts().slice().reverse();
-	return dbAccounts.map((acc) => ({
+/** Get a single account from DB by id. */
+function getAccountFromDB(accountId: string): AccountConfig | null {
+	const dbAccounts = getAccounts();
+	const acc = dbAccounts.find((a) => a.id === accountId);
+	if (!acc) return null;
+	return {
 		id: acc.id,
 		email: acc.email,
 		password: "",
 		token: acc.chat_token,
-	}));
+	};
 }
 
-function buildAccountPortMap(
-	accounts: AccountConfig[],
-	basePort: number,
-): Record<string, number> {
-	return accounts.reduce<Record<string, number>>((acc, account, index) => {
-		acc[account.id] = basePort + index;
-		return acc;
-	}, {});
+/** Find the next available port starting from base, skipping already-used ports. */
+function findAvailablePort(basePort: number): number {
+	const usedPorts = new Set(
+		Object.values(apiServer.getAllRunningAccounts()),
+	);
+	let port = basePort;
+	while (usedPorts.has(port)) {
+		port++;
+		if (port >= 65536) {
+			throw new Error("No available ports");
+		}
+	}
+	return port;
 }
 
 export function registerServerIpcs() {
-	// Wire server logs to UI
-	setLogCallback(captureLog);
+	// Wire server logs to a global log handler (for general server library messages)
+	setLogCallback((msg) => {
+		// Broadcast to all windows as a general log
+		for (const win of BrowserWindow.getAllWindows()) {
+			try {
+				win.webContents.send("server-log", msg);
+			} catch {
+				// window might be destroyed
+			}
+		}
+	});
 
+	// ── Start a single account's server ──
 	ipcMain.handle(
-		"server-start",
+		"server-start-account",
 		async (
 			_event,
-			config?: {
-				token?: string;
+			payload: {
+				accountId: string;
 				port?: number;
 				apiKey?: string;
-				accounts?: AccountConfig[];
 			},
 		) => {
-			if (apiServer.isRunning()) {
-				return {ok: false, error: "Server is already running"};
+			const {accountId} = payload;
+
+			if (apiServer.isAccountRunning(accountId)) {
+				return {ok: false, error: "Server for this account is already running"};
 			}
 
-			serverLogs = [];
-			serverAccountPorts = {};
-			runningBasePort = null;
+			// Clear old logs for this account
+			accountLogs.set(accountId, []);
 
-			const port = config?.port || getPortFromDB();
+			const basePort = payload.port || getPortFromDB();
 
 			try {
-				let accounts: AccountConfig[] = config?.accounts || [];
-
-				if (accounts.length === 0) {
-					accounts = getAccountsFromDB();
+				const account = getAccountFromDB(accountId);
+				if (!account) {
+					return {ok: false, error: "Account not found"};
 				}
 
-				if (accounts.length === 0 && config?.token) {
-					accounts = [
-						{
-							id: "direct-token",
-							email: "direct",
-							password: "",
-							token: config.token,
-						},
-					];
-				}
-
-				if (accounts.length === 0) {
-					return {ok: false, error: "No accounts configured"};
-				}
+				const port = findAvailablePort(basePort);
 
 				const apiKeys: string[] = [];
-				const apiKey = config?.apiKey || getApiKeyFromDB();
+				const apiKey = payload.apiKey || getApiKeyFromDB();
 				if (apiKey) {
 					apiKeys.push(apiKey);
 				}
@@ -128,67 +134,70 @@ export function registerServerIpcs() {
 				const serverConfig: ServerConfig = {
 					port,
 					apiKeys,
-					accounts,
+					accounts: [account],
 					modelAliases: {},
 					autoDeleteMode: "single",
 				};
 
-				serverAccountPorts = buildAccountPortMap(accounts, port);
-				runningBasePort = port;
+				captureLog(accountId, `[shallowseek-api] Starting server for ${account.email} on port ${port}...`);
+				await apiServer.startServerForAccount(accountId, serverConfig);
+				captureLog(accountId, `[shallowseek-api] Server started successfully on port ${port}`);
+				captureLog(accountId, `[shallowseek-api] OpenAI base URL: http://localhost:${port}/v1`);
 
-				const startLabel =
-					accounts.length > 1 ?
-						`Starting ${accounts.length} server(s) from port ${port}...`
-					:	`Starting server on port ${port}...`;
-				captureLog(`[shallowseek-api] ${startLabel}`);
-				await apiServer.startServer(serverConfig);
-				captureLog(
-					`[shallowseek-api] Server started successfully on port ${port}`,
-				);
-				captureLog(
-					`[shallowseek-api] OpenAI base URL: http://localhost:${port}/v1`,
-				);
-				captureLog(
-					`[shallowseek-api] ${accounts.length} account(s) loaded`,
-				);
+				broadcastAccountStatus(accountId, true, port);
 
-				broadcastServerStatus(true);
-
-				return {ok: true, port, accountPorts: serverAccountPorts};
+				return {ok: true, port};
 			} catch (err: any) {
 				const msg = err.message || "Unknown error";
-				serverAccountPorts = {};
-				runningBasePort = null;
-				captureLog(`[shallowseek-api] Start failed: ${msg}`);
+				captureLog(accountId, `[shallowseek-api] Start failed: ${msg}`);
 				return {ok: false, error: msg};
 			}
 		},
 	);
 
-	ipcMain.handle("server-stop", async () => {
-		if (!apiServer.isRunning()) {
-			return {ok: false, error: "Server is not running"};
-		}
-		try {
-			await apiServer.stopServer();
-			serverAccountPorts = {};
-			runningBasePort = null;
-			broadcastServerStatus(false);
-			return {ok: true};
-		} catch (err: any) {
-			return {ok: false, error: err.message};
-		}
-	});
+	// ── Stop a single account's server ──
+	ipcMain.handle(
+		"server-stop-account",
+		async (_event, payload: {accountId: string}) => {
+			const {accountId} = payload;
 
-	ipcMain.handle("server-status", () => {
-		return {
-			isRunning: apiServer.isRunning(),
-			port: runningBasePort ?? getPortFromDB(),
-			accountPorts: serverAccountPorts,
-		};
-	});
+			if (!apiServer.isAccountRunning(accountId)) {
+				return {ok: false, error: "Server for this account is not running"};
+			}
 
-	ipcMain.handle("server-logs", () => {
-		return {logs: serverLogs};
+			try {
+				const port = apiServer.getAccountPort(accountId) || 0;
+				await apiServer.stopServerForAccount(accountId);
+				captureLog(accountId, "[shallowseek-api] Server stopped");
+				broadcastAccountStatus(accountId, false, port);
+				return {ok: true};
+			} catch (err: any) {
+				return {ok: false, error: err.message};
+			}
+		},
+	);
+
+	// ── Status for a single account ──
+	ipcMain.handle(
+		"server-status-account",
+		(_event, payload: {accountId: string}) => {
+			const {accountId} = payload;
+			const isRunning = apiServer.isAccountRunning(accountId);
+			const port = apiServer.getAccountPort(accountId) ?? getPortFromDB();
+			return {isRunning, port};
+		},
+	);
+
+	// ── Logs for a single account ──
+	ipcMain.handle(
+		"server-logs-account",
+		(_event, payload: {accountId: string}) => {
+			return {logs: accountLogs.get(payload.accountId) || []};
+		},
+	);
+
+	// ── Global: get all running accounts ──
+	ipcMain.handle("server-all-running", () => {
+		return apiServer.getAllRunningAccounts();
 	});
 }

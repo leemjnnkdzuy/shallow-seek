@@ -9,5 +9,4 @@ export * from "./ApiKey";
 export * from "./ChatStream";
 export * from "./Messages";
 export * from "./IpcPayloads";
-export * from "./ServerInternal";
 export * from "./DeepseekChat";

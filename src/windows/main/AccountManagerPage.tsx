@@ -14,10 +14,6 @@ export default function AccountManagerPage() {
 	const [activeTab, setActiveTab] = useState("logs");
 	const [isRunning, setIsRunning] = useState(false);
 	const [port, setPort] = useState<number>(11434);
-	const [basePort, setBasePort] = useState<number>(11434);
-	const [accountPorts, setAccountPorts] = useState<Record<string, number>>(
-		{},
-	);
 	const [account, setAccount] = useState<Account | null>(null);
 	const [history, setHistory] = useState<ChatSessionSummary[]>([]);
 	const [loadingHistory, setLoadingHistory] = useState(false);
@@ -56,53 +52,44 @@ export default function AccountManagerPage() {
 		return () => resetConfig();
 	}, [id, setConfig, resetConfig]);
 
+	// Check this account's server status on mount + listen for changes
 	useEffect(() => {
+		if (!id) return;
+
 		const checkStatus = async () => {
-			const res = await window.electron?.server?.status();
+			const res = await window.electron?.server?.statusAccount({accountId: id});
 			setIsRunning(res?.isRunning || false);
 			if (res?.port) {
-				setBasePort(res.port);
+				setPort(res.port);
 			}
-			if (res?.accountPorts) {
-				setAccountPorts(res.accountPorts);
-			} else {
-				setAccountPorts({});
-			}
-			const logRes = await window.electron?.server?.getLogs();
+			const logRes = await window.electron?.server?.getLogsAccount({accountId: id});
 			if (logRes?.logs) {
 				setLogs(logRes.logs);
 			}
 		};
 		checkStatus();
 
-		const cleanupStatus = window.electron?.server?.onStatusChanged(
-			(running, p, ports) => {
-				setIsRunning(running);
-				if (p) {
-					setBasePort(p);
-				}
-				if (ports) {
-					setAccountPorts(ports);
-				} else {
-					setAccountPorts({});
+		const cleanupStatus = window.electron?.server?.onAccountStatusChanged(
+			(accountId, running, p) => {
+				if (accountId === id) {
+					setIsRunning(running);
+					if (p) {
+						setPort(p);
+					}
 				}
 			},
 		);
-		const cleanupLog = window.electron?.server?.onLog((msg) => {
-			setLogs((prev) => [...prev, msg]);
+		const cleanupLog = window.electron?.server?.onAccountLog((accountId, msg) => {
+			if (accountId === id) {
+				setLogs((prev) => [...prev, msg]);
+			}
 		});
 
 		return () => {
 			if (cleanupStatus) cleanupStatus();
 			if (cleanupLog) cleanupLog();
 		};
-	}, []);
-
-	useEffect(() => {
-		if (!account?.id) return;
-		const nextPort = accountPorts[account.id] ?? basePort;
-		setPort(nextPort);
-	}, [account, accountPorts, basePort]);
+	}, [id]);
 
 	const fetchHistory = useCallback(async () => {
 		if (!accountToken) return;
@@ -144,8 +131,14 @@ export default function AccountManagerPage() {
 		}
 	}, [activeTab, fetchHistory]);
 
-	const handleToggleStartStop = () => toggleServer(isRunning);
-	const handleRestart = () => restartServer(isRunning);
+	const handleToggleStartStop = () => {
+		if (!id) return;
+		toggleServer(id, isRunning);
+	};
+	const handleRestart = () => {
+		if (!id) return;
+		restartServer(id, isRunning);
+	};
 
 	const handleDeleteSession = (sessionId: string) => {
 		deleteSessionHandler(sessionId, accountToken, selectedSession, {

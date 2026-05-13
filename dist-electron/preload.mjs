@@ -94,19 +94,20 @@ electron.contextBridge.exposeInMainWorld("electron", {
     }
   },
   server: {
-    start: (config) => electron.ipcRenderer.invoke("server-start", config),
-    stop: () => electron.ipcRenderer.invoke("server-stop"),
-    status: () => electron.ipcRenderer.invoke("server-status"),
-    getLogs: () => electron.ipcRenderer.invoke("server-logs"),
-    onLog: (callback) => {
-      const listener = (_event, msg) => callback(msg);
-      electron.ipcRenderer.on("server-log", listener);
-      return () => electron.ipcRenderer.off("server-log", listener);
+    startAccount: (payload) => electron.ipcRenderer.invoke("server-start-account", payload),
+    stopAccount: (payload) => electron.ipcRenderer.invoke("server-stop-account", payload),
+    statusAccount: (payload) => electron.ipcRenderer.invoke("server-status-account", payload),
+    getLogsAccount: (payload) => electron.ipcRenderer.invoke("server-logs-account", payload),
+    getAllRunning: () => electron.ipcRenderer.invoke("server-all-running"),
+    onAccountLog: (callback) => {
+      const listener = (_event, accountId, msg) => callback(accountId, msg);
+      electron.ipcRenderer.on("server-account-log", listener);
+      return () => electron.ipcRenderer.off("server-account-log", listener);
     },
-    onStatusChanged: (callback) => {
-      const listener = (_event, isRunning, port, accountPorts) => callback(isRunning, port, accountPorts);
-      electron.ipcRenderer.on("server-status-changed", listener);
-      return () => electron.ipcRenderer.off("server-status-changed", listener);
+    onAccountStatusChanged: (callback) => {
+      const listener = (_event, accountId, isRunning, port) => callback(accountId, isRunning, port);
+      electron.ipcRenderer.on("server-account-status-changed", listener);
+      return () => electron.ipcRenderer.off("server-account-status-changed", listener);
     }
   },
   log: (payload) => electron.ipcRenderer.send("renderer-log", payload)

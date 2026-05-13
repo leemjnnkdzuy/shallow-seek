@@ -29,8 +29,7 @@ const HomePage: React.FC = () => {
 	const {setConfig} = useTitleBar();
 	const [accounts, setAccounts] = useState<Account[]>([]);
 	const [loading, setLoading] = useState(true);
-	const [isServerRunning, setIsServerRunning] = useState(false);
-	const [serverPort, setServerPort] = useState(11434);
+
 	const [accountPorts, setAccountPorts] = useState<Record<string, number>>(
 		{},
 	);
@@ -74,30 +73,26 @@ const HomePage: React.FC = () => {
 
 	useEffect(() => {
 		const checkStatus = async () => {
-			const res = await window.electron?.server?.status();
-			setIsServerRunning(res?.isRunning || false);
-			if (res?.port) {
-				setServerPort(res.port);
-			}
-			if (res?.accountPorts) {
-				setAccountPorts(res.accountPorts);
+			const running = await window.electron?.server?.getAllRunning();
+			if (running) {
+				setAccountPorts(running);
 			} else {
 				setAccountPorts({});
 			}
 		};
 		checkStatus();
 
-		const cleanupStatus = window.electron?.server?.onStatusChanged(
-			(running, p, ports) => {
-				setIsServerRunning(running);
-				if (p) {
-					setServerPort(p);
-				}
-				if (ports) {
-					setAccountPorts(ports);
-				} else {
-					setAccountPorts({});
-				}
+		const cleanupStatus = window.electron?.server?.onAccountStatusChanged(
+			(accountId, running, p) => {
+				setAccountPorts((prev) => {
+					const next = {...prev};
+					if (running) {
+						next[accountId] = p;
+					} else {
+						delete next[accountId];
+					}
+					return next;
+				});
 			},
 		);
 
@@ -179,8 +174,8 @@ const HomePage: React.FC = () => {
 						</div>
 						<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
 							{accounts.map((account) => {
-								const accountPort =
-									accountPorts[account.id] ?? serverPort;
+								const isAccountRunning = account.id in accountPorts;
+								const accountPort = accountPorts[account.id] ?? 11434;
 								return (
 									<Card
 										key={account.id}
@@ -226,7 +221,7 @@ const HomePage: React.FC = () => {
 												<div className='flex items-center justify-between'>
 													<div className='flex items-center gap-1.5'>
 														<span className='relative flex h-2 w-2'>
-															{isServerRunning ?
+															{isAccountRunning ?
 																<>
 																	<span className='animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75'></span>
 																	<span className='relative inline-flex rounded-full h-2 w-2 bg-emerald-500'></span>
@@ -235,9 +230,9 @@ const HomePage: React.FC = () => {
 															}
 														</span>
 														<span
-															className={`text-[11px] font-bold ${isServerRunning ? "text-emerald-500" : "text-muted-foreground"}`}
+															className={`text-[11px] font-bold ${isAccountRunning ? "text-emerald-500" : "text-muted-foreground"}`}
 														>
-															{isServerRunning ?
+															{isAccountRunning ?
 																"Running"
 															:	"Stopped"}
 														</span>
@@ -256,7 +251,7 @@ const HomePage: React.FC = () => {
 														<ChevronRight className='w-3 h-3 transition-transform group-hover/btn:translate-x-1' />
 													</Button>
 												</div>
-												{isServerRunning && (
+												{isAccountRunning && (
 													<div className='flex items-center justify-between bg-muted/50 rounded-lg px-2.5 py-1.5 text-[11px] font-mono text-muted-foreground border border-border/40 mt-1 shadow-inner'>
 														<span className='truncate max-w-[180px]'>
 															http://localhost:

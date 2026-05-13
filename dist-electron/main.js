@@ -12224,14 +12224,7 @@ var _eval = EvalError;
 var range = RangeError;
 var ref = ReferenceError;
 var syntax = SyntaxError;
-var type;
-var hasRequiredType;
-function requireType() {
-  if (hasRequiredType) return type;
-  hasRequiredType = 1;
-  type = TypeError;
-  return type;
-}
+var type = TypeError;
 var uri = URIError;
 var abs$1 = Math.abs;
 var floor$1 = Math.floor;
@@ -12477,7 +12470,7 @@ function requireCallBindApplyHelpers() {
   if (hasRequiredCallBindApplyHelpers) return callBindApplyHelpers;
   hasRequiredCallBindApplyHelpers = 1;
   var bind3 = functionBind;
-  var $TypeError2 = requireType();
+  var $TypeError2 = type;
   var $call2 = requireFunctionCall();
   var $actualApply = requireActualApply();
   callBindApplyHelpers = function callBindBasic(args) {
@@ -12550,7 +12543,7 @@ var $EvalError = _eval;
 var $RangeError = range;
 var $ReferenceError = ref;
 var $SyntaxError = syntax;
-var $TypeError$1 = requireType();
+var $TypeError$1 = type;
 var $URIError = uri;
 var abs = abs$1;
 var floor = floor$1;
@@ -12881,7 +12874,7 @@ var GetIntrinsic2 = getIntrinsic;
 var $defineProperty = GetIntrinsic2("%Object.defineProperty%", true);
 var hasToStringTag = requireShams()();
 var hasOwn$1 = hasown;
-var $TypeError = requireType();
+var $TypeError = type;
 var toStringTag = hasToStringTag ? Symbol.toStringTag : null;
 var esSetTostringtag = function setToStringTag(object, value) {
   var overrideIfSet = arguments.length > 2 && !!arguments[2] && arguments[2].force;
@@ -20457,41 +20450,46 @@ function validateAuth(req, res, state2) {
   }
   return true;
 }
-let currentServers = [];
+const runningServers = /* @__PURE__ */ new Map();
 function setLogCallback(cb) {
   setLogCallback$1(cb);
 }
-async function startServer(config) {
-  if (currentServers.length > 0) throw new Error("Server is already running");
+async function startServerForAccount(accountId, config) {
+  if (runningServers.has(accountId)) {
+    throw new Error(`Server for account ${accountId} is already running`);
+  }
   if (!config.accounts || config.accounts.length === 0) {
-    throw new Error("No accounts configured");
+    throw new Error("No account configured");
   }
-  const basePort = config.port;
-  const accounts = config.accounts;
-  const started = [];
-  try {
-    for (let i = 0; i < accounts.length; i++) {
-      const port = basePort + i;
-      if (port <= 0 || port >= 65536) {
-        throw new Error(`Port out of range: ${port}`);
-      }
-      const serverConfig = {
-        ...config,
-        port,
-        accounts: [accounts[i]]
-      };
-      const instance = await startServerInstance(serverConfig);
-      started.push(instance);
-    }
-  } catch (err) {
-    await Promise.all(
-      started.map((instance) => stopServerInstance(instance))
-    );
-    currentServers = [];
-    throw err;
+  const port = config.port;
+  if (port <= 0 || port >= 65536) {
+    throw new Error(`Port out of range: ${port}`);
   }
-  currentServers = started;
-  return basePort;
+  const instance = await startServerInstance(config);
+  runningServers.set(accountId, instance);
+  return port;
+}
+async function stopServerForAccount(accountId) {
+  const instance = runningServers.get(accountId);
+  if (!instance) {
+    throw new Error(`Server for account ${accountId} is not running`);
+  }
+  runningServers.delete(accountId);
+  await stopServerInstance(instance);
+}
+function isAccountRunning(accountId) {
+  return runningServers.has(accountId);
+}
+function getAccountPort(accountId) {
+  const instance = runningServers.get(accountId);
+  return instance ? instance.state.port : null;
+}
+function getAllRunningAccounts() {
+  const result = {};
+  for (const [id, instance] of runningServers) {
+    result[id] = instance.state.port;
+  }
+  return result;
 }
 async function startServerInstance(config) {
   const state2 = {
@@ -20549,37 +20547,30 @@ async function stopServerInstance(instance) {
     });
   });
 }
-async function stopServer() {
-  if (currentServers.length === 0) throw new Error("Server is not running");
-  const servers = currentServers;
-  currentServers = [];
-  await Promise.all(servers.map((instance) => stopServerInstance(instance)));
-}
-function isRunning() {
-  return currentServers.length > 0;
-}
-let serverLogs = [];
-let serverAccountPorts = {};
-let runningBasePort = null;
-function broadcastServerStatus(isRunning2) {
-  const port = runningBasePort ?? getPortFromDB();
+const accountLogs = /* @__PURE__ */ new Map();
+function broadcastAccountStatus(accountId, isRunning, port) {
   for (const win2 of BrowserWindow.getAllWindows()) {
     try {
       win2.webContents.send(
-        "server-status-changed",
-        isRunning2,
-        port,
-        serverAccountPorts
+        "server-account-status-changed",
+        accountId,
+        isRunning,
+        port
       );
     } catch {
     }
   }
 }
-function captureLog(msg) {
-  serverLogs.push(msg);
+function captureLog(accountId, msg) {
+  let logs = accountLogs.get(accountId);
+  if (!logs) {
+    logs = [];
+    accountLogs.set(accountId, logs);
+  }
+  logs.push(msg);
   for (const win2 of BrowserWindow.getAllWindows()) {
     try {
-      win2.webContents.send("server-log", msg);
+      win2.webContents.send("server-account-log", accountId, msg);
     } catch {
     }
   }
@@ -20595,111 +20586,114 @@ function getPortFromDB() {
 function getApiKeyFromDB() {
   return getSetting("endpointApiKey");
 }
-function getAccountsFromDB() {
-  const dbAccounts = getAccounts().slice().reverse();
-  return dbAccounts.map((acc) => ({
+function getAccountFromDB(accountId) {
+  const dbAccounts = getAccounts();
+  const acc = dbAccounts.find((a) => a.id === accountId);
+  if (!acc) return null;
+  return {
     id: acc.id,
     email: acc.email,
     password: "",
     token: acc.chat_token
-  }));
+  };
 }
-function buildAccountPortMap(accounts, basePort) {
-  return accounts.reduce((acc, account, index) => {
-    acc[account.id] = basePort + index;
-    return acc;
-  }, {});
+function findAvailablePort(basePort) {
+  const usedPorts = new Set(
+    Object.values(getAllRunningAccounts())
+  );
+  let port = basePort;
+  while (usedPorts.has(port)) {
+    port++;
+    if (port >= 65536) {
+      throw new Error("No available ports");
+    }
+  }
+  return port;
 }
 function registerServerIpcs() {
-  setLogCallback(captureLog);
-  ipcMain.handle(
-    "server-start",
-    async (_event, config) => {
-      if (isRunning()) {
-        return { ok: false, error: "Server is already running" };
-      }
-      serverLogs = [];
-      serverAccountPorts = {};
-      runningBasePort = null;
-      const port = (config == null ? void 0 : config.port) || getPortFromDB();
+  setLogCallback((msg) => {
+    for (const win2 of BrowserWindow.getAllWindows()) {
       try {
-        let accounts = (config == null ? void 0 : config.accounts) || [];
-        if (accounts.length === 0) {
-          accounts = getAccountsFromDB();
+        win2.webContents.send("server-log", msg);
+      } catch {
+      }
+    }
+  });
+  ipcMain.handle(
+    "server-start-account",
+    async (_event, payload) => {
+      const { accountId } = payload;
+      if (isAccountRunning(accountId)) {
+        return { ok: false, error: "Server for this account is already running" };
+      }
+      accountLogs.set(accountId, []);
+      const basePort = payload.port || getPortFromDB();
+      try {
+        const account = getAccountFromDB(accountId);
+        if (!account) {
+          return { ok: false, error: "Account not found" };
         }
-        if (accounts.length === 0 && (config == null ? void 0 : config.token)) {
-          accounts = [
-            {
-              id: "direct-token",
-              email: "direct",
-              password: "",
-              token: config.token
-            }
-          ];
-        }
-        if (accounts.length === 0) {
-          return { ok: false, error: "No accounts configured" };
-        }
+        const port = findAvailablePort(basePort);
         const apiKeys = [];
-        const apiKey = (config == null ? void 0 : config.apiKey) || getApiKeyFromDB();
+        const apiKey = payload.apiKey || getApiKeyFromDB();
         if (apiKey) {
           apiKeys.push(apiKey);
         }
         const serverConfig = {
           port,
           apiKeys,
-          accounts,
+          accounts: [account],
           modelAliases: {},
           autoDeleteMode: "single"
         };
-        serverAccountPorts = buildAccountPortMap(accounts, port);
-        runningBasePort = port;
-        const startLabel = accounts.length > 1 ? `Starting ${accounts.length} server(s) from port ${port}...` : `Starting server on port ${port}...`;
-        captureLog(`[shallowseek-api] ${startLabel}`);
-        await startServer(serverConfig);
-        captureLog(
-          `[shallowseek-api] Server started successfully on port ${port}`
-        );
-        captureLog(
-          `[shallowseek-api] OpenAI base URL: http://localhost:${port}/v1`
-        );
-        captureLog(
-          `[shallowseek-api] ${accounts.length} account(s) loaded`
-        );
-        broadcastServerStatus(true);
-        return { ok: true, port, accountPorts: serverAccountPorts };
+        captureLog(accountId, `[shallowseek-api] Starting server for ${account.email} on port ${port}...`);
+        await startServerForAccount(accountId, serverConfig);
+        captureLog(accountId, `[shallowseek-api] Server started successfully on port ${port}`);
+        captureLog(accountId, `[shallowseek-api] OpenAI base URL: http://localhost:${port}/v1`);
+        broadcastAccountStatus(accountId, true, port);
+        return { ok: true, port };
       } catch (err) {
         const msg = err.message || "Unknown error";
-        serverAccountPorts = {};
-        runningBasePort = null;
-        captureLog(`[shallowseek-api] Start failed: ${msg}`);
+        captureLog(accountId, `[shallowseek-api] Start failed: ${msg}`);
         return { ok: false, error: msg };
       }
     }
   );
-  ipcMain.handle("server-stop", async () => {
-    if (!isRunning()) {
-      return { ok: false, error: "Server is not running" };
+  ipcMain.handle(
+    "server-stop-account",
+    async (_event, payload) => {
+      const { accountId } = payload;
+      if (!isAccountRunning(accountId)) {
+        return { ok: false, error: "Server for this account is not running" };
+      }
+      try {
+        const port = getAccountPort(accountId) || 0;
+        await stopServerForAccount(accountId);
+        captureLog(accountId, "[shallowseek-api] Server stopped");
+        broadcastAccountStatus(accountId, false, port);
+        return { ok: true };
+      } catch (err) {
+        return { ok: false, error: err.message };
+      }
     }
-    try {
-      await stopServer();
-      serverAccountPorts = {};
-      runningBasePort = null;
-      broadcastServerStatus(false);
-      return { ok: true };
-    } catch (err) {
-      return { ok: false, error: err.message };
+  );
+  ipcMain.handle(
+    "server-status-account",
+    (_event, payload) => {
+      const { accountId } = payload;
+      const isRunning = isAccountRunning(accountId);
+      const port = getAccountPort(accountId) ?? getPortFromDB();
+      return { isRunning, port };
     }
-  });
-  ipcMain.handle("server-status", () => {
-    return {
-      isRunning: isRunning(),
-      port: runningBasePort ?? getPortFromDB(),
-      accountPorts: serverAccountPorts
-    };
-  });
-  ipcMain.handle("server-logs", () => {
-    return { logs: serverLogs };
+  );
+  ipcMain.handle(
+    "server-logs-account",
+    (_event, payload) => {
+      return { logs: accountLogs.get(payload.accountId) || [] };
+    }
+  );
+  ipcMain.handle("server-all-running", () => {
+    return getAllRunningAccounts();
   });
 }
 function registerIpcs(__dirname, VITE_DEV_SERVER_URL2, RENDERER_DIST2) {

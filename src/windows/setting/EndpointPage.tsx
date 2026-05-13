@@ -3,15 +3,14 @@ import {Input} from "@/components/ui/input";
 import {Button} from "@/components/ui/button";
 import {Label} from "@/components/ui/label";
 import {useLanguage} from "@/hooks/useLanguage";
-import {Globe, Save, Power} from "lucide-react";
+import {Globe, Save} from "lucide-react";
 import {useTitleBar} from "@/hooks/useTitleBar";
 
 const EndpointPage: React.FC = () => {
 	const {t} = useLanguage();
 	const {setConfig} = useTitleBar();
 	const [port, setPort] = useState("11434");
-	const [isActive, setIsActive] = useState(false);
-	const [isLoading, setIsLoading] = useState(false);
+	const [runningCount, setRunningCount] = useState(0);
 
 	useEffect(() => {
 		setConfig({title: t("sidebar.endpoint")});
@@ -23,15 +22,25 @@ const EndpointPage: React.FC = () => {
 				setPort(res.value);
 			}
 		});
-		window.electron?.server.status().then((res) => {
-			setIsActive(res.isRunning);
+		// Check how many accounts are currently running
+		window.electron?.server.getAllRunning().then((running) => {
+			if (running) {
+				setRunningCount(Object.keys(running).length);
+			}
 		});
 	}, []);
 
 	useEffect(() => {
-		const cleanup = window.electron?.server.onStatusChanged(
-			(running: boolean) => {
-				setIsActive(running);
+		const cleanup = window.electron?.server.onAccountStatusChanged(
+			() => {
+				// Re-check the count when any account status changes
+				window.electron?.server.getAllRunning().then((running) => {
+					if (running) {
+						setRunningCount(Object.keys(running).length);
+					} else {
+						setRunningCount(0);
+					}
+				});
 			},
 		);
 		return cleanup;
@@ -41,23 +50,7 @@ const EndpointPage: React.FC = () => {
 		await window.electron?.db.setSetting("endpointPort", port);
 	}, [port]);
 
-	const handleToggle = useCallback(async () => {
-		setIsLoading(true);
-		try {
-			if (isActive) {
-				const res = await window.electron?.server.stop();
-				if (res?.ok) setIsActive(false);
-			} else {
-				await window.electron?.db.setSetting("endpointPort", port);
-				const res = await window.electron?.server.start({
-					port: parseInt(port, 10) || 11434,
-				});
-				if (res?.ok) setIsActive(true);
-			}
-		} finally {
-			setIsLoading(false);
-		}
-	}, [isActive, port]);
+	const hasRunning = runningCount > 0;
 
 	return (
 		<div className='p-8 max-w-4xl mx-auto space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500'>
@@ -99,18 +92,23 @@ const EndpointPage: React.FC = () => {
 								value={port}
 								onChange={(e) => setPort(e.target.value)}
 								placeholder={t("settings.port_placeholder")}
-								disabled={isActive}
+								disabled={hasRunning}
 								className='max-w-[240px] h-12 rounded-xl border-2 border-border bg-transparent focus-visible:ring-primary/20 font-bold disabled:opacity-50'
 							/>
 							<Button
 								onClick={handleSave}
-								disabled={isActive}
+								disabled={hasRunning}
 								className='h-12 px-6 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-primary/10 transition-all hover:scale-105 active:scale-95 disabled:opacity-50'
 							>
 								<Save className='w-4 h-4' />
 								{t("common.save")}
 							</Button>
 						</div>
+						{hasRunning && (
+							<p className='text-xs text-amber-500 ml-1'>
+								Không thể thay đổi port khi có {runningCount} server đang chạy. Dừng tất cả server trước.
+							</p>
+						)}
 					</div>
 				</div>
 
@@ -121,26 +119,13 @@ const EndpointPage: React.FC = () => {
 						</Label>
 						<p className='text-sm font-medium text-muted-foreground flex items-center gap-2'>
 							<span
-								className={`w-2 h-2 rounded-full ${isActive ? "bg-green-500 animate-pulse" : "bg-muted-foreground/30"}`}
+								className={`w-2 h-2 rounded-full ${hasRunning ? "bg-green-500 animate-pulse" : "bg-muted-foreground/30"}`}
 							/>
-							{isActive ?
-								t("settings.active")
-							:	t("settings.inactive")}
+							{hasRunning
+								? `${runningCount} server(s) đang chạy`
+								: t("settings.inactive")}
 						</p>
 					</div>
-					<Button
-						variant={isActive ? "destructive" : "default"}
-						className={`h-11 px-8 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg ${isActive ? "shadow-destructive/20" : "shadow-primary/20"} hover:scale-105 active:scale-95`}
-						onClick={handleToggle}
-						disabled={isLoading}
-					>
-						<Power className='w-4 h-4' />
-						{isLoading ?
-							"..."
-						: isActive ?
-							"Stop"
-						:	"Start"}
-					</Button>
 				</div>
 			</div>
 		</div>

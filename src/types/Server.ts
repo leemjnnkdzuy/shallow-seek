@@ -1,27 +1,34 @@
 export interface ServerAPI {
-	start: (config?: {
-		token?: string;
+	startAccount: (payload: {
+		accountId: string;
 		port?: number;
 		apiKey?: string;
 	}) => Promise<{
 		ok: boolean;
 		error?: string;
 		port?: number;
-		accountPorts?: Record<string, number>;
 	}>;
-	stop: () => Promise<{ok: boolean; error?: string}>;
-	status: () => Promise<{
+	stopAccount: (payload: {
+		accountId: string;
+	}) => Promise<{ok: boolean; error?: string}>;
+	statusAccount: (payload: {
+		accountId: string;
+	}) => Promise<{
 		isRunning: boolean;
 		port?: number;
-		accountPorts?: Record<string, number>;
 	}>;
-	getLogs: () => Promise<{logs: string[]}>;
-	onLog: (callback: (msg: string) => void) => () => void;
-	onStatusChanged: (
+	getLogsAccount: (payload: {
+		accountId: string;
+	}) => Promise<{logs: string[]}>;
+	getAllRunning: () => Promise<Record<string, number>>;
+	onAccountLog: (
+		callback: (accountId: string, msg: string) => void,
+	) => () => void;
+	onAccountStatusChanged: (
 		callback: (
+			accountId: string,
 			isRunning: boolean,
-			port?: number,
-			accountPorts?: Record<string, number>,
+			port: number,
 		) => void,
 	) => () => void;
 }

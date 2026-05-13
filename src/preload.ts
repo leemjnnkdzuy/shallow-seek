@@ -144,31 +144,36 @@ contextBridge.exposeInMainWorld("electron", {
 		},
 	},
 	server: {
-		start: (config?: {token?: string; port?: number; apiKey?: string}) =>
-			ipcRenderer.invoke("server-start", config),
-		stop: () => ipcRenderer.invoke("server-stop"),
-		status: () => ipcRenderer.invoke("server-status"),
-		getLogs: () => ipcRenderer.invoke("server-logs"),
-		onLog: (callback: (msg: string) => void) => {
-			const listener = (_event: any, msg: string) => callback(msg);
-			ipcRenderer.on("server-log", listener);
-			return () => ipcRenderer.off("server-log", listener);
+		startAccount: (payload: {accountId: string; port?: number; apiKey?: string}) =>
+			ipcRenderer.invoke("server-start-account", payload),
+		stopAccount: (payload: {accountId: string}) =>
+			ipcRenderer.invoke("server-stop-account", payload),
+		statusAccount: (payload: {accountId: string}) =>
+			ipcRenderer.invoke("server-status-account", payload),
+		getLogsAccount: (payload: {accountId: string}) =>
+			ipcRenderer.invoke("server-logs-account", payload),
+		getAllRunning: () => ipcRenderer.invoke("server-all-running"),
+		onAccountLog: (callback: (accountId: string, msg: string) => void) => {
+			const listener = (_event: any, accountId: string, msg: string) =>
+				callback(accountId, msg);
+			ipcRenderer.on("server-account-log", listener);
+			return () => ipcRenderer.off("server-account-log", listener);
 		},
-		onStatusChanged: (
+		onAccountStatusChanged: (
 			callback: (
+				accountId: string,
 				isRunning: boolean,
-				port?: number,
-				accountPorts?: Record<string, number>,
+				port: number,
 			) => void,
 		) => {
 			const listener = (
 				_event: any,
+				accountId: string,
 				isRunning: boolean,
-				port?: number,
-				accountPorts?: Record<string, number>,
-			) => callback(isRunning, port, accountPorts);
-			ipcRenderer.on("server-status-changed", listener);
-			return () => ipcRenderer.off("server-status-changed", listener);
+				port: number,
+			) => callback(accountId, isRunning, port);
+			ipcRenderer.on("server-account-status-changed", listener);
+			return () => ipcRenderer.off("server-account-status-changed", listener);
 		},
 	},
 	log: (payload: unknown) => ipcRenderer.send("renderer-log", payload),
