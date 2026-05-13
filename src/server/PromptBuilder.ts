@@ -12,6 +12,103 @@ import {
 	OUTPUT_INTEGRITY_GUARD,
 } from "@/constants/ChatMarkers";
 
+const markdownImagePattern = /!\[(.*?)\]\((.*?)\)/g;
+
+function isValidXMLName(name: string): boolean {
+	return /^[A-Za-z_][A-Za-z0-9_.:-]*$/.test(name.trim());
+}
+
+function escapeXMLAttribute(text: string): string {
+	return text
+		.replace(/&/g, "&amp;")
+		.replace(/"/g, "&quot;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;");
+}
+
+function renderPromptToolXMLNode(
+	name: string,
+	value: any,
+	indent: string,
+): string {
+	const trimmedName = name.trim();
+	if (!isValidXMLName(trimmedName)) return "";
+
+	if (value === null || value === undefined) {
+		return `${indent}<${trimmedName}></${trimmedName}>`;
+	}
+
+	if (typeof value === "object") {
+		const innerIndent = indent + "  ";
+		let body = "";
+		if (Array.isArray(value)) {
+			body = value
+				.map((item) =>
+					renderPromptToolXMLNode(trimmedName, item, innerIndent),
+				)
+				.filter(Boolean)
+				.join("\n");
+			return body;
+		} else {
+			const keys = Object.keys(value).sort();
+			body = keys
+				.map((key) =>
+					renderPromptToolXMLNode(key, value[key], innerIndent),
+				)
+				.filter(Boolean)
+				.join("\n");
+		}
+
+		if (!body.trim()) {
+			return `${indent}<${trimmedName}></${trimmedName}>`;
+		}
+		return `${indent}<${trimmedName}>\n${body}\n${indent}</${trimmedName}>`;
+	}
+
+	return `${indent}<${trimmedName}>${renderPromptCDATA(String(value))}</${trimmedName}>`;
+}
+
+function renderPromptParameterNode(
+	name: string,
+	value: any,
+	indent: string,
+): string {
+	const trimmedName = name.trim();
+	if (!trimmedName) return "";
+
+	if (value === null || value === undefined) {
+		return `${indent}<|DSML|parameter name="${escapeXMLAttribute(trimmedName)}"></|DSML|parameter>`;
+	}
+
+	if (typeof value === "object") {
+		const innerIndent = indent + "  ";
+		let body = "";
+		if (Array.isArray(value)) {
+			body = value
+				.map((item) =>
+					renderPromptToolXMLNode("item", item, innerIndent),
+				)
+				.filter(Boolean)
+				.join("\n");
+		} else {
+			const keys = Object.keys(value).sort();
+			body = keys
+				.map((key) =>
+					renderPromptToolXMLNode(key, value[key], innerIndent),
+				)
+				.filter(Boolean)
+				.join("\n");
+		}
+
+		if (!body.trim()) {
+			return `${indent}<|DSML|parameter name="${escapeXMLAttribute(trimmedName)}"></|DSML|parameter>`;
+		}
+		return `${indent}<|DSML|parameter name="${escapeXMLAttribute(trimmedName)}">\n${body}\n${indent}</|DSML|parameter>`;
+	}
+
+	return `${indent}<|DSML|parameter name="${escapeXMLAttribute(trimmedName)}">${renderPromptCDATA(String(value))}</|DSML|parameter>`;
+}
+
 export function normalizeContent(v: unknown): string {
 	if (v == null) return "";
 	if (typeof v === "string") return v;
@@ -89,9 +186,7 @@ export function formatToolCallsForPrompt(toolCalls: unknown): string {
 			if (trimmed) {
 				try {
 					args = JSON.parse(trimmed);
-				} catch {
-					/* keep null */
-				}
+				} catch {}
 			}
 		} else if (typeof argsRaw === "object" && argsRaw !== null) {
 			args = argsRaw as Record<string, unknown>;
@@ -99,23 +194,23 @@ export function formatToolCallsForPrompt(toolCalls: unknown): string {
 
 		let paramLines = "";
 		if (args && typeof args === "object" && !Array.isArray(args)) {
-			for (const [k, v] of Object.entries(args)) {
-				const valStr =
-					typeof v === "object" && v !== null ?
-						JSON.stringify(v)
-					:	String(v ?? "");
-				paramLines += `    <|DSML|parameter name="${k}">${renderPromptCDATA(valStr)}</|DSML|parameter>\n`;
-			}
+			paramLines = Object.entries(args)
+				.sort(([a], [b]) => a.localeCompare(b))
+				.map(([k, v]) => renderPromptParameterNode(k, v, "    "))
+				.filter(Boolean)
+				.join("\n");
 		} else if (typeof argsRaw === "string" && argsRaw.trim()) {
-			paramLines = `    <|DSML|parameter name="content">${renderPromptCDATA(argsRaw)}</|DSML|parameter>\n`;
+			paramLines = renderPromptParameterNode("content", argsRaw, "    ");
 		}
 
 		if (paramLines) {
 			blocks.push(
-				`  <|DSML|invoke name="${name}">\n${paramLines}  </|DSML|invoke>`,
+				`  <|DSML|invoke name="${escapeXMLAttribute(name)}">\n${paramLines}\n  </|DSML|invoke>`,
 			);
 		} else {
-			blocks.push(`  <|DSML|invoke name="${name}"></|DSML|invoke>`);
+			blocks.push(
+				`  <|DSML|invoke name="${escapeXMLAttribute(name)}"></|DSML|invoke>`,
+			);
 		}
 	}
 
@@ -136,7 +231,6 @@ export function buildPromptText(
 
 	const toolPrompt = buildToolPrompt(tools || []);
 
-	// ── Step 1: Normalize messages into {role, content} with tool history inline ──
 	const normalized: NormalizedMsg[] = [];
 
 	normalized.push({role: "system", content: OUTPUT_INTEGRITY_GUARD});
@@ -168,7 +262,6 @@ export function buildPromptText(
 		normalized.splice(1, 0, {role: "system", content: toolPrompt});
 	}
 
-	// ── Step 2: Merge consecutive same-role messages ──
 	const merged: NormalizedMsg[] = [];
 	for (const msg of normalized) {
 		if (merged.length > 0 && merged[merged.length - 1].role === msg.role) {
@@ -178,7 +271,6 @@ export function buildPromptText(
 		}
 	}
 
-	// ── Step 3: Render with DeepSeek chat template markers ──
 	const parts: string[] = [BEGIN_SENTENCE];
 	let lastRole = "";
 
@@ -217,7 +309,8 @@ export function buildPromptText(
 		parts.push(ASSISTANT_MARKER);
 	}
 
-	return parts.join("");
+	const out = parts.join("");
+	return out.replace(markdownImagePattern, "[$1]($2)");
 }
 
 export function extractSystemAndUserMessages(
@@ -305,5 +398,6 @@ export function buildUserOnlyPromptText(
 		parts.push(ASSISTANT_MARKER);
 	}
 
-	return parts.join("");
+	const out = parts.join("");
+	return out.replace(markdownImagePattern, "[$1]($2)");
 }
