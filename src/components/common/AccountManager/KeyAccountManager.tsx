@@ -17,7 +17,7 @@ import {
 	connectPlatform,
 	deleteApiKey,
 	renameApiKey,
-} from "@/handlers/ApiKeyHandler";
+} from "@/handlers";
 import type { ApiKey } from "@/types";
 
 interface KeyAccountManagerProps {

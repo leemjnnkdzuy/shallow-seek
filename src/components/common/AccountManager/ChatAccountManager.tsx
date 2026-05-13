@@ -11,7 +11,7 @@ import {formatDeepSeekMessages} from "@/lib/utils";
 import type {FormattedMessage} from "@/types";
 import ChatMessage from "@/components/common/ChatMessage";
 import { Atom, ArrowUp, Paperclip, Globe } from "lucide-react";
-import { parseStreamLine } from "@/handlers/ChatStreamHandler";
+import { parseStreamLine } from "@/handlers";
 
 export default function ChatAccountManager({
 	account,

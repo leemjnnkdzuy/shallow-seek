@@ -88,10 +88,8 @@ const HomePage: React.FC = () => {
 				const user = (result.data as any)?.data?.biz_data?.user;
 				if (!user) return;
 				
-				// check exists
 				const check = await window.electron?.db.checkAccountExists(user.email);
 				if (check?.success && check.exists) {
-					// account already exists
 					return;
 				}
 
