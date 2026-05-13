@@ -19539,6 +19539,2290 @@ function setCORS(res, req) {
 function estimateTokens(text) {
   return Math.ceil(text.length / 4);
 }
+function createToolSieveState() {
+  return {
+    pending: "",
+    capture: "",
+    capturing: false,
+    codeFenceStack: [],
+    codeFencePendingTicks: 0,
+    codeFencePendingTildes: 0,
+    codeFenceLineStart: true,
+    markdownCodeSpanTicks: 0,
+    pendingToolRaw: "",
+    pendingToolCalls: [],
+    disableDeltas: false,
+    toolNameSent: false,
+    toolName: "",
+    toolArgsStart: -1,
+    toolArgsSent: -1,
+    toolArgsString: false,
+    toolArgsDone: false
+  };
+}
+function resetIncrementalToolState(state2) {
+  state2.disableDeltas = false;
+  state2.toolNameSent = false;
+  state2.toolName = "";
+  state2.toolArgsStart = -1;
+  state2.toolArgsSent = -1;
+  state2.toolArgsString = false;
+  state2.toolArgsDone = false;
+}
+function noteText(state2, text) {
+  if (!state2 || !text) return;
+  updateMarkdownCodeSpanState(state2, text);
+  updateCodeFenceState(state2, text);
+}
+function updateCodeFenceState(state2, text) {
+  const next = simulateCodeFenceState(
+    state2.codeFenceStack,
+    state2.codeFencePendingTicks,
+    state2.codeFencePendingTildes,
+    state2.codeFenceLineStart,
+    text
+  );
+  state2.codeFenceStack = next.stack;
+  state2.codeFencePendingTicks = next.pendingTicks;
+  state2.codeFencePendingTildes = next.pendingTildes;
+  state2.codeFenceLineStart = next.lineStart;
+}
+function simulateCodeFenceState(stack, pendingTicks, pendingTildes, lineStart, text) {
+  const nextStack = [...stack];
+  let ticks = pendingTicks;
+  let tildes = pendingTildes;
+  let atLineStart = lineStart;
+  const flushPending = () => {
+    if (ticks > 0) {
+      if (atLineStart && ticks >= 3) applyFenceMarker(nextStack, ticks);
+      atLineStart = false;
+      ticks = 0;
+    }
+    if (tildes > 0) {
+      if (atLineStart && tildes >= 3) applyFenceMarker(nextStack, -tildes);
+      atLineStart = false;
+      tildes = 0;
+    }
+  };
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === "`") {
+      if (tildes > 0) flushPending();
+      ticks++;
+      continue;
+    }
+    if (ch === "~") {
+      if (ticks > 0) flushPending();
+      tildes++;
+      continue;
+    }
+    flushPending();
+    if (ch === "\n" || ch === "\r") {
+      atLineStart = true;
+      continue;
+    }
+    if ((ch === " " || ch === "	") && atLineStart) continue;
+    atLineStart = false;
+  }
+  return {
+    stack: nextStack,
+    pendingTicks: ticks,
+    pendingTildes: tildes,
+    lineStart: atLineStart
+  };
+}
+function applyFenceMarker(stack, marker) {
+  if (stack.length === 0) {
+    stack.push(marker);
+    return;
+  }
+  const top = stack[stack.length - 1];
+  const sameType = top > 0 && marker > 0 || top < 0 && marker < 0;
+  if (!sameType) {
+    stack.push(marker);
+    return;
+  }
+  if (Math.abs(marker) >= Math.abs(top)) {
+    stack.pop();
+    return;
+  }
+  stack.push(marker);
+}
+function updateMarkdownCodeSpanState(state2, text) {
+  state2.markdownCodeSpanTicks = simulateMarkdownCodeSpanTicks(state2, state2.markdownCodeSpanTicks, text);
+}
+function simulateMarkdownCodeSpanTicks(state2, initialTicks, text) {
+  let ticks = initialTicks;
+  for (let i = 0; i < text.length; ) {
+    if (text[i] !== "`") {
+      i++;
+      continue;
+    }
+    const run = countBacktickRun(text, i);
+    if (ticks === 0) {
+      if (run >= 3 && atMarkdownFenceLineStart(text, i)) {
+        i += run;
+        continue;
+      }
+      if (state2 && insideCodeFenceWithState(state2, text.slice(0, i))) {
+        i += run;
+        continue;
+      }
+      ticks = run;
+    } else if (run === ticks) {
+      ticks = 0;
+    }
+    i += run;
+  }
+  return ticks;
+}
+function insideCodeFenceWithState(state2, text) {
+  const simulated = simulateCodeFenceState(
+    state2.codeFenceStack,
+    state2.codeFencePendingTicks,
+    state2.codeFencePendingTildes,
+    state2.codeFenceLineStart,
+    text
+  );
+  return simulated.stack.length > 0;
+}
+function countBacktickRun(text, start) {
+  let count = 0;
+  while (start + count < text.length && text[start + count] === "`") count++;
+  return count;
+}
+function atMarkdownFenceLineStart(text, idx) {
+  for (let i = idx - 1; i >= 0; i--) {
+    const ch = text[i];
+    if (ch === " " || ch === "	") continue;
+    return ch === "\n" || ch === "\r";
+  }
+  return true;
+}
+function toStringSafe(v) {
+  if (typeof v === "string") return v.trim();
+  if (Array.isArray(v)) return toStringSafe(v[0]);
+  if (v == null) return "";
+  return String(v).trim();
+}
+const TOOL_MARKUP_NAMES = [
+  { raw: "tool_calls", canonical: "tool_calls" },
+  { raw: "tool-calls", canonical: "tool_calls", dsmlOnly: true },
+  { raw: "toolcalls", canonical: "tool_calls", dsmlOnly: true },
+  { raw: "invoke", canonical: "invoke" },
+  { raw: "parameter", canonical: "parameter" }
+];
+function normalizeFullwidthASCIIChar(ch) {
+  if (!ch) return "";
+  const code = ch.charCodeAt(0);
+  if (code >= 65281 && code <= 65374) {
+    return String.fromCharCode(code - 65248);
+  }
+  if (ch === "〈" || ch === "〈" || ch === "﹤") return "<";
+  if (ch === "〉" || ch === "〉" || ch === "﹥") return ">";
+  if (ch === "！") return "!";
+  if (ch === "／") return "/";
+  if (ch === "＝") return "=";
+  if (ch === "“" || ch === "”" || ch === "＂") return '"';
+  if (ch === "‘" || ch === "’" || ch === "＇") return "'";
+  if (ch === "｜") return "|";
+  return ch;
+}
+function normalizeFullwidthASCII(text) {
+  let out = "";
+  for (const ch of text) {
+    out += normalizeFullwidthASCIIChar(ch);
+  }
+  return out;
+}
+function isXmlTagStartDelimiter(ch) {
+  return ["<", "＜", "﹤", "〈"].includes(ch);
+}
+function isXmlTagEndDelimiter(ch) {
+  return [">", "＞", "﹥", "〉"].includes(ch);
+}
+function scanToolMarkupTagAt$2(text, start) {
+  if (start < 0 || start >= text.length || !isXmlTagStartDelimiter(text[start])) {
+    return null;
+  }
+  let i = start + 1;
+  while (i < text.length && isXmlTagStartDelimiter(text[i])) {
+    i++;
+  }
+  let closing = false;
+  if (i < text.length && (text[i] === "/" || text[i] === "／")) {
+    closing = true;
+    i++;
+  }
+  while (i < text.length && isIgnorableToolMarkupChar(text[i])) {
+    i++;
+  }
+  let dsmlLike = false;
+  if (text.slice(i).toUpperCase().startsWith("|DSML|")) {
+    dsmlLike = true;
+    i += 6;
+  } else if (text.slice(i).toUpperCase().startsWith("DSML|")) {
+    dsmlLike = true;
+    i += 5;
+  }
+  const nameMatch = matchToolMarkupName$1(text, i);
+  if (!nameMatch) return null;
+  const name = nameMatch.canonical;
+  const nameEnd = i + nameMatch.len;
+  i = nameEnd;
+  let end = -1;
+  for (let j = i; j < text.length; j++) {
+    if (isXmlTagEndDelimiter(text[j])) {
+      end = j;
+      break;
+    }
+    if (isXmlTagStartDelimiter(text[j])) break;
+  }
+  if (end === -1) return null;
+  return {
+    name,
+    closing,
+    start,
+    end,
+    nameEnd,
+    dsmlLike,
+    canonical: !dsmlLike,
+    selfClosing: text[end - 1] === "/" || text[end - 1] === "／"
+  };
+}
+function isIgnorableToolMarkupChar(ch) {
+  return ch === "|" || ch === "｜" || /\s/.test(ch);
+}
+function matchToolMarkupName$1(text, start) {
+  const sub = normalizeFullwidthASCII(text.slice(start, start + 20).toLowerCase());
+  for (const entry of TOOL_MARKUP_NAMES) {
+    if (sub.startsWith(entry.raw)) {
+      return { canonical: entry.canonical, len: entry.raw.length };
+    }
+  }
+  return null;
+}
+function findToolMarkupTag(text, from) {
+  for (let i = from; i < text.length; i++) {
+    if (isXmlTagStartDelimiter(text[i])) {
+      const tag = scanToolMarkupTagAt$2(text, i);
+      if (tag) return tag;
+    }
+  }
+  return null;
+}
+function indexToolCDATAOpen$1(text, from) {
+  const sub = text.slice(from);
+  const match = sub.match(/(?:<|＜|〈)(?:!|！)\[CDATA\[/i);
+  return match && match.index !== void 0 ? from + match.index : -1;
+}
+function toolCDATAOpenLenAt$1(text, pos) {
+  const sub = text.slice(pos);
+  const match = sub.match(/^(?:<|＜|〈)(?:!|！)\[CDATA\[/i);
+  return match ? match[0].length : 0;
+}
+function findToolCDATAEnd$1(text, from) {
+  for (let i = from; i < text.length; i++) {
+    const len = toolCDATACloseLenAt$1(text, i);
+    if (len > 0) return i;
+  }
+  return -1;
+}
+function toolCDATACloseLenAt$1(text, pos) {
+  const sub = text.slice(pos);
+  const match = sub.match(/^\]\](?:>|＞|〉)/);
+  return match ? match[0].length : 0;
+}
+function extractStandaloneCDATA$1(text) {
+  const openLen = toolCDATAOpenLenAt$1(text, 0);
+  if (openLen === 0) return text;
+  const endPos = findToolCDATAEnd$1(text, openLen);
+  if (endPos === -1) return text.slice(openLen);
+  return text.slice(openLen, endPos);
+}
+function sanitizeLooseCDATA(text) {
+  let out = text;
+  let pos = 0;
+  while (true) {
+    const openIdx = indexToolCDATAOpen$1(out, pos);
+    if (openIdx === -1) break;
+    const openLen = toolCDATAOpenLenAt$1(out, openIdx);
+    const endIdx = findToolCDATAEnd$1(out, openIdx + openLen);
+    if (endIdx === -1) {
+      out += "]]>";
+      break;
+    }
+    pos = endIdx + toolCDATACloseLenAt$1(out, endIdx);
+  }
+  return out;
+}
+function preservesCDATAStringParameter$1(name) {
+  const n = name.toLowerCase();
+  return [
+    "content",
+    "file_content",
+    "code",
+    "text",
+    "old_string",
+    "new_string",
+    "replacement",
+    "prompt",
+    "command",
+    "script",
+    "path",
+    "file_path"
+  ].includes(n);
+}
+function parseTagAttributes(attrStr) {
+  const out = {};
+  const pattern = /\b([a-z0-9_:-]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/gi;
+  let match;
+  while ((match = pattern.exec(attrStr)) !== null) {
+    out[match[1]] = match[2] || match[3] || "";
+  }
+  return out;
+}
+function findXmlElementBlocks(text, tagName) {
+  const out = [];
+  let pos = 0;
+  while (pos < text.length) {
+    const tag = findToolMarkupTag(text, pos);
+    if (!tag || tag.closing || tag.name !== tagName) {
+      pos++;
+      continue;
+    }
+    const closeTag = findMatchingCloseTag(text, tag);
+    if (!closeTag) {
+      pos = tag.end + 1;
+      continue;
+    }
+    out.push({
+      attrs: text.slice(tag.nameEnd, tag.end),
+      body: text.slice(tag.end + 1, closeTag.start),
+      start: tag.start,
+      end: closeTag.end + 1
+    });
+    pos = closeTag.end + 1;
+  }
+  return out;
+}
+function findMatchingCloseTag(text, openTag) {
+  let depth = 1;
+  let pos = openTag.end + 1;
+  while (pos < text.length) {
+    const tag = findToolMarkupTag(text, pos);
+    if (!tag || tag.name !== openTag.name) {
+      pos++;
+      continue;
+    }
+    if (tag.closing) {
+      depth--;
+      if (depth === 0) return tag;
+    } else {
+      depth++;
+    }
+    pos = tag.end + 1;
+  }
+  return null;
+}
+function parseMarkupSingleToolCall(block) {
+  const attrs = parseTagAttributes(block.attrs);
+  const name = toStringSafe(attrs.name);
+  if (!name) return null;
+  const input = {};
+  const paramBlocks = findXmlElementBlocks(block.body, "parameter");
+  for (const pb of paramBlocks) {
+    const pAttrs = parseTagAttributes(pb.attrs);
+    const pName = toStringSafe(pAttrs.name);
+    if (!pName) continue;
+    let value = pb.body.trim();
+    if (preservesCDATAStringParameter$1(pName)) {
+      value = extractStandaloneCDATA$1(sanitizeLooseCDATA(value));
+    } else {
+      try {
+        const decoded = JSON.parse(value);
+        if (decoded !== null && typeof decoded === "object") value = decoded;
+      } catch {
+        value = extractStandaloneCDATA$1(value);
+      }
+    }
+    input[pName] = value;
+  }
+  return { name, input };
+}
+function stripFencedCodeBlocks$1(text) {
+  const lines = text.split("\n");
+  const out = [];
+  let inFence = false;
+  let fenceChar = "";
+  let fenceLen = 0;
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!inFence) {
+      if (trimmed.startsWith("```") || trimmed.startsWith("~~~")) {
+        inFence = true;
+        fenceChar = trimmed[0];
+        fenceLen = countLeadingChars(trimmed, fenceChar);
+        continue;
+      }
+      out.push(line);
+    } else {
+      if (trimmed.startsWith(fenceChar) && countLeadingChars(trimmed, fenceChar) >= fenceLen) {
+        inFence = false;
+        continue;
+      }
+    }
+  }
+  return out.join("\n");
+}
+function countLeadingChars(text, ch) {
+  let count = 0;
+  while (count < text.length && text[count] === ch) count++;
+  return count;
+}
+function normalizeDSMLToolCallMarkup$1(text) {
+  let out = "";
+  const state2 = createToolSieveState();
+  for (let i = 0; i < text.length; ) {
+    if (insideCodeFenceWithState(state2, text.slice(0, i))) {
+      out += text[i];
+      i++;
+      continue;
+    }
+    const tag = scanToolMarkupTagAt$2(text, i);
+    if (tag) {
+      out += `<${tag.closing ? "/" : ""}${tag.name}${text.slice(tag.nameEnd, tag.end)}>`;
+      i = tag.end + 1;
+      continue;
+    }
+    out += text[i];
+    i++;
+  }
+  return out;
+}
+function parseToolCalls(text) {
+  const result = {
+    calls: [],
+    sawToolCallSyntax: false,
+    rejectedByPolicy: false,
+    rejectedToolNames: []
+  };
+  const raw = toStringSafe(text);
+  if (!raw) return result;
+  const cleaned = stripFencedCodeBlocks$1(raw);
+  const normalized = normalizeDSMLToolCallMarkup$1(cleaned);
+  const wrappers = findXmlElementBlocks(normalized, "tool_calls");
+  if (wrappers.length > 0) result.sawToolCallSyntax = true;
+  for (const wrapper of wrappers) {
+    const calls = findXmlElementBlocks(wrapper.body, "invoke");
+    for (const callBlock of calls) {
+      const parsed = parseMarkupSingleToolCall(callBlock);
+      if (parsed) result.calls.push(parsed);
+    }
+  }
+  return result;
+}
+const toolMarkupNames$1 = [
+  { canonical: "tool_calls", raw: "tool_calls" },
+  { canonical: "invoke", raw: "invoke" },
+  { canonical: "parameter", raw: "parameter" }
+];
+function canonicalizeToolCallCandidateSpans(text) {
+  if (!text) return "";
+  let out = "";
+  for (let i = 0; i < text.length; ) {
+    const { next, advanced, blocked } = skipXMLIgnoredSection(text, i);
+    if (blocked) {
+      out += text.slice(i);
+      break;
+    }
+    if (advanced) {
+      out += text.slice(i, next);
+      i = next;
+      continue;
+    }
+    const codeEnd = markdownCodeSpanEnd$1(text, i);
+    if (codeEnd !== -1) {
+      out += text.slice(i, codeEnd);
+      i = codeEnd;
+      continue;
+    }
+    const tag = scanToolMarkupTagAt$1(text, i);
+    if (!tag) {
+      out += text[i];
+      i++;
+      continue;
+    }
+    out += canonicalizeRecognizedToolMarkupTag(
+      text.slice(tag.Start, tag.End + 1),
+      tag
+    );
+    i = tag.End + 1;
+  }
+  return out;
+}
+function skipXMLIgnoredSection(text, idx) {
+  if (text.startsWith("<![CDATA[", idx)) {
+    const end = text.indexOf("]]>", idx + 9);
+    if (end === -1)
+      return { next: text.length, advanced: true, blocked: true };
+    return { next: end + 3, advanced: true, blocked: false };
+  }
+  if (text.startsWith("<!--", idx)) {
+    const end = text.indexOf("-->", idx + 4);
+    if (end === -1)
+      return { next: text.length, advanced: true, blocked: true };
+    return { next: end + 3, advanced: true, blocked: false };
+  }
+  return { next: idx, advanced: false, blocked: false };
+}
+function markdownCodeSpanEnd$1(text, idx) {
+  if (text[idx] !== "`") return -1;
+  let count = 0;
+  while (idx + count < text.length && text[idx + count] === "`") count++;
+  const fence = text.slice(idx, idx + count);
+  const end = text.indexOf(fence, idx + count);
+  if (end === -1) return -1;
+  return end + count;
+}
+function scanToolMarkupTagAt$1(text, idx) {
+  const startLen = xmlTagStartDelimiterLenAt(text, idx);
+  if (startLen === 0) return null;
+  let pos = idx + startLen;
+  pos = skipToolMarkupIgnorables(text, pos);
+  let closing = false;
+  const { next: afterSlash, ok: hasSlash } = consumeToolMarkupClosingSlash(
+    text,
+    pos
+  );
+  if (hasSlash) {
+    closing = true;
+    pos = afterSlash;
+  }
+  pos = skipToolMarkupIgnorables(text, pos);
+  let dsmlLike = false;
+  if (text.startsWith("|DSML|", pos)) {
+    dsmlLike = true;
+    pos += 6;
+  }
+  for (const entry of toolMarkupNames$1) {
+    const { next: afterName, ok: nameMatch } = consumeToolKeyword(
+      text,
+      pos,
+      entry.raw
+    );
+    if (nameMatch) {
+      let endPos = afterName;
+      let selfClosing = false;
+      while (endPos < text.length) {
+        const endLen = xmlTagEndDelimiterLenAt(text, endPos);
+        if (endLen > 0) {
+          return {
+            Name: entry.canonical,
+            Start: idx,
+            End: endPos + endLen - 1,
+            NameStart: pos,
+            NameEnd: afterName,
+            Closing: closing,
+            SelfClosing: selfClosing,
+            DSMLLike: dsmlLike,
+            Canonical: !dsmlLike
+          };
+        }
+        const { next: nextAfterSlash, ok: scSlash } = consumeToolMarkupClosingSlash(text, endPos);
+        if (scSlash) {
+          selfClosing = true;
+          endPos = nextAfterSlash;
+          continue;
+        }
+        endPos++;
+      }
+    }
+  }
+  return null;
+}
+function canonicalizeRecognizedToolMarkupTag(raw, tag) {
+  let idx = 0;
+  const startDelim = xmlTagStartDelimiterLenAt(raw, idx);
+  idx += startDelim;
+  while (idx < raw.length) {
+    idx = skipToolMarkupIgnorables(raw, idx);
+    const d = xmlTagStartDelimiterLenAt(raw, idx);
+    if (d > 0) {
+      idx += d;
+      continue;
+    }
+    break;
+  }
+  idx = skipToolMarkupIgnorables(raw, idx);
+  if (tag.Closing) {
+    const { next } = consumeToolMarkupClosingSlash(raw, idx);
+    idx = next;
+  }
+  if (raw.startsWith("|DSML|", idx)) idx += 6;
+  const { next: afterName } = consumeToolKeyword(raw, idx, rawNameForTag(tag));
+  const attrs = parseCanonicalToolMarkupAttrs(raw, afterName);
+  let out = "<" + (tag.Closing ? "/" : "") + (tag.DSMLLike ? "|DSML|" : "") + tag.Name;
+  for (const attr of attrs) {
+    out += ` ${attr.Key}="${attr.Value.replace(/"/g, "&quot;")}"`;
+  }
+  out += (tag.SelfClosing ? "/" : "") + ">";
+  return out;
+}
+function rawNameForTag(tag) {
+  var _a;
+  return ((_a = toolMarkupNames$1.find((n) => n.canonical === tag.Name)) == null ? void 0 : _a.raw) || tag.Name;
+}
+function parseCanonicalToolMarkupAttrs(raw, idx) {
+  const out = [];
+  while (idx < raw.length) {
+    idx = skipToolMarkupIgnorables(raw, idx);
+    if (xmlTagEndDelimiterLenAt(raw, idx) > 0) break;
+    const { next: pNext, ok: hasPipe } = consumeToolMarkupPipe(raw, idx);
+    if (hasPipe) {
+      idx = pNext;
+      continue;
+    }
+    const { next: sNext, ok: hasSlash } = consumeToolMarkupClosingSlash(
+      raw,
+      idx
+    );
+    if (hasSlash) {
+      idx = sNext;
+      continue;
+    }
+    const keyStart = idx;
+    while (idx < raw.length) {
+      if (toolMarkupWhitespaceLikeLenAt(raw, idx) > 0) break;
+      if (toolMarkupEqualsLenAt(raw, idx) > 0) break;
+      if (xmlTagEndDelimiterLenAt(raw, idx) > 0) break;
+      idx++;
+    }
+    const key = raw.slice(keyStart, idx).trim();
+    if (!key) {
+      idx++;
+      continue;
+    }
+    idx = skipToolMarkupIgnorables(raw, idx);
+    const eqLen = toolMarkupEqualsLenAt(raw, idx);
+    if (eqLen === 0) continue;
+    idx += eqLen;
+    idx = skipToolMarkupIgnorables(raw, idx);
+    const { quote, quoteLen } = xmlQuotePairAt(raw, idx);
+    let value = "";
+    if (quoteLen > 0) {
+      idx += quoteLen;
+      const vStart = idx;
+      while (idx < raw.length) {
+        if (raw.startsWith(quote, idx)) {
+          value = raw.slice(vStart, idx);
+          idx += quote.length;
+          break;
+        }
+        idx++;
+      }
+    } else {
+      const vStart = idx;
+      while (idx < raw.length) {
+        if (toolMarkupWhitespaceLikeLenAt(raw, idx) > 0 || xmlTagEndDelimiterLenAt(raw, idx) > 0)
+          break;
+        idx++;
+      }
+      value = raw.slice(vStart, idx);
+    }
+    if (key.toLowerCase().includes("name")) {
+      out.push({ Key: "name", Value: value });
+    }
+  }
+  return out;
+}
+function skipToolMarkupIgnorables(text, idx) {
+  while (idx < text.length) {
+    const code = text.charCodeAt(idx);
+    if (code >= 8203 && code <= 8207 || code >= 8234 && code <= 8238 || code < 32 && ![9, 10, 13].includes(code)) {
+      idx++;
+      continue;
+    }
+    break;
+  }
+  return idx;
+}
+function toolMarkupWhitespaceLikeLenAt(text, idx) {
+  const ch = text[idx];
+  if ([" ", "	", "\n", "\r"].includes(ch)) return 1;
+  if (text.startsWith("▁", idx)) return 1;
+  return 0;
+}
+function toolMarkupEqualsLenAt(text, idx) {
+  const ch = text[idx];
+  if (["=", "＝", "﹦", "꞊"].includes(ch)) return ch.length;
+  return 0;
+}
+function xmlTagStartDelimiterLenAt(text, idx) {
+  const ch = text[idx];
+  if (["<", "＜", "﹤", "〈"].includes(ch)) return ch.length;
+  return 0;
+}
+function xmlTagEndDelimiterLenAt(text, idx) {
+  const ch = text[idx];
+  if ([">", "＞", "﹥", "〉"].includes(ch)) return ch.length;
+  return 0;
+}
+function consumeToolMarkupClosingSlash(text, idx) {
+  const ch = text[idx];
+  if (["/", "／", "∕", "⁄", "⧸"].includes(ch))
+    return { next: idx + ch.length, ok: true };
+  return { next: idx, ok: false };
+}
+function consumeToolMarkupPipe(text, idx) {
+  const ch = text[idx];
+  if (["|", "│", "∣", "❘", "ǀ", "￨"].includes(ch))
+    return { next: idx + ch.length, ok: true };
+  return { next: idx, ok: false };
+}
+function xmlQuotePairAt(text, idx) {
+  const ch = text[idx];
+  const pairs = {
+    '"': '"',
+    "'": "'",
+    "“": "”",
+    "‘": "’",
+    "＂": "＂",
+    "＇": "＇",
+    "„": "”",
+    "‟": "”"
+  };
+  if (pairs[ch]) return { quote: pairs[ch], quoteLen: ch.length };
+  return { quote: "", quoteLen: 0 };
+}
+function foldToolKeywordRune(r) {
+  const code = r.charCodeAt(0);
+  let normalized = r.toLowerCase();
+  if (code >= 65313 && code <= 65338)
+    normalized = String.fromCharCode(code - 65248).toLowerCase();
+  else if (code >= 65345 && code <= 65370)
+    normalized = String.fromCharCode(code - 65248);
+  const map = {
+    а: "a",
+    α: "a",
+    с: "c",
+    С: "c",
+    ϲ: "c",
+    "Ϲ": "c",
+    "ԁ": "d",
+    "ⅾ": "d",
+    е: "e",
+    Е: "e",
+    Ε: "e",
+    ε: "e",
+    і: "i",
+    І: "i",
+    Ι: "i",
+    ι: "i",
+    ı: "i",
+    к: "k",
+    К: "k",
+    Κ: "k",
+    κ: "k",
+    "ⅼ": "l",
+    м: "m",
+    М: "m",
+    Μ: "m",
+    μ: "m",
+    ո: "n",
+    о: "o",
+    О: "o",
+    Ο: "o",
+    ο: "o",
+    р: "p",
+    Р: "p",
+    Ρ: "p",
+    ρ: "p",
+    ѕ: "s",
+    Ѕ: "s",
+    т: "t",
+    Т: "t",
+    Τ: "t",
+    τ: "t",
+    ν: "v",
+    Ν: "v",
+    ѵ: "v",
+    "ⅴ": "v"
+  };
+  return map[normalized] || (/[a-z0-9]/.test(normalized) ? normalized : null);
+}
+function consumeToolKeyword(text, idx, keyword) {
+  let next = idx;
+  for (let i = 0; i < keyword.length; i++) {
+    next = skipToolMarkupIgnorables(text, next);
+    if (next >= text.length) return { next: idx, ok: false };
+    const target = keyword[i].toLowerCase();
+    const ch = text[next];
+    if (target === "_" || target === "-") {
+      if ([
+        "_",
+        "＿",
+        "﹍",
+        "﹎",
+        "﹏",
+        "-",
+        "‐",
+        "‑",
+        "‒",
+        "–",
+        "—",
+        "―",
+        "−",
+        "﹣",
+        "－"
+      ].includes(ch)) {
+        next++;
+        continue;
+      }
+      return { next: idx, ok: false };
+    }
+    if (foldToolKeywordRune(ch) !== target) return { next: idx, ok: false };
+    next++;
+  }
+  return { next, ok: true };
+}
+const toolMarkupNames = [
+  { raw: "tool_calls", canonical: "tool_calls" },
+  { raw: "tool-calls", canonical: "tool_calls", dsmlOnly: true },
+  { raw: "toolcalls", canonical: "tool_calls", dsmlOnly: true },
+  { raw: "invoke", canonical: "invoke" },
+  { raw: "parameter", canonical: "parameter" }
+];
+function containsToolMarkupSyntaxOutsideIgnored(text) {
+  let hasDSML = false;
+  let hasCanonical = false;
+  for (let i = 0; i < text.length; ) {
+    const { next, advanced, blocked } = skipXMLIgnoredSection(text, i);
+    if (blocked) break;
+    if (advanced) {
+      i = next;
+      continue;
+    }
+    const codeEnd = markdownCodeSpanEnd(text, i);
+    if (codeEnd !== -1) {
+      i = codeEnd;
+      continue;
+    }
+    const tag = scanToolMarkupTagAt(text, i);
+    if (tag) {
+      if (tag.DSMLLike) hasDSML = true;
+      else hasCanonical = true;
+      if (hasDSML && hasCanonical) return { hasDSML: true, hasCanonical: true };
+      i = tag.End + 1;
+      continue;
+    }
+    i++;
+  }
+  return { hasDSML, hasCanonical };
+}
+function findToolMarkupTagOutsideIgnored(text, start) {
+  for (let i = Math.max(start, 0); i < text.length; ) {
+    const { next, advanced, blocked } = skipXMLIgnoredSection(text, i);
+    if (blocked) break;
+    if (advanced) {
+      i = next;
+      continue;
+    }
+    const codeEnd = markdownCodeSpanEnd(text, i);
+    if (codeEnd !== -1) {
+      i = codeEnd;
+      continue;
+    }
+    const tag = scanToolMarkupTagAt(text, i);
+    if (tag) return tag;
+    i++;
+  }
+  return null;
+}
+function findMatchingToolMarkupClose(text, open) {
+  if (!text || !open.Name || open.Closing || open.End >= text.length) return null;
+  let depth = 1;
+  let pos = open.End + 1;
+  while (pos < text.length) {
+    const tag = findToolMarkupTagOutsideIgnored(text, pos);
+    if (!tag) return null;
+    if (tag.Name !== open.Name) {
+      pos = tag.End + 1;
+      continue;
+    }
+    if (tag.Closing) {
+      depth--;
+      if (depth === 0) return tag;
+    } else if (!tag.SelfClosing) {
+      depth++;
+    }
+    pos = tag.End + 1;
+  }
+  return null;
+}
+function scanToolMarkupTagAt(text, start) {
+  const startLen = xmlTagStartDelimiterLenAt(text, start);
+  if (startLen === 0) return null;
+  let i = start + startLen;
+  while (true) {
+    const nextLen = xmlTagStartDelimiterLenAt(text, i);
+    if (nextLen === 0) break;
+    i += nextLen;
+  }
+  let closing = false;
+  const slashRes = consumeToolMarkupClosingSlash(text, i);
+  if (slashRes.ok) {
+    closing = true;
+    i = slashRes.next;
+  }
+  const prefixStart = i;
+  const { next: afterPrefix, dsmlLike } = consumeToolMarkupNamePrefix(text, i);
+  i = afterPrefix;
+  let { name, nameLen } = matchToolMarkupName(text, i, dsmlLike);
+  let finalDsmlLike = dsmlLike;
+  if (nameLen === 0) {
+    const fallback = matchToolMarkupNameAfterArbitraryPrefix(text, prefixStart);
+    if (!fallback) return null;
+    name = fallback.name;
+    i = fallback.start;
+    nameLen = fallback.len;
+    finalDsmlLike = true;
+  }
+  const nameEnd = i + nameLen;
+  const end = findXmlTagEnd(text, nameEnd);
+  if (end === -1) return null;
+  const tagText = text.slice(start, end + 1).trim();
+  return {
+    Start: start,
+    End: end,
+    NameStart: i,
+    NameEnd: nameEnd,
+    Name: name,
+    Closing: closing,
+    SelfClosing: tagText.endsWith("/>") || tagText.endsWith("/＞") || tagText.endsWith("/〉"),
+    DSMLLike: finalDsmlLike,
+    Canonical: !finalDsmlLike
+  };
+}
+function consumeToolMarkupNamePrefix(text, idx) {
+  let dsmlLike = false;
+  let current = idx;
+  while (true) {
+    const next = skipToolMarkupIgnorables(text, current);
+    const { next: afterKeyword, ok } = consumeToolKeyword(text, next, "dsml");
+    if (ok) {
+      current = afterKeyword;
+      if (text[current] === "-" || text[current] === "_") current++;
+      dsmlLike = true;
+      continue;
+    }
+    break;
+  }
+  return { next: current, dsmlLike };
+}
+function matchToolMarkupName(text, start, dsmlLike) {
+  for (const entry of toolMarkupNames) {
+    if (entry.dsmlOnly && !dsmlLike) continue;
+    const { next, ok } = consumeToolKeyword(text, start, entry.raw);
+    if (ok) return { name: entry.canonical, nameLen: next - start };
+  }
+  return { name: "", nameLen: 0 };
+}
+function matchToolMarkupNameAfterArbitraryPrefix(text, start) {
+  for (let idx = start; idx < text.length; idx++) {
+    if (isToolMarkupTagTerminator(text[idx])) break;
+    for (const entry of toolMarkupNames) {
+      const { next, ok } = consumeToolKeyword(text, idx, entry.raw);
+      if (ok) return { name: entry.canonical, start: idx, len: next - idx };
+    }
+  }
+  return null;
+}
+function isToolMarkupTagTerminator(ch) {
+  return ch === ">" || ch === "＞" || ch === "﹥" || ch === "〉";
+}
+function findXmlTagEnd(text, start) {
+  for (let i = start; i < text.length; i++) {
+    const endLen = xmlTagEndDelimiterLenAt(text, i);
+    if (endLen > 0) return i + endLen - 1;
+  }
+  return -1;
+}
+function markdownCodeSpanEnd(text, idx) {
+  if (text[idx] !== "`") return -1;
+  let count = 0;
+  while (idx + count < text.length && text[idx + count] === "`") count++;
+  const fence = text.slice(idx, idx + count);
+  const end = text.indexOf(fence, idx + count);
+  if (end === -1) return -1;
+  return end + count;
+}
+function normalizeDSMLToolCallMarkup(text) {
+  if (!text) return { text: "", ok: true };
+  const canonicalized = canonicalizeToolCallCandidateSpans(text);
+  const { hasDSML, hasCanonical } = containsToolMarkupSyntaxOutsideIgnored(canonicalized);
+  if (!hasDSML && !hasCanonical) {
+    return { text: canonicalized, ok: true };
+  }
+  return { text: rewriteDSMLToolMarkupOutsideIgnored(canonicalized), ok: true };
+}
+function rewriteDSMLToolMarkupOutsideIgnored(text) {
+  if (!text) return "";
+  let out = "";
+  for (let i = 0; i < text.length; ) {
+    const { next, advanced, blocked } = skipXMLIgnoredSection(text, i);
+    if (blocked) {
+      out += text.slice(i);
+      break;
+    }
+    if (advanced) {
+      out += text.slice(i, next);
+      i = next;
+      continue;
+    }
+    const codeEnd = markdownCodeSpanEndAt(text, i);
+    if (codeEnd !== -1) {
+      out += text.slice(i, codeEnd);
+      i = codeEnd;
+      continue;
+    }
+    const tag = scanToolMarkupTagAt(text, i);
+    if (!tag) {
+      out += text[i];
+      i++;
+      continue;
+    }
+    out += "<" + (tag.Closing ? "/" : "") + tag.Name + ">";
+    i = tag.End + 1;
+  }
+  return out;
+}
+function markdownCodeSpanEndAt(text, idx) {
+  if (text[idx] !== "`") return -1;
+  let count = 0;
+  while (idx + count < text.length && text[idx + count] === "`") count++;
+  const fence = text.slice(idx, idx + count);
+  const end = text.indexOf(fence, idx + count);
+  if (end === -1) return -1;
+  return end + count;
+}
+var __assign$1 = function() {
+  __assign$1 = Object.assign || function(t) {
+    for (var s, i = 1, n = arguments.length; i < n; i++) {
+      s = arguments[i];
+      for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+        t[p] = s[p];
+    }
+    return t;
+  };
+  return __assign$1.apply(this, arguments);
+};
+var pairDivider = "~";
+var blockDivider = "~~";
+function generateNamedReferences(input, prev) {
+  var entities = {};
+  var characters = {};
+  var blocks = input.split(blockDivider);
+  var isOptionalBlock = false;
+  for (var i = 0; blocks.length > i; i++) {
+    var entries = blocks[i].split(pairDivider);
+    for (var j = 0; j < entries.length; j += 2) {
+      var entity = entries[j];
+      var character = entries[j + 1];
+      var fullEntity = "&" + entity + ";";
+      entities[fullEntity] = character;
+      if (isOptionalBlock) {
+        entities["&" + entity] = character;
+      }
+      characters[character] = fullEntity;
+    }
+    isOptionalBlock = true;
+  }
+  return prev ? { entities: __assign$1(__assign$1({}, entities), prev.entities), characters: __assign$1(__assign$1({}, characters), prev.characters) } : { entities, characters };
+}
+var bodyRegExps = {
+  xml: /&(?:#\d+|#[xX][\da-fA-F]+|[0-9a-zA-Z]+);?/g,
+  html4: /&notin;|&(?:nbsp|iexcl|cent|pound|curren|yen|brvbar|sect|uml|copy|ordf|laquo|not|shy|reg|macr|deg|plusmn|sup2|sup3|acute|micro|para|middot|cedil|sup1|ordm|raquo|frac14|frac12|frac34|iquest|Agrave|Aacute|Acirc|Atilde|Auml|Aring|AElig|Ccedil|Egrave|Eacute|Ecirc|Euml|Igrave|Iacute|Icirc|Iuml|ETH|Ntilde|Ograve|Oacute|Ocirc|Otilde|Ouml|times|Oslash|Ugrave|Uacute|Ucirc|Uuml|Yacute|THORN|szlig|agrave|aacute|acirc|atilde|auml|aring|aelig|ccedil|egrave|eacute|ecirc|euml|igrave|iacute|icirc|iuml|eth|ntilde|ograve|oacute|ocirc|otilde|ouml|divide|oslash|ugrave|uacute|ucirc|uuml|yacute|thorn|yuml|quot|amp|lt|gt|#\d+|#[xX][\da-fA-F]+|[0-9a-zA-Z]+);?/g,
+  html5: /&centerdot;|&copysr;|&divideontimes;|&gtcc;|&gtcir;|&gtdot;|&gtlPar;|&gtquest;|&gtrapprox;|&gtrarr;|&gtrdot;|&gtreqless;|&gtreqqless;|&gtrless;|&gtrsim;|&ltcc;|&ltcir;|&ltdot;|&lthree;|&ltimes;|&ltlarr;|&ltquest;|&ltrPar;|&ltri;|&ltrie;|&ltrif;|&notin;|&notinE;|&notindot;|&notinva;|&notinvb;|&notinvc;|&notni;|&notniva;|&notnivb;|&notnivc;|&parallel;|&timesb;|&timesbar;|&timesd;|&(?:AElig|AMP|Aacute|Acirc|Agrave|Aring|Atilde|Auml|COPY|Ccedil|ETH|Eacute|Ecirc|Egrave|Euml|GT|Iacute|Icirc|Igrave|Iuml|LT|Ntilde|Oacute|Ocirc|Ograve|Oslash|Otilde|Ouml|QUOT|REG|THORN|Uacute|Ucirc|Ugrave|Uuml|Yacute|aacute|acirc|acute|aelig|agrave|amp|aring|atilde|auml|brvbar|ccedil|cedil|cent|copy|curren|deg|divide|eacute|ecirc|egrave|eth|euml|frac12|frac14|frac34|gt|iacute|icirc|iexcl|igrave|iquest|iuml|laquo|lt|macr|micro|middot|nbsp|not|ntilde|oacute|ocirc|ograve|ordf|ordm|oslash|otilde|ouml|para|plusmn|pound|quot|raquo|reg|sect|shy|sup1|sup2|sup3|szlig|thorn|times|uacute|ucirc|ugrave|uml|uuml|yacute|yen|yuml|#\d+|#[xX][\da-fA-F]+|[0-9a-zA-Z]+);?/g
+};
+var namedReferences = {};
+namedReferences["xml"] = generateNamedReferences(`lt~<~gt~>~quot~"~apos~'~amp~&`);
+namedReferences["html4"] = generateNamedReferences(`apos~'~OElig~Œ~oelig~œ~Scaron~Š~scaron~š~Yuml~Ÿ~circ~ˆ~tilde~˜~ensp~ ~emsp~ ~thinsp~ ~zwnj~‌~zwj~‍~lrm~‎~rlm~‏~ndash~–~mdash~—~lsquo~‘~rsquo~’~sbquo~‚~ldquo~“~rdquo~”~bdquo~„~dagger~†~Dagger~‡~permil~‰~lsaquo~‹~rsaquo~›~euro~€~fnof~ƒ~Alpha~Α~Beta~Β~Gamma~Γ~Delta~Δ~Epsilon~Ε~Zeta~Ζ~Eta~Η~Theta~Θ~Iota~Ι~Kappa~Κ~Lambda~Λ~Mu~Μ~Nu~Ν~Xi~Ξ~Omicron~Ο~Pi~Π~Rho~Ρ~Sigma~Σ~Tau~Τ~Upsilon~Υ~Phi~Φ~Chi~Χ~Psi~Ψ~Omega~Ω~alpha~α~beta~β~gamma~γ~delta~δ~epsilon~ε~zeta~ζ~eta~η~theta~θ~iota~ι~kappa~κ~lambda~λ~mu~μ~nu~ν~xi~ξ~omicron~ο~pi~π~rho~ρ~sigmaf~ς~sigma~σ~tau~τ~upsilon~υ~phi~φ~chi~χ~psi~ψ~omega~ω~thetasym~ϑ~upsih~ϒ~piv~ϖ~bull~•~hellip~…~prime~′~Prime~″~oline~‾~frasl~⁄~weierp~℘~image~ℑ~real~ℜ~trade~™~alefsym~ℵ~larr~←~uarr~↑~rarr~→~darr~↓~harr~↔~crarr~↵~lArr~⇐~uArr~⇑~rArr~⇒~dArr~⇓~hArr~⇔~forall~∀~part~∂~exist~∃~empty~∅~nabla~∇~isin~∈~notin~∉~ni~∋~prod~∏~sum~∑~minus~−~lowast~∗~radic~√~prop~∝~infin~∞~ang~∠~and~∧~or~∨~cap~∩~cup~∪~int~∫~there4~∴~sim~∼~cong~≅~asymp~≈~ne~≠~equiv~≡~le~≤~ge~≥~sub~⊂~sup~⊃~nsub~⊄~sube~⊆~supe~⊇~oplus~⊕~otimes~⊗~perp~⊥~sdot~⋅~lceil~⌈~rceil~⌉~lfloor~⌊~rfloor~⌋~lang~〈~rang~〉~loz~◊~spades~♠~clubs~♣~hearts~♥~diams~♦~~nbsp~ ~iexcl~¡~cent~¢~pound~£~curren~¤~yen~¥~brvbar~¦~sect~§~uml~¨~copy~©~ordf~ª~laquo~«~not~¬~shy~­~reg~®~macr~¯~deg~°~plusmn~±~sup2~²~sup3~³~acute~´~micro~µ~para~¶~middot~·~cedil~¸~sup1~¹~ordm~º~raquo~»~frac14~¼~frac12~½~frac34~¾~iquest~¿~Agrave~À~Aacute~Á~Acirc~Â~Atilde~Ã~Auml~Ä~Aring~Å~AElig~Æ~Ccedil~Ç~Egrave~È~Eacute~É~Ecirc~Ê~Euml~Ë~Igrave~Ì~Iacute~Í~Icirc~Î~Iuml~Ï~ETH~Ð~Ntilde~Ñ~Ograve~Ò~Oacute~Ó~Ocirc~Ô~Otilde~Õ~Ouml~Ö~times~×~Oslash~Ø~Ugrave~Ù~Uacute~Ú~Ucirc~Û~Uuml~Ü~Yacute~Ý~THORN~Þ~szlig~ß~agrave~à~aacute~á~acirc~â~atilde~ã~auml~ä~aring~å~aelig~æ~ccedil~ç~egrave~è~eacute~é~ecirc~ê~euml~ë~igrave~ì~iacute~í~icirc~î~iuml~ï~eth~ð~ntilde~ñ~ograve~ò~oacute~ó~ocirc~ô~otilde~õ~ouml~ö~divide~÷~oslash~ø~ugrave~ù~uacute~ú~ucirc~û~uuml~ü~yacute~ý~thorn~þ~yuml~ÿ~quot~"~amp~&~lt~<~gt~>`);
+namedReferences["html5"] = generateNamedReferences('Abreve~Ă~Acy~А~Afr~𝔄~Amacr~Ā~And~⩓~Aogon~Ą~Aopf~𝔸~ApplyFunction~⁡~Ascr~𝒜~Assign~≔~Backslash~∖~Barv~⫧~Barwed~⌆~Bcy~Б~Because~∵~Bernoullis~ℬ~Bfr~𝔅~Bopf~𝔹~Breve~˘~Bscr~ℬ~Bumpeq~≎~CHcy~Ч~Cacute~Ć~Cap~⋒~CapitalDifferentialD~ⅅ~Cayleys~ℭ~Ccaron~Č~Ccirc~Ĉ~Cconint~∰~Cdot~Ċ~Cedilla~¸~CenterDot~·~Cfr~ℭ~CircleDot~⊙~CircleMinus~⊖~CirclePlus~⊕~CircleTimes~⊗~ClockwiseContourIntegral~∲~CloseCurlyDoubleQuote~”~CloseCurlyQuote~’~Colon~∷~Colone~⩴~Congruent~≡~Conint~∯~ContourIntegral~∮~Copf~ℂ~Coproduct~∐~CounterClockwiseContourIntegral~∳~Cross~⨯~Cscr~𝒞~Cup~⋓~CupCap~≍~DD~ⅅ~DDotrahd~⤑~DJcy~Ђ~DScy~Ѕ~DZcy~Џ~Darr~↡~Dashv~⫤~Dcaron~Ď~Dcy~Д~Del~∇~Dfr~𝔇~DiacriticalAcute~´~DiacriticalDot~˙~DiacriticalDoubleAcute~˝~DiacriticalGrave~`~DiacriticalTilde~˜~Diamond~⋄~DifferentialD~ⅆ~Dopf~𝔻~Dot~¨~DotDot~⃜~DotEqual~≐~DoubleContourIntegral~∯~DoubleDot~¨~DoubleDownArrow~⇓~DoubleLeftArrow~⇐~DoubleLeftRightArrow~⇔~DoubleLeftTee~⫤~DoubleLongLeftArrow~⟸~DoubleLongLeftRightArrow~⟺~DoubleLongRightArrow~⟹~DoubleRightArrow~⇒~DoubleRightTee~⊨~DoubleUpArrow~⇑~DoubleUpDownArrow~⇕~DoubleVerticalBar~∥~DownArrow~↓~DownArrowBar~⤓~DownArrowUpArrow~⇵~DownBreve~̑~DownLeftRightVector~⥐~DownLeftTeeVector~⥞~DownLeftVector~↽~DownLeftVectorBar~⥖~DownRightTeeVector~⥟~DownRightVector~⇁~DownRightVectorBar~⥗~DownTee~⊤~DownTeeArrow~↧~Downarrow~⇓~Dscr~𝒟~Dstrok~Đ~ENG~Ŋ~Ecaron~Ě~Ecy~Э~Edot~Ė~Efr~𝔈~Element~∈~Emacr~Ē~EmptySmallSquare~◻~EmptyVerySmallSquare~▫~Eogon~Ę~Eopf~𝔼~Equal~⩵~EqualTilde~≂~Equilibrium~⇌~Escr~ℰ~Esim~⩳~Exists~∃~ExponentialE~ⅇ~Fcy~Ф~Ffr~𝔉~FilledSmallSquare~◼~FilledVerySmallSquare~▪~Fopf~𝔽~ForAll~∀~Fouriertrf~ℱ~Fscr~ℱ~GJcy~Ѓ~Gammad~Ϝ~Gbreve~Ğ~Gcedil~Ģ~Gcirc~Ĝ~Gcy~Г~Gdot~Ġ~Gfr~𝔊~Gg~⋙~Gopf~𝔾~GreaterEqual~≥~GreaterEqualLess~⋛~GreaterFullEqual~≧~GreaterGreater~⪢~GreaterLess~≷~GreaterSlantEqual~⩾~GreaterTilde~≳~Gscr~𝒢~Gt~≫~HARDcy~Ъ~Hacek~ˇ~Hat~^~Hcirc~Ĥ~Hfr~ℌ~HilbertSpace~ℋ~Hopf~ℍ~HorizontalLine~─~Hscr~ℋ~Hstrok~Ħ~HumpDownHump~≎~HumpEqual~≏~IEcy~Е~IJlig~Ĳ~IOcy~Ё~Icy~И~Idot~İ~Ifr~ℑ~Im~ℑ~Imacr~Ī~ImaginaryI~ⅈ~Implies~⇒~Int~∬~Integral~∫~Intersection~⋂~InvisibleComma~⁣~InvisibleTimes~⁢~Iogon~Į~Iopf~𝕀~Iscr~ℐ~Itilde~Ĩ~Iukcy~І~Jcirc~Ĵ~Jcy~Й~Jfr~𝔍~Jopf~𝕁~Jscr~𝒥~Jsercy~Ј~Jukcy~Є~KHcy~Х~KJcy~Ќ~Kcedil~Ķ~Kcy~К~Kfr~𝔎~Kopf~𝕂~Kscr~𝒦~LJcy~Љ~Lacute~Ĺ~Lang~⟪~Laplacetrf~ℒ~Larr~↞~Lcaron~Ľ~Lcedil~Ļ~Lcy~Л~LeftAngleBracket~⟨~LeftArrow~←~LeftArrowBar~⇤~LeftArrowRightArrow~⇆~LeftCeiling~⌈~LeftDoubleBracket~⟦~LeftDownTeeVector~⥡~LeftDownVector~⇃~LeftDownVectorBar~⥙~LeftFloor~⌊~LeftRightArrow~↔~LeftRightVector~⥎~LeftTee~⊣~LeftTeeArrow~↤~LeftTeeVector~⥚~LeftTriangle~⊲~LeftTriangleBar~⧏~LeftTriangleEqual~⊴~LeftUpDownVector~⥑~LeftUpTeeVector~⥠~LeftUpVector~↿~LeftUpVectorBar~⥘~LeftVector~↼~LeftVectorBar~⥒~Leftarrow~⇐~Leftrightarrow~⇔~LessEqualGreater~⋚~LessFullEqual~≦~LessGreater~≶~LessLess~⪡~LessSlantEqual~⩽~LessTilde~≲~Lfr~𝔏~Ll~⋘~Lleftarrow~⇚~Lmidot~Ŀ~LongLeftArrow~⟵~LongLeftRightArrow~⟷~LongRightArrow~⟶~Longleftarrow~⟸~Longleftrightarrow~⟺~Longrightarrow~⟹~Lopf~𝕃~LowerLeftArrow~↙~LowerRightArrow~↘~Lscr~ℒ~Lsh~↰~Lstrok~Ł~Lt~≪~Map~⤅~Mcy~М~MediumSpace~ ~Mellintrf~ℳ~Mfr~𝔐~MinusPlus~∓~Mopf~𝕄~Mscr~ℳ~NJcy~Њ~Nacute~Ń~Ncaron~Ň~Ncedil~Ņ~Ncy~Н~NegativeMediumSpace~​~NegativeThickSpace~​~NegativeThinSpace~​~NegativeVeryThinSpace~​~NestedGreaterGreater~≫~NestedLessLess~≪~NewLine~\n~Nfr~𝔑~NoBreak~⁠~NonBreakingSpace~ ~Nopf~ℕ~Not~⫬~NotCongruent~≢~NotCupCap~≭~NotDoubleVerticalBar~∦~NotElement~∉~NotEqual~≠~NotEqualTilde~≂̸~NotExists~∄~NotGreater~≯~NotGreaterEqual~≱~NotGreaterFullEqual~≧̸~NotGreaterGreater~≫̸~NotGreaterLess~≹~NotGreaterSlantEqual~⩾̸~NotGreaterTilde~≵~NotHumpDownHump~≎̸~NotHumpEqual~≏̸~NotLeftTriangle~⋪~NotLeftTriangleBar~⧏̸~NotLeftTriangleEqual~⋬~NotLess~≮~NotLessEqual~≰~NotLessGreater~≸~NotLessLess~≪̸~NotLessSlantEqual~⩽̸~NotLessTilde~≴~NotNestedGreaterGreater~⪢̸~NotNestedLessLess~⪡̸~NotPrecedes~⊀~NotPrecedesEqual~⪯̸~NotPrecedesSlantEqual~⋠~NotReverseElement~∌~NotRightTriangle~⋫~NotRightTriangleBar~⧐̸~NotRightTriangleEqual~⋭~NotSquareSubset~⊏̸~NotSquareSubsetEqual~⋢~NotSquareSuperset~⊐̸~NotSquareSupersetEqual~⋣~NotSubset~⊂⃒~NotSubsetEqual~⊈~NotSucceeds~⊁~NotSucceedsEqual~⪰̸~NotSucceedsSlantEqual~⋡~NotSucceedsTilde~≿̸~NotSuperset~⊃⃒~NotSupersetEqual~⊉~NotTilde~≁~NotTildeEqual~≄~NotTildeFullEqual~≇~NotTildeTilde~≉~NotVerticalBar~∤~Nscr~𝒩~Ocy~О~Odblac~Ő~Ofr~𝔒~Omacr~Ō~Oopf~𝕆~OpenCurlyDoubleQuote~“~OpenCurlyQuote~‘~Or~⩔~Oscr~𝒪~Otimes~⨷~OverBar~‾~OverBrace~⏞~OverBracket~⎴~OverParenthesis~⏜~PartialD~∂~Pcy~П~Pfr~𝔓~PlusMinus~±~Poincareplane~ℌ~Popf~ℙ~Pr~⪻~Precedes~≺~PrecedesEqual~⪯~PrecedesSlantEqual~≼~PrecedesTilde~≾~Product~∏~Proportion~∷~Proportional~∝~Pscr~𝒫~Qfr~𝔔~Qopf~ℚ~Qscr~𝒬~RBarr~⤐~Racute~Ŕ~Rang~⟫~Rarr~↠~Rarrtl~⤖~Rcaron~Ř~Rcedil~Ŗ~Rcy~Р~Re~ℜ~ReverseElement~∋~ReverseEquilibrium~⇋~ReverseUpEquilibrium~⥯~Rfr~ℜ~RightAngleBracket~⟩~RightArrow~→~RightArrowBar~⇥~RightArrowLeftArrow~⇄~RightCeiling~⌉~RightDoubleBracket~⟧~RightDownTeeVector~⥝~RightDownVector~⇂~RightDownVectorBar~⥕~RightFloor~⌋~RightTee~⊢~RightTeeArrow~↦~RightTeeVector~⥛~RightTriangle~⊳~RightTriangleBar~⧐~RightTriangleEqual~⊵~RightUpDownVector~⥏~RightUpTeeVector~⥜~RightUpVector~↾~RightUpVectorBar~⥔~RightVector~⇀~RightVectorBar~⥓~Rightarrow~⇒~Ropf~ℝ~RoundImplies~⥰~Rrightarrow~⇛~Rscr~ℛ~Rsh~↱~RuleDelayed~⧴~SHCHcy~Щ~SHcy~Ш~SOFTcy~Ь~Sacute~Ś~Sc~⪼~Scedil~Ş~Scirc~Ŝ~Scy~С~Sfr~𝔖~ShortDownArrow~↓~ShortLeftArrow~←~ShortRightArrow~→~ShortUpArrow~↑~SmallCircle~∘~Sopf~𝕊~Sqrt~√~Square~□~SquareIntersection~⊓~SquareSubset~⊏~SquareSubsetEqual~⊑~SquareSuperset~⊐~SquareSupersetEqual~⊒~SquareUnion~⊔~Sscr~𝒮~Star~⋆~Sub~⋐~Subset~⋐~SubsetEqual~⊆~Succeeds~≻~SucceedsEqual~⪰~SucceedsSlantEqual~≽~SucceedsTilde~≿~SuchThat~∋~Sum~∑~Sup~⋑~Superset~⊃~SupersetEqual~⊇~Supset~⋑~TRADE~™~TSHcy~Ћ~TScy~Ц~Tab~	~Tcaron~Ť~Tcedil~Ţ~Tcy~Т~Tfr~𝔗~Therefore~∴~ThickSpace~  ~ThinSpace~ ~Tilde~∼~TildeEqual~≃~TildeFullEqual~≅~TildeTilde~≈~Topf~𝕋~TripleDot~⃛~Tscr~𝒯~Tstrok~Ŧ~Uarr~↟~Uarrocir~⥉~Ubrcy~Ў~Ubreve~Ŭ~Ucy~У~Udblac~Ű~Ufr~𝔘~Umacr~Ū~UnderBar~_~UnderBrace~⏟~UnderBracket~⎵~UnderParenthesis~⏝~Union~⋃~UnionPlus~⊎~Uogon~Ų~Uopf~𝕌~UpArrow~↑~UpArrowBar~⤒~UpArrowDownArrow~⇅~UpDownArrow~↕~UpEquilibrium~⥮~UpTee~⊥~UpTeeArrow~↥~Uparrow~⇑~Updownarrow~⇕~UpperLeftArrow~↖~UpperRightArrow~↗~Upsi~ϒ~Uring~Ů~Uscr~𝒰~Utilde~Ũ~VDash~⊫~Vbar~⫫~Vcy~В~Vdash~⊩~Vdashl~⫦~Vee~⋁~Verbar~‖~Vert~‖~VerticalBar~∣~VerticalLine~|~VerticalSeparator~❘~VerticalTilde~≀~VeryThinSpace~ ~Vfr~𝔙~Vopf~𝕍~Vscr~𝒱~Vvdash~⊪~Wcirc~Ŵ~Wedge~⋀~Wfr~𝔚~Wopf~𝕎~Wscr~𝒲~Xfr~𝔛~Xopf~𝕏~Xscr~𝒳~YAcy~Я~YIcy~Ї~YUcy~Ю~Ycirc~Ŷ~Ycy~Ы~Yfr~𝔜~Yopf~𝕐~Yscr~𝒴~ZHcy~Ж~Zacute~Ź~Zcaron~Ž~Zcy~З~Zdot~Ż~ZeroWidthSpace~​~Zfr~ℨ~Zopf~ℤ~Zscr~𝒵~abreve~ă~ac~∾~acE~∾̳~acd~∿~acy~а~af~⁡~afr~𝔞~aleph~ℵ~amacr~ā~amalg~⨿~andand~⩕~andd~⩜~andslope~⩘~andv~⩚~ange~⦤~angle~∠~angmsd~∡~angmsdaa~⦨~angmsdab~⦩~angmsdac~⦪~angmsdad~⦫~angmsdae~⦬~angmsdaf~⦭~angmsdag~⦮~angmsdah~⦯~angrt~∟~angrtvb~⊾~angrtvbd~⦝~angsph~∢~angst~Å~angzarr~⍼~aogon~ą~aopf~𝕒~ap~≈~apE~⩰~apacir~⩯~ape~≊~apid~≋~approx~≈~approxeq~≊~ascr~𝒶~ast~*~asympeq~≍~awconint~∳~awint~⨑~bNot~⫭~backcong~≌~backepsilon~϶~backprime~‵~backsim~∽~backsimeq~⋍~barvee~⊽~barwed~⌅~barwedge~⌅~bbrk~⎵~bbrktbrk~⎶~bcong~≌~bcy~б~becaus~∵~because~∵~bemptyv~⦰~bepsi~϶~bernou~ℬ~beth~ℶ~between~≬~bfr~𝔟~bigcap~⋂~bigcirc~◯~bigcup~⋃~bigodot~⨀~bigoplus~⨁~bigotimes~⨂~bigsqcup~⨆~bigstar~★~bigtriangledown~▽~bigtriangleup~△~biguplus~⨄~bigvee~⋁~bigwedge~⋀~bkarow~⤍~blacklozenge~⧫~blacksquare~▪~blacktriangle~▴~blacktriangledown~▾~blacktriangleleft~◂~blacktriangleright~▸~blank~␣~blk12~▒~blk14~░~blk34~▓~block~█~bne~=⃥~bnequiv~≡⃥~bnot~⌐~bopf~𝕓~bot~⊥~bottom~⊥~bowtie~⋈~boxDL~╗~boxDR~╔~boxDl~╖~boxDr~╓~boxH~═~boxHD~╦~boxHU~╩~boxHd~╤~boxHu~╧~boxUL~╝~boxUR~╚~boxUl~╜~boxUr~╙~boxV~║~boxVH~╬~boxVL~╣~boxVR~╠~boxVh~╫~boxVl~╢~boxVr~╟~boxbox~⧉~boxdL~╕~boxdR~╒~boxdl~┐~boxdr~┌~boxh~─~boxhD~╥~boxhU~╨~boxhd~┬~boxhu~┴~boxminus~⊟~boxplus~⊞~boxtimes~⊠~boxuL~╛~boxuR~╘~boxul~┘~boxur~└~boxv~│~boxvH~╪~boxvL~╡~boxvR~╞~boxvh~┼~boxvl~┤~boxvr~├~bprime~‵~breve~˘~bscr~𝒷~bsemi~⁏~bsim~∽~bsime~⋍~bsol~\\~bsolb~⧅~bsolhsub~⟈~bullet~•~bump~≎~bumpE~⪮~bumpe~≏~bumpeq~≏~cacute~ć~capand~⩄~capbrcup~⩉~capcap~⩋~capcup~⩇~capdot~⩀~caps~∩︀~caret~⁁~caron~ˇ~ccaps~⩍~ccaron~č~ccirc~ĉ~ccups~⩌~ccupssm~⩐~cdot~ċ~cemptyv~⦲~centerdot~·~cfr~𝔠~chcy~ч~check~✓~checkmark~✓~cir~○~cirE~⧃~circeq~≗~circlearrowleft~↺~circlearrowright~↻~circledR~®~circledS~Ⓢ~circledast~⊛~circledcirc~⊚~circleddash~⊝~cire~≗~cirfnint~⨐~cirmid~⫯~cirscir~⧂~clubsuit~♣~colon~:~colone~≔~coloneq~≔~comma~,~commat~@~comp~∁~compfn~∘~complement~∁~complexes~ℂ~congdot~⩭~conint~∮~copf~𝕔~coprod~∐~copysr~℗~cross~✗~cscr~𝒸~csub~⫏~csube~⫑~csup~⫐~csupe~⫒~ctdot~⋯~cudarrl~⤸~cudarrr~⤵~cuepr~⋞~cuesc~⋟~cularr~↶~cularrp~⤽~cupbrcap~⩈~cupcap~⩆~cupcup~⩊~cupdot~⊍~cupor~⩅~cups~∪︀~curarr~↷~curarrm~⤼~curlyeqprec~⋞~curlyeqsucc~⋟~curlyvee~⋎~curlywedge~⋏~curvearrowleft~↶~curvearrowright~↷~cuvee~⋎~cuwed~⋏~cwconint~∲~cwint~∱~cylcty~⌭~dHar~⥥~daleth~ℸ~dash~‐~dashv~⊣~dbkarow~⤏~dblac~˝~dcaron~ď~dcy~д~dd~ⅆ~ddagger~‡~ddarr~⇊~ddotseq~⩷~demptyv~⦱~dfisht~⥿~dfr~𝔡~dharl~⇃~dharr~⇂~diam~⋄~diamond~⋄~diamondsuit~♦~die~¨~digamma~ϝ~disin~⋲~div~÷~divideontimes~⋇~divonx~⋇~djcy~ђ~dlcorn~⌞~dlcrop~⌍~dollar~$~dopf~𝕕~dot~˙~doteq~≐~doteqdot~≑~dotminus~∸~dotplus~∔~dotsquare~⊡~doublebarwedge~⌆~downarrow~↓~downdownarrows~⇊~downharpoonleft~⇃~downharpoonright~⇂~drbkarow~⤐~drcorn~⌟~drcrop~⌌~dscr~𝒹~dscy~ѕ~dsol~⧶~dstrok~đ~dtdot~⋱~dtri~▿~dtrif~▾~duarr~⇵~duhar~⥯~dwangle~⦦~dzcy~џ~dzigrarr~⟿~eDDot~⩷~eDot~≑~easter~⩮~ecaron~ě~ecir~≖~ecolon~≕~ecy~э~edot~ė~ee~ⅇ~efDot~≒~efr~𝔢~eg~⪚~egs~⪖~egsdot~⪘~el~⪙~elinters~⏧~ell~ℓ~els~⪕~elsdot~⪗~emacr~ē~emptyset~∅~emptyv~∅~emsp13~ ~emsp14~ ~eng~ŋ~eogon~ę~eopf~𝕖~epar~⋕~eparsl~⧣~eplus~⩱~epsi~ε~epsiv~ϵ~eqcirc~≖~eqcolon~≕~eqsim~≂~eqslantgtr~⪖~eqslantless~⪕~equals~=~equest~≟~equivDD~⩸~eqvparsl~⧥~erDot~≓~erarr~⥱~escr~ℯ~esdot~≐~esim~≂~excl~!~expectation~ℰ~exponentiale~ⅇ~fallingdotseq~≒~fcy~ф~female~♀~ffilig~ﬃ~fflig~ﬀ~ffllig~ﬄ~ffr~𝔣~filig~ﬁ~fjlig~fj~flat~♭~fllig~ﬂ~fltns~▱~fopf~𝕗~fork~⋔~forkv~⫙~fpartint~⨍~frac13~⅓~frac15~⅕~frac16~⅙~frac18~⅛~frac23~⅔~frac25~⅖~frac35~⅗~frac38~⅜~frac45~⅘~frac56~⅚~frac58~⅝~frac78~⅞~frown~⌢~fscr~𝒻~gE~≧~gEl~⪌~gacute~ǵ~gammad~ϝ~gap~⪆~gbreve~ğ~gcirc~ĝ~gcy~г~gdot~ġ~gel~⋛~geq~≥~geqq~≧~geqslant~⩾~ges~⩾~gescc~⪩~gesdot~⪀~gesdoto~⪂~gesdotol~⪄~gesl~⋛︀~gesles~⪔~gfr~𝔤~gg~≫~ggg~⋙~gimel~ℷ~gjcy~ѓ~gl~≷~glE~⪒~gla~⪥~glj~⪤~gnE~≩~gnap~⪊~gnapprox~⪊~gne~⪈~gneq~⪈~gneqq~≩~gnsim~⋧~gopf~𝕘~grave~`~gscr~ℊ~gsim~≳~gsime~⪎~gsiml~⪐~gtcc~⪧~gtcir~⩺~gtdot~⋗~gtlPar~⦕~gtquest~⩼~gtrapprox~⪆~gtrarr~⥸~gtrdot~⋗~gtreqless~⋛~gtreqqless~⪌~gtrless~≷~gtrsim~≳~gvertneqq~≩︀~gvnE~≩︀~hairsp~ ~half~½~hamilt~ℋ~hardcy~ъ~harrcir~⥈~harrw~↭~hbar~ℏ~hcirc~ĥ~heartsuit~♥~hercon~⊹~hfr~𝔥~hksearow~⤥~hkswarow~⤦~hoarr~⇿~homtht~∻~hookleftarrow~↩~hookrightarrow~↪~hopf~𝕙~horbar~―~hscr~𝒽~hslash~ℏ~hstrok~ħ~hybull~⁃~hyphen~‐~ic~⁣~icy~и~iecy~е~iff~⇔~ifr~𝔦~ii~ⅈ~iiiint~⨌~iiint~∭~iinfin~⧜~iiota~℩~ijlig~ĳ~imacr~ī~imagline~ℐ~imagpart~ℑ~imath~ı~imof~⊷~imped~Ƶ~in~∈~incare~℅~infintie~⧝~inodot~ı~intcal~⊺~integers~ℤ~intercal~⊺~intlarhk~⨗~intprod~⨼~iocy~ё~iogon~į~iopf~𝕚~iprod~⨼~iscr~𝒾~isinE~⋹~isindot~⋵~isins~⋴~isinsv~⋳~isinv~∈~it~⁢~itilde~ĩ~iukcy~і~jcirc~ĵ~jcy~й~jfr~𝔧~jmath~ȷ~jopf~𝕛~jscr~𝒿~jsercy~ј~jukcy~є~kappav~ϰ~kcedil~ķ~kcy~к~kfr~𝔨~kgreen~ĸ~khcy~х~kjcy~ќ~kopf~𝕜~kscr~𝓀~lAarr~⇚~lAtail~⤛~lBarr~⤎~lE~≦~lEg~⪋~lHar~⥢~lacute~ĺ~laemptyv~⦴~lagran~ℒ~langd~⦑~langle~⟨~lap~⪅~larrb~⇤~larrbfs~⤟~larrfs~⤝~larrhk~↩~larrlp~↫~larrpl~⤹~larrsim~⥳~larrtl~↢~lat~⪫~latail~⤙~late~⪭~lates~⪭︀~lbarr~⤌~lbbrk~❲~lbrace~{~lbrack~[~lbrke~⦋~lbrksld~⦏~lbrkslu~⦍~lcaron~ľ~lcedil~ļ~lcub~{~lcy~л~ldca~⤶~ldquor~„~ldrdhar~⥧~ldrushar~⥋~ldsh~↲~leftarrow~←~leftarrowtail~↢~leftharpoondown~↽~leftharpoonup~↼~leftleftarrows~⇇~leftrightarrow~↔~leftrightarrows~⇆~leftrightharpoons~⇋~leftrightsquigarrow~↭~leftthreetimes~⋋~leg~⋚~leq~≤~leqq~≦~leqslant~⩽~les~⩽~lescc~⪨~lesdot~⩿~lesdoto~⪁~lesdotor~⪃~lesg~⋚︀~lesges~⪓~lessapprox~⪅~lessdot~⋖~lesseqgtr~⋚~lesseqqgtr~⪋~lessgtr~≶~lesssim~≲~lfisht~⥼~lfr~𝔩~lg~≶~lgE~⪑~lhard~↽~lharu~↼~lharul~⥪~lhblk~▄~ljcy~љ~ll~≪~llarr~⇇~llcorner~⌞~llhard~⥫~lltri~◺~lmidot~ŀ~lmoust~⎰~lmoustache~⎰~lnE~≨~lnap~⪉~lnapprox~⪉~lne~⪇~lneq~⪇~lneqq~≨~lnsim~⋦~loang~⟬~loarr~⇽~lobrk~⟦~longleftarrow~⟵~longleftrightarrow~⟷~longmapsto~⟼~longrightarrow~⟶~looparrowleft~↫~looparrowright~↬~lopar~⦅~lopf~𝕝~loplus~⨭~lotimes~⨴~lowbar~_~lozenge~◊~lozf~⧫~lpar~(~lparlt~⦓~lrarr~⇆~lrcorner~⌟~lrhar~⇋~lrhard~⥭~lrtri~⊿~lscr~𝓁~lsh~↰~lsim~≲~lsime~⪍~lsimg~⪏~lsqb~[~lsquor~‚~lstrok~ł~ltcc~⪦~ltcir~⩹~ltdot~⋖~lthree~⋋~ltimes~⋉~ltlarr~⥶~ltquest~⩻~ltrPar~⦖~ltri~◃~ltrie~⊴~ltrif~◂~lurdshar~⥊~luruhar~⥦~lvertneqq~≨︀~lvnE~≨︀~mDDot~∺~male~♂~malt~✠~maltese~✠~map~↦~mapsto~↦~mapstodown~↧~mapstoleft~↤~mapstoup~↥~marker~▮~mcomma~⨩~mcy~м~measuredangle~∡~mfr~𝔪~mho~℧~mid~∣~midast~*~midcir~⫰~minusb~⊟~minusd~∸~minusdu~⨪~mlcp~⫛~mldr~…~mnplus~∓~models~⊧~mopf~𝕞~mp~∓~mscr~𝓂~mstpos~∾~multimap~⊸~mumap~⊸~nGg~⋙̸~nGt~≫⃒~nGtv~≫̸~nLeftarrow~⇍~nLeftrightarrow~⇎~nLl~⋘̸~nLt~≪⃒~nLtv~≪̸~nRightarrow~⇏~nVDash~⊯~nVdash~⊮~nacute~ń~nang~∠⃒~nap~≉~napE~⩰̸~napid~≋̸~napos~ŉ~napprox~≉~natur~♮~natural~♮~naturals~ℕ~nbump~≎̸~nbumpe~≏̸~ncap~⩃~ncaron~ň~ncedil~ņ~ncong~≇~ncongdot~⩭̸~ncup~⩂~ncy~н~neArr~⇗~nearhk~⤤~nearr~↗~nearrow~↗~nedot~≐̸~nequiv~≢~nesear~⤨~nesim~≂̸~nexist~∄~nexists~∄~nfr~𝔫~ngE~≧̸~nge~≱~ngeq~≱~ngeqq~≧̸~ngeqslant~⩾̸~nges~⩾̸~ngsim~≵~ngt~≯~ngtr~≯~nhArr~⇎~nharr~↮~nhpar~⫲~nis~⋼~nisd~⋺~niv~∋~njcy~њ~nlArr~⇍~nlE~≦̸~nlarr~↚~nldr~‥~nle~≰~nleftarrow~↚~nleftrightarrow~↮~nleq~≰~nleqq~≦̸~nleqslant~⩽̸~nles~⩽̸~nless~≮~nlsim~≴~nlt~≮~nltri~⋪~nltrie~⋬~nmid~∤~nopf~𝕟~notinE~⋹̸~notindot~⋵̸~notinva~∉~notinvb~⋷~notinvc~⋶~notni~∌~notniva~∌~notnivb~⋾~notnivc~⋽~npar~∦~nparallel~∦~nparsl~⫽⃥~npart~∂̸~npolint~⨔~npr~⊀~nprcue~⋠~npre~⪯̸~nprec~⊀~npreceq~⪯̸~nrArr~⇏~nrarr~↛~nrarrc~⤳̸~nrarrw~↝̸~nrightarrow~↛~nrtri~⋫~nrtrie~⋭~nsc~⊁~nsccue~⋡~nsce~⪰̸~nscr~𝓃~nshortmid~∤~nshortparallel~∦~nsim~≁~nsime~≄~nsimeq~≄~nsmid~∤~nspar~∦~nsqsube~⋢~nsqsupe~⋣~nsubE~⫅̸~nsube~⊈~nsubset~⊂⃒~nsubseteq~⊈~nsubseteqq~⫅̸~nsucc~⊁~nsucceq~⪰̸~nsup~⊅~nsupE~⫆̸~nsupe~⊉~nsupset~⊃⃒~nsupseteq~⊉~nsupseteqq~⫆̸~ntgl~≹~ntlg~≸~ntriangleleft~⋪~ntrianglelefteq~⋬~ntriangleright~⋫~ntrianglerighteq~⋭~num~#~numero~№~numsp~ ~nvDash~⊭~nvHarr~⤄~nvap~≍⃒~nvdash~⊬~nvge~≥⃒~nvgt~>⃒~nvinfin~⧞~nvlArr~⤂~nvle~≤⃒~nvlt~<⃒~nvltrie~⊴⃒~nvrArr~⤃~nvrtrie~⊵⃒~nvsim~∼⃒~nwArr~⇖~nwarhk~⤣~nwarr~↖~nwarrow~↖~nwnear~⤧~oS~Ⓢ~oast~⊛~ocir~⊚~ocy~о~odash~⊝~odblac~ő~odiv~⨸~odot~⊙~odsold~⦼~ofcir~⦿~ofr~𝔬~ogon~˛~ogt~⧁~ohbar~⦵~ohm~Ω~oint~∮~olarr~↺~olcir~⦾~olcross~⦻~olt~⧀~omacr~ō~omid~⦶~ominus~⊖~oopf~𝕠~opar~⦷~operp~⦹~orarr~↻~ord~⩝~order~ℴ~orderof~ℴ~origof~⊶~oror~⩖~orslope~⩗~orv~⩛~oscr~ℴ~osol~⊘~otimesas~⨶~ovbar~⌽~par~∥~parallel~∥~parsim~⫳~parsl~⫽~pcy~п~percnt~%~period~.~pertenk~‱~pfr~𝔭~phiv~ϕ~phmmat~ℳ~phone~☎~pitchfork~⋔~planck~ℏ~planckh~ℎ~plankv~ℏ~plus~+~plusacir~⨣~plusb~⊞~pluscir~⨢~plusdo~∔~plusdu~⨥~pluse~⩲~plussim~⨦~plustwo~⨧~pm~±~pointint~⨕~popf~𝕡~pr~≺~prE~⪳~prap~⪷~prcue~≼~pre~⪯~prec~≺~precapprox~⪷~preccurlyeq~≼~preceq~⪯~precnapprox~⪹~precneqq~⪵~precnsim~⋨~precsim~≾~primes~ℙ~prnE~⪵~prnap~⪹~prnsim~⋨~profalar~⌮~profline~⌒~profsurf~⌓~propto~∝~prsim~≾~prurel~⊰~pscr~𝓅~puncsp~ ~qfr~𝔮~qint~⨌~qopf~𝕢~qprime~⁗~qscr~𝓆~quaternions~ℍ~quatint~⨖~quest~?~questeq~≟~rAarr~⇛~rAtail~⤜~rBarr~⤏~rHar~⥤~race~∽̱~racute~ŕ~raemptyv~⦳~rangd~⦒~range~⦥~rangle~⟩~rarrap~⥵~rarrb~⇥~rarrbfs~⤠~rarrc~⤳~rarrfs~⤞~rarrhk~↪~rarrlp~↬~rarrpl~⥅~rarrsim~⥴~rarrtl~↣~rarrw~↝~ratail~⤚~ratio~∶~rationals~ℚ~rbarr~⤍~rbbrk~❳~rbrace~}~rbrack~]~rbrke~⦌~rbrksld~⦎~rbrkslu~⦐~rcaron~ř~rcedil~ŗ~rcub~}~rcy~р~rdca~⤷~rdldhar~⥩~rdquor~”~rdsh~↳~realine~ℛ~realpart~ℜ~reals~ℝ~rect~▭~rfisht~⥽~rfr~𝔯~rhard~⇁~rharu~⇀~rharul~⥬~rhov~ϱ~rightarrow~→~rightarrowtail~↣~rightharpoondown~⇁~rightharpoonup~⇀~rightleftarrows~⇄~rightleftharpoons~⇌~rightrightarrows~⇉~rightsquigarrow~↝~rightthreetimes~⋌~ring~˚~risingdotseq~≓~rlarr~⇄~rlhar~⇌~rmoust~⎱~rmoustache~⎱~rnmid~⫮~roang~⟭~roarr~⇾~robrk~⟧~ropar~⦆~ropf~𝕣~roplus~⨮~rotimes~⨵~rpar~)~rpargt~⦔~rppolint~⨒~rrarr~⇉~rscr~𝓇~rsh~↱~rsqb~]~rsquor~’~rthree~⋌~rtimes~⋊~rtri~▹~rtrie~⊵~rtrif~▸~rtriltri~⧎~ruluhar~⥨~rx~℞~sacute~ś~sc~≻~scE~⪴~scap~⪸~sccue~≽~sce~⪰~scedil~ş~scirc~ŝ~scnE~⪶~scnap~⪺~scnsim~⋩~scpolint~⨓~scsim~≿~scy~с~sdotb~⊡~sdote~⩦~seArr~⇘~searhk~⤥~searr~↘~searrow~↘~semi~;~seswar~⤩~setminus~∖~setmn~∖~sext~✶~sfr~𝔰~sfrown~⌢~sharp~♯~shchcy~щ~shcy~ш~shortmid~∣~shortparallel~∥~sigmav~ς~simdot~⩪~sime~≃~simeq~≃~simg~⪞~simgE~⪠~siml~⪝~simlE~⪟~simne~≆~simplus~⨤~simrarr~⥲~slarr~←~smallsetminus~∖~smashp~⨳~smeparsl~⧤~smid~∣~smile~⌣~smt~⪪~smte~⪬~smtes~⪬︀~softcy~ь~sol~/~solb~⧄~solbar~⌿~sopf~𝕤~spadesuit~♠~spar~∥~sqcap~⊓~sqcaps~⊓︀~sqcup~⊔~sqcups~⊔︀~sqsub~⊏~sqsube~⊑~sqsubset~⊏~sqsubseteq~⊑~sqsup~⊐~sqsupe~⊒~sqsupset~⊐~sqsupseteq~⊒~squ~□~square~□~squarf~▪~squf~▪~srarr~→~sscr~𝓈~ssetmn~∖~ssmile~⌣~sstarf~⋆~star~☆~starf~★~straightepsilon~ϵ~straightphi~ϕ~strns~¯~subE~⫅~subdot~⪽~subedot~⫃~submult~⫁~subnE~⫋~subne~⊊~subplus~⪿~subrarr~⥹~subset~⊂~subseteq~⊆~subseteqq~⫅~subsetneq~⊊~subsetneqq~⫋~subsim~⫇~subsub~⫕~subsup~⫓~succ~≻~succapprox~⪸~succcurlyeq~≽~succeq~⪰~succnapprox~⪺~succneqq~⪶~succnsim~⋩~succsim~≿~sung~♪~supE~⫆~supdot~⪾~supdsub~⫘~supedot~⫄~suphsol~⟉~suphsub~⫗~suplarr~⥻~supmult~⫂~supnE~⫌~supne~⊋~supplus~⫀~supset~⊃~supseteq~⊇~supseteqq~⫆~supsetneq~⊋~supsetneqq~⫌~supsim~⫈~supsub~⫔~supsup~⫖~swArr~⇙~swarhk~⤦~swarr~↙~swarrow~↙~swnwar~⤪~target~⌖~tbrk~⎴~tcaron~ť~tcedil~ţ~tcy~т~tdot~⃛~telrec~⌕~tfr~𝔱~therefore~∴~thetav~ϑ~thickapprox~≈~thicksim~∼~thkap~≈~thksim~∼~timesb~⊠~timesbar~⨱~timesd~⨰~tint~∭~toea~⤨~top~⊤~topbot~⌶~topcir~⫱~topf~𝕥~topfork~⫚~tosa~⤩~tprime~‴~triangle~▵~triangledown~▿~triangleleft~◃~trianglelefteq~⊴~triangleq~≜~triangleright~▹~trianglerighteq~⊵~tridot~◬~trie~≜~triminus~⨺~triplus~⨹~trisb~⧍~tritime~⨻~trpezium~⏢~tscr~𝓉~tscy~ц~tshcy~ћ~tstrok~ŧ~twixt~≬~twoheadleftarrow~↞~twoheadrightarrow~↠~uHar~⥣~ubrcy~ў~ubreve~ŭ~ucy~у~udarr~⇅~udblac~ű~udhar~⥮~ufisht~⥾~ufr~𝔲~uharl~↿~uharr~↾~uhblk~▀~ulcorn~⌜~ulcorner~⌜~ulcrop~⌏~ultri~◸~umacr~ū~uogon~ų~uopf~𝕦~uparrow~↑~updownarrow~↕~upharpoonleft~↿~upharpoonright~↾~uplus~⊎~upsi~υ~upuparrows~⇈~urcorn~⌝~urcorner~⌝~urcrop~⌎~uring~ů~urtri~◹~uscr~𝓊~utdot~⋰~utilde~ũ~utri~▵~utrif~▴~uuarr~⇈~uwangle~⦧~vArr~⇕~vBar~⫨~vBarv~⫩~vDash~⊨~vangrt~⦜~varepsilon~ϵ~varkappa~ϰ~varnothing~∅~varphi~ϕ~varpi~ϖ~varpropto~∝~varr~↕~varrho~ϱ~varsigma~ς~varsubsetneq~⊊︀~varsubsetneqq~⫋︀~varsupsetneq~⊋︀~varsupsetneqq~⫌︀~vartheta~ϑ~vartriangleleft~⊲~vartriangleright~⊳~vcy~в~vdash~⊢~vee~∨~veebar~⊻~veeeq~≚~vellip~⋮~verbar~|~vert~|~vfr~𝔳~vltri~⊲~vnsub~⊂⃒~vnsup~⊃⃒~vopf~𝕧~vprop~∝~vrtri~⊳~vscr~𝓋~vsubnE~⫋︀~vsubne~⊊︀~vsupnE~⫌︀~vsupne~⊋︀~vzigzag~⦚~wcirc~ŵ~wedbar~⩟~wedge~∧~wedgeq~≙~wfr~𝔴~wopf~𝕨~wp~℘~wr~≀~wreath~≀~wscr~𝓌~xcap~⋂~xcirc~◯~xcup~⋃~xdtri~▽~xfr~𝔵~xhArr~⟺~xharr~⟷~xlArr~⟸~xlarr~⟵~xmap~⟼~xnis~⋻~xodot~⨀~xopf~𝕩~xoplus~⨁~xotime~⨂~xrArr~⟹~xrarr~⟶~xscr~𝓍~xsqcup~⨆~xuplus~⨄~xutri~△~xvee~⋁~xwedge~⋀~yacy~я~ycirc~ŷ~ycy~ы~yfr~𝔶~yicy~ї~yopf~𝕪~yscr~𝓎~yucy~ю~zacute~ź~zcaron~ž~zcy~з~zdot~ż~zeetrf~ℨ~zfr~𝔷~zhcy~ж~zigrarr~⇝~zopf~𝕫~zscr~𝓏~~AMP~&~COPY~©~GT~>~LT~<~QUOT~"~REG~®', namedReferences["html4"]);
+var numericUnicodeMap = {
+  0: 65533,
+  128: 8364,
+  130: 8218,
+  131: 402,
+  132: 8222,
+  133: 8230,
+  134: 8224,
+  135: 8225,
+  136: 710,
+  137: 8240,
+  138: 352,
+  139: 8249,
+  140: 338,
+  142: 381,
+  145: 8216,
+  146: 8217,
+  147: 8220,
+  148: 8221,
+  149: 8226,
+  150: 8211,
+  151: 8212,
+  152: 732,
+  153: 8482,
+  154: 353,
+  155: 8250,
+  156: 339,
+  158: 382,
+  159: 376
+};
+var fromCodePoint = String.fromCodePoint || function(astralCodePoint) {
+  return String.fromCharCode(Math.floor((astralCodePoint - 65536) / 1024) + 55296, (astralCodePoint - 65536) % 1024 + 56320);
+};
+var __assign = function() {
+  __assign = Object.assign || function(t) {
+    for (var s, i = 1, n = arguments.length; i < n; i++) {
+      s = arguments[i];
+      for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+        t[p] = s[p];
+    }
+    return t;
+  };
+  return __assign.apply(this, arguments);
+};
+var allNamedReferences = __assign(__assign({}, namedReferences), { all: namedReferences.html5 });
+var defaultDecodeOptions = {
+  scope: "body",
+  level: "all"
+};
+var strict = /&(?:#\d+|#[xX][\da-fA-F]+|[0-9a-zA-Z]+);/g;
+var attribute = /&(?:#\d+|#[xX][\da-fA-F]+|[0-9a-zA-Z]+)[;=]?/g;
+var baseDecodeRegExps = {
+  xml: {
+    strict,
+    attribute,
+    body: bodyRegExps.xml
+  },
+  html4: {
+    strict,
+    attribute,
+    body: bodyRegExps.html4
+  },
+  html5: {
+    strict,
+    attribute,
+    body: bodyRegExps.html5
+  }
+};
+var decodeRegExps = __assign(__assign({}, baseDecodeRegExps), { all: baseDecodeRegExps.html5 });
+var fromCharCode = String.fromCharCode;
+var outOfBoundsChar = fromCharCode(65533);
+function getDecodedEntity(entity, references, isAttribute, isStrict) {
+  var decodeResult = entity;
+  var decodeEntityLastChar = entity[entity.length - 1];
+  if (isAttribute && decodeEntityLastChar === "=") {
+    decodeResult = entity;
+  } else if (isStrict && decodeEntityLastChar !== ";") {
+    decodeResult = entity;
+  } else {
+    var decodeResultByReference = references[entity];
+    if (decodeResultByReference) {
+      decodeResult = decodeResultByReference;
+    } else if (entity[0] === "&" && entity[1] === "#") {
+      var decodeSecondChar = entity[2];
+      var decodeCode = decodeSecondChar == "x" || decodeSecondChar == "X" ? parseInt(entity.substr(3), 16) : parseInt(entity.substr(2));
+      decodeResult = decodeCode >= 1114111 ? outOfBoundsChar : decodeCode > 65535 ? fromCodePoint(decodeCode) : fromCharCode(numericUnicodeMap[decodeCode] || decodeCode);
+    }
+  }
+  return decodeResult;
+}
+function decode(text, _a) {
+  var _b = defaultDecodeOptions, _c = _b.level, level = _c === void 0 ? "all" : _c, _d = _b.scope, scope = _d === void 0 ? level === "xml" ? "strict" : "body" : _d;
+  if (!text) {
+    return "";
+  }
+  var decodeRegExp = decodeRegExps[level][scope];
+  var references = allNamedReferences[level].entities;
+  var isAttribute = scope === "attribute";
+  var isStrict = scope === "strict";
+  return text.replace(decodeRegExp, function(entity) {
+    return getDecodedEntity(entity, references, isAttribute, isStrict);
+  });
+}
+function parseStructuredToolCallInput(raw) {
+  const trimmed = raw.trim();
+  if (!trimmed) return {};
+  if (trimmed.startsWith("<")) {
+    const { value, ok } = parseXMLFragmentValue(trimmed);
+    if (ok) {
+      if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+        return value;
+      }
+      if (typeof value === "string") {
+        const text = value.trim();
+        if (!text) return {};
+        return { _raw: value };
+      }
+    }
+  }
+  return { _raw: trimmed };
+}
+function parseXMLFragmentValue(raw) {
+  const trimmed = raw.trim();
+  if (!trimmed) return { value: "", ok: true };
+  try {
+    const result = parseSimpleXml(trimmed);
+    return { value: result, ok: true };
+  } catch {
+    return { value: null, ok: false };
+  }
+}
+function parseSimpleXml(xml) {
+  const wrapped = `<root>${xml}</root>`;
+  const tokens = tokenizeXml(wrapped);
+  let pos = 0;
+  function parseNode() {
+    const startTag = tokens[pos++];
+    if (!startTag || !startTag.startsWith("<") || startTag.startsWith("</")) {
+      throw new Error("Invalid start tag");
+    }
+    const tagName = startTag.slice(1, -1).split(" ")[0];
+    const children = {};
+    let text = "";
+    while (pos < tokens.length) {
+      const token = tokens[pos];
+      if (token.startsWith("</")) {
+        const endTagName = token.slice(2, -1);
+        if (endTagName !== tagName) throw new Error("Mismatched tag");
+        pos++;
+        if (Object.keys(children).length === 0) {
+          return tryParseJsonLiteral(text.trim()) ?? text;
+        }
+        if (text.trim()) {
+          children["_text"] = tryParseJsonLiteral(text.trim()) ?? text;
+        }
+        const childKeys = Object.keys(children);
+        if (childKeys.length === 1 && childKeys[0] === "item") {
+          return Array.isArray(children["item"]) ? children["item"] : [children["item"]];
+        }
+        return children;
+      } else if (token.startsWith("<")) {
+        const childName = token.slice(1, -1).split(" ")[0];
+        const childValue = parseNode();
+        appendXMLChildValue(children, childName, childValue);
+      } else {
+        text += token;
+        pos++;
+      }
+    }
+    return text;
+  }
+  return parseNode();
+}
+function appendXMLChildValue(dst, key, value) {
+  if (!key) return;
+  if (Object.prototype.hasOwnProperty.call(dst, key)) {
+    const existing = dst[key];
+    if (Array.isArray(existing)) {
+      existing.push(value);
+    } else {
+      dst[key] = [existing, value];
+    }
+  } else {
+    dst[key] = value;
+  }
+}
+function tokenizeXml(xml) {
+  const tokens = [];
+  let current = "";
+  for (let i = 0; i < xml.length; i++) {
+    if (xml[i] === "<") {
+      if (current) tokens.push(current);
+      let end = xml.indexOf(">", i);
+      if (end === -1) end = xml.length;
+      tokens.push(xml.slice(i, end + 1));
+      i = end;
+      current = "";
+    } else {
+      current += xml[i];
+    }
+  }
+  if (current) tokens.push(current);
+  return tokens;
+}
+function tryParseJsonLiteral(s) {
+  if (!s) return null;
+  const lower = s.toLowerCase();
+  if (lower === "true") return true;
+  if (lower === "false") return false;
+  if (lower === "null") return null;
+  if (/^-?\d+(\.\d+)?$/.test(s)) return Number(s);
+  return void 0;
+}
+function parseMarkupValue(inner) {
+  const standaloneCDATA = extractStandaloneCDATA(inner);
+  if (standaloneCDATA.ok) {
+    return standaloneCDATA.value;
+  }
+  const value = extractRawTagValue(inner).trim();
+  if (value === "") {
+    return "";
+  }
+  if (value.includes("<") && value.includes(">")) {
+    const parsed = parseStructuredToolCallInput(value);
+    if (Object.keys(parsed).length > 0) {
+      if (Object.keys(parsed).length === 1 && "_raw" in parsed) {
+        return parsed["_raw"];
+      }
+      return parsed;
+    }
+  }
+  try {
+    if (/^[-0-9"[{tfnu]/.test(value)) {
+      return JSON.parse(value);
+    }
+  } catch (e) {
+  }
+  return value;
+}
+function extractRawTagValue(inner) {
+  const trimmed = inner.trim();
+  if (!trimmed) return "";
+  const standaloneCDATA = extractStandaloneCDATA(trimmed);
+  if (standaloneCDATA.ok) {
+    return standaloneCDATA.value;
+  }
+  return decode(inner);
+}
+function extractStandaloneCDATA(inner) {
+  const trimmed = inner.trim();
+  const openLen = toolCDATAOpenLenAt(trimmed, 0);
+  if (openLen > 0) {
+    const closeStart = findTrailingToolCDATACloseStart(trimmed);
+    if (closeStart >= openLen) {
+      return { value: trimmed.slice(openLen, closeStart), ok: true };
+    }
+    const end = findToolCDATAEnd(trimmed, openLen);
+    if (end >= 0) {
+      return { value: trimmed.slice(openLen, end), ok: true };
+    }
+    return { value: trimmed.slice(openLen), ok: true };
+  }
+  return { value: "", ok: false };
+}
+function toolCDATAOpenLenAt(text, idx) {
+  const start = skipToolMarkupIgnorables(text, idx);
+  const ltLen = xmlTagStartDelimiterLenAt(text, start);
+  if (ltLen === 0) return 0;
+  let pos = start + ltLen;
+  for (let skipped = 0; skipped <= 4 && pos < text.length; skipped++) {
+    pos = skipToolMarkupIgnorables(text, pos);
+    if (pos >= text.length) return 0;
+    if (text[pos] === "[") {
+      pos++;
+      const { next, ok } = consumeToolKeyword(text, pos, "cdata");
+      if (!ok) return 0;
+      pos = skipToolMarkupIgnorables(text, next);
+      if (pos >= text.length || text[pos] !== "[") return 0;
+      pos++;
+      return pos - idx;
+    }
+    const ch = text[pos];
+    if (!isToolMarkupSeparator(ch)) return 0;
+    pos++;
+  }
+  return 0;
+}
+function isToolMarkupSeparator(ch) {
+  return [" ", "	", "\n", "\r", "|", "│", "∣", "❘", "ǀ", "￨"].includes(ch);
+}
+function findTrailingToolCDATACloseStart(text) {
+  for (let i = text.length - 1; i >= 0; i--) {
+    const closeLen = toolCDATACloseLenAt(text, i);
+    if (closeLen > 0 && i + closeLen === text.length) {
+      return i;
+    }
+  }
+  return -1;
+}
+function toolCDATACloseLenAt(text, idx) {
+  if (idx < 0 || idx >= text.length) return 0;
+  if (text.startsWith("]]〉", idx)) return 3;
+  if (text.startsWith("]]＞", idx)) return 3;
+  if (text.startsWith("]]>", idx)) return 3;
+  return 0;
+}
+function findToolCDATAEnd(text, from) {
+  if (from < 0 || from >= text.length) return -1;
+  let firstNonFenceEnd = -1;
+  for (let searchFrom = from; searchFrom < text.length; ) {
+    const end = indexToolCDATAClose(text, searchFrom);
+    if (end < 0) break;
+    const closeLen = toolCDATACloseLenAt(text, end);
+    searchFrom = end + closeLen;
+    if (cdataOffsetIsInsideMarkdownFence(text.slice(from, end))) {
+      continue;
+    }
+    if (cdataEndLooksStructural(text, searchFrom)) {
+      return end;
+    }
+    if (firstNonFenceEnd < 0) {
+      firstNonFenceEnd = end;
+    }
+  }
+  return firstNonFenceEnd;
+}
+function indexToolCDATAClose(text, from) {
+  if (from < 0) from = 0;
+  const s = text.slice(from);
+  const asciiIdx = s.indexOf("]]>");
+  const fullIdx = s.indexOf("]]＞");
+  const cjkIdx = s.indexOf("]]〉");
+  let best = -1;
+  [asciiIdx, fullIdx, cjkIdx].forEach((idx) => {
+    if (idx >= 0 && (best < 0 || idx < best)) {
+      best = idx;
+    }
+  });
+  return best < 0 ? -1 : from + best;
+}
+function cdataEndLooksStructural(text, after) {
+  while (after < text.length) {
+    const ch = text[after];
+    if ([" ", "	", "\r", "\n"].includes(ch)) {
+      after++;
+      continue;
+    }
+    if (text.startsWith("</", after)) {
+      return true;
+    }
+    return false;
+  }
+  return false;
+}
+function cdataOffsetIsInsideMarkdownFence(fragment) {
+  if (!fragment) return false;
+  const lines = fragment.split("\n");
+  let inFence = false;
+  let fenceMarker = "";
+  for (const line of lines) {
+    const trimmed = line.trimStart();
+    if (!inFence) {
+      const { marker, ok } = parseFenceOpen$1(trimmed);
+      if (ok) {
+        inFence = true;
+        fenceMarker = marker;
+      }
+      continue;
+    }
+    if (isFenceClose$1(trimmed, fenceMarker)) {
+      inFence = false;
+      fenceMarker = "";
+    }
+  }
+  return inFence;
+}
+function parseFenceOpen$1(line) {
+  if (line.length < 3) return { marker: "", ok: false };
+  const ch = line[0];
+  if (ch !== "`" && ch !== "~") return { marker: "", ok: false };
+  let count = 0;
+  while (count < line.length && line[count] === ch) {
+    count++;
+  }
+  if (count < 3) return { marker: "", ok: false };
+  return { marker: ch.repeat(count), ok: true };
+}
+function isFenceClose$1(line, marker) {
+  if (!marker) return false;
+  const ch = marker[0];
+  if (line === "" || line[0] !== ch) return false;
+  let count = 0;
+  while (count < line.length && line[count] === ch) {
+    count++;
+  }
+  if (count < marker.length) return false;
+  const rest = line.slice(count).trim();
+  return rest === "";
+}
+function SanitizeLooseCDATA(text) {
+  if (!text) return "";
+  let out = "";
+  let pos = 0;
+  let changed = false;
+  while (pos < text.length) {
+    const start = indexToolCDATAOpen(text, pos);
+    if (start < 0) {
+      out += text.slice(pos);
+      break;
+    }
+    const openLen = toolCDATAOpenLenAt(text, start);
+    const contentStart = start + openLen;
+    out += text.slice(pos, start);
+    const endRel = findToolCDATAEnd(text, contentStart);
+    if (endRel >= 0) {
+      const end = endRel + toolCDATACloseLenAt(text, endRel);
+      out += text.slice(start, end);
+      pos = end;
+      continue;
+    }
+    changed = true;
+    out += text.slice(contentStart);
+    pos = text.length;
+  }
+  return changed ? out : text;
+}
+function indexToolCDATAOpen(text, start) {
+  for (let i = Math.max(start, 0); i < text.length; i++) {
+    if (toolCDATAOpenLenAt(text, i) > 0) {
+      return i;
+    }
+  }
+  return -1;
+}
+function repairInvalidJSONBackslashes(s) {
+  if (!s.includes("\\")) return s;
+  let out = "";
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (ch === "\\") {
+      if (i + 1 < s.length) {
+        const next = s[i + 1];
+        if (['"', "\\", "/", "b", "f", "n", "r", "t"].includes(next)) {
+          out += "\\" + next;
+          i++;
+          continue;
+        }
+        if (next === "u" && i + 5 < s.length) {
+          const hex = s.slice(i + 2, i + 6);
+          if (/^[0-9a-fA-F]{4}$/.test(hex)) {
+            out += "\\u" + hex;
+            i += 5;
+            continue;
+          }
+        }
+      }
+      out += "\\\\";
+    } else {
+      out += ch;
+    }
+  }
+  return out;
+}
+function repairLooseJSON(s) {
+  let out = s.trim();
+  if (!out) return out;
+  out = out.replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":');
+  const missingArrayPattern = /(:|：)\s*(\{(?:[^{}]|\{[^{}]*\})*\}(?:\s*,\s*\{(?:[^{}]|\{[^{}]*\})*\})+)/g;
+  out = out.replace(missingArrayPattern, "$1[$2]");
+  return out;
+}
+function parseLooseJSONArrayValue(raw, paramName) {
+  if (preservesCDATAStringParameter$1(paramName)) {
+    return null;
+  }
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const candidate = parseLooseArrayElementValue(trimmed);
+  if (candidate.ok) {
+    const coerced = coerceArrayValue(candidate.value, paramName);
+    if (coerced) return coerced;
+  }
+  const segments = splitTopLevelJSONValues(trimmed);
+  if (!segments) return null;
+  const out = [];
+  for (const segment of segments) {
+    const parsed = parseLooseArrayElementValue(segment);
+    if (!parsed.ok) return null;
+    out.push(parsed.value);
+  }
+  return out;
+}
+function parseLooseArrayElementValue(raw) {
+  const trimmed = raw.trim();
+  if (!trimmed) return { value: null, ok: false };
+  try {
+    return { value: JSON.parse(trimmed), ok: true };
+  } catch {
+  }
+  const repairedBackslashes = repairInvalidJSONBackslashes(trimmed);
+  if (repairedBackslashes !== trimmed) {
+    try {
+      return { value: JSON.parse(repairedBackslashes), ok: true };
+    } catch {
+    }
+  }
+  const repairedLoose = repairLooseJSON(trimmed);
+  if (repairedLoose !== trimmed) {
+    try {
+      return { value: JSON.parse(repairedLoose), ok: true };
+    } catch {
+    }
+  }
+  if (trimmed.includes("<") && trimmed.includes(">")) {
+    const xmlParsed = parseXMLFragmentValue(trimmed);
+    if (xmlParsed.ok) return xmlParsed;
+  }
+  return { value: null, ok: false };
+}
+function coerceArrayValue(value, paramName) {
+  if (Array.isArray(value)) return value;
+  if (typeof value === "object" && value !== null) {
+    const keys = Object.keys(value);
+    if (keys.length === 1) {
+      if (keys[0] === "item") {
+        const items = value.item;
+        return Array.isArray(items) ? items : [items];
+      }
+      if (paramName && keys[0] === paramName) {
+        const wrapped = value[paramName];
+        return Array.isArray(wrapped) ? wrapped : [wrapped];
+      }
+    }
+  }
+  return null;
+}
+function splitTopLevelJSONValues(raw) {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const values = [];
+  let start = 0;
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = 0; i < trimmed.length; i++) {
+    const ch = trimmed[i];
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+      if (ch === "\\") {
+        escaped = true;
+      } else if (ch === '"') {
+        inString = false;
+      }
+      continue;
+    }
+    switch (ch) {
+      case '"':
+        inString = true;
+        break;
+      case "{":
+      case "[":
+        depth++;
+        break;
+      case "}":
+      case "]":
+        if (depth > 0) depth--;
+        break;
+      case ",":
+        if (depth === 0) {
+          const segment = trimmed.slice(start, i).trim();
+          if (!segment) return null;
+          values.push(segment);
+          start = i + 1;
+        }
+        break;
+    }
+  }
+  const last = trimmed.slice(start).trim();
+  if (!last) return null;
+  values.push(last);
+  return values.length >= 2 ? values : null;
+}
+const xmlAttrPattern = /\b([a-z0-9_:-]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/gis;
+const cdataBRSeparatorPattern = /<br\s*\/?>/gi;
+function parseXMLToolCalls(text) {
+  let wrappers = findToolCallElementBlocksOutsideIgnored(text);
+  if (wrappers.length === 0) {
+    const repaired = repairMissingXMLToolCallsOpeningWrapper(text);
+    if (repaired !== text) {
+      wrappers = findToolCallElementBlocksOutsideIgnored(repaired);
+    }
+  }
+  if (wrappers.length === 0) {
+    return null;
+  }
+  const out = [];
+  for (const wrapper of wrappers) {
+    for (const block of findXMLElementBlocks(wrapper.Body, "invoke")) {
+      const call2 = parseSingleXMLToolCall(block);
+      if (call2) {
+        out.push(call2);
+      }
+    }
+  }
+  return out.length === 0 ? null : out;
+}
+function findToolCallElementBlocksOutsideIgnored(text) {
+  if (!text) return [];
+  const out = [];
+  let searchFrom = 0;
+  while (searchFrom < text.length) {
+    const tag = findToolMarkupTagOutsideIgnored(text, searchFrom);
+    if (!tag) break;
+    if (tag.Closing || tag.Name !== "tool_calls") {
+      searchFrom = tag.End + 1;
+      continue;
+    }
+    const closeTag = findMatchingToolMarkupClose(text, tag);
+    if (!closeTag) {
+      searchFrom = tag.End + 1;
+      continue;
+    }
+    let attrsEnd = tag.End + 1;
+    const endLen = xmlTagEndDelimiterLenAt(text, tag.End);
+    if (endLen > 0) {
+      attrsEnd = tag.End + 1 - endLen;
+    }
+    out.push({
+      Attrs: text.slice(tag.NameEnd, attrsEnd),
+      Body: text.slice(tag.End + 1, closeTag.Start),
+      Start: tag.Start,
+      End: closeTag.End + 1
+    });
+    searchFrom = closeTag.End + 1;
+  }
+  return out;
+}
+function repairMissingXMLToolCallsOpeningWrapper(text) {
+  if (firstToolMarkupTagByName(text, "tool_calls", false)) {
+    return text;
+  }
+  const invokeTag = firstToolMarkupTagByName(text, "invoke", false);
+  if (!invokeTag) return text;
+  const closeTag = lastToolMarkupTagByName(text, "tool_calls", true);
+  if (!closeTag || invokeTag.Start >= closeTag.Start) {
+    return text;
+  }
+  return text.slice(0, invokeTag.Start) + "<tool_calls>" + text.slice(invokeTag.Start, closeTag.Start) + "</tool_calls>" + text.slice(closeTag.End + 1);
+}
+function firstToolMarkupTagByName(text, name, closing) {
+  let searchFrom = 0;
+  while (searchFrom < text.length) {
+    const tag = findToolMarkupTagOutsideIgnored(text, searchFrom);
+    if (!tag) break;
+    if (tag.Name === name && tag.Closing === closing) {
+      return tag;
+    }
+    searchFrom = tag.End + 1;
+  }
+  return null;
+}
+function lastToolMarkupTagByName(text, name, closing) {
+  let last = null;
+  let searchFrom = 0;
+  while (searchFrom < text.length) {
+    const tag = findToolMarkupTagOutsideIgnored(text, searchFrom);
+    if (!tag) break;
+    if (tag.Name === name && tag.Closing === closing) {
+      last = tag;
+    }
+    searchFrom = tag.End + 1;
+  }
+  return last;
+}
+function findXMLElementBlocks(text, name) {
+  if (!text) return [];
+  const out = [];
+  let searchFrom = 0;
+  while (searchFrom < text.length) {
+    const tag = findToolMarkupTagOutsideIgnored(text, searchFrom);
+    if (!tag) break;
+    if (tag.Closing || tag.Name !== name) {
+      searchFrom = tag.End + 1;
+      continue;
+    }
+    if (tag.SelfClosing) {
+      let attrsEnd2 = tag.End + 1;
+      const endLen2 = xmlTagEndDelimiterLenAt(text, tag.End);
+      if (endLen2 > 0) {
+        attrsEnd2 = tag.End + 1 - endLen2;
+      }
+      out.push({
+        Attrs: text.slice(tag.NameEnd, attrsEnd2),
+        Body: "",
+        Start: tag.Start,
+        End: tag.End + 1
+      });
+      searchFrom = tag.End + 1;
+      continue;
+    }
+    const closeTag = findMatchingToolMarkupClose(text, tag);
+    if (!closeTag) {
+      searchFrom = tag.End + 1;
+      continue;
+    }
+    let attrsEnd = tag.End + 1;
+    const endLen = xmlTagEndDelimiterLenAt(text, tag.End);
+    if (endLen > 0) {
+      attrsEnd = tag.End + 1 - endLen;
+    }
+    out.push({
+      Attrs: text.slice(tag.NameEnd, attrsEnd),
+      Body: text.slice(tag.End + 1, closeTag.Start),
+      Start: tag.Start,
+      End: closeTag.End + 1
+    });
+    searchFrom = closeTag.End + 1;
+  }
+  return out;
+}
+function parseSingleXMLToolCall(block) {
+  const attrs = parseXMLTagAttributes(block.Attrs);
+  const name = attrs["name"] || "";
+  if (!name) return null;
+  const input = {};
+  for (const paramBlock of findXMLElementBlocks(block.Body, "parameter")) {
+    const paramAttrs = parseXMLTagAttributes(paramBlock.Attrs);
+    const paramName = paramAttrs["name"];
+    if (!paramName) continue;
+    const val = parseInvokeParameterValue(paramName, paramBlock.Body);
+    input[paramName] = val;
+  }
+  return { Name: name, Input: input };
+}
+function parseXMLTagAttributes(raw) {
+  const trimmed = raw.trim();
+  if (!trimmed) return {};
+  const out = {};
+  xmlAttrPattern.lastIndex = 0;
+  let match;
+  while ((match = xmlAttrPattern.exec(trimmed)) !== null) {
+    const key = match[1].toLowerCase();
+    const val = match[2] !== void 0 ? match[2] : match[3];
+    out[key] = val;
+  }
+  return out;
+}
+function parseInvokeParameterValue(paramName, raw) {
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+  const standaloneCDATA = extractStandaloneCDATA(trimmed);
+  if (standaloneCDATA.ok) {
+    const value = standaloneCDATA.value;
+    try {
+      if (/^[-0-9"[{tfnu]/.test(value.trim())) {
+        const parsed = JSON.parse(value);
+        const coerced = coerceArrayValue(parsed, paramName);
+        if (coerced) return coerced;
+        return parsed;
+      }
+    } catch (e) {
+    }
+    const structured = parseStructuredCDATAParameterValue(paramName, value);
+    if (structured.ok) return structured.value;
+    const looseArray2 = parseLooseJSONArrayValue(value, paramName);
+    if (looseArray2) return looseArray2;
+    return value;
+  }
+  const decoded = decode(parseMarkupValue(trimmed));
+  if (decoded.includes("<") && decoded.includes(">")) {
+    const { value: parsedValue, ok } = parseXMLFragmentValue(decoded);
+    if (ok) {
+      if (parsedValue && typeof parsedValue === "object") {
+        if (Array.isArray(parsedValue)) return parsedValue;
+        const coerced = coerceArrayValue(parsedValue, paramName);
+        if (coerced) return coerced;
+        return parsedValue;
+      }
+      if (typeof parsedValue === "string") {
+        const text = parsedValue.trim();
+        if (!text) return "";
+        try {
+          if (/^[-0-9"[{tfnu]/.test(text)) {
+            const parsedText = JSON.parse(text);
+            const coerced = coerceArrayValue(parsedText, paramName);
+            if (coerced) return coerced;
+            return parsedText;
+          }
+        } catch (e) {
+        }
+        const looseArray2 = parseLooseJSONArrayValue(text, paramName);
+        if (looseArray2) return looseArray2;
+        return parsedValue;
+      }
+      return parsedValue;
+    }
+    const parsed = parseStructuredToolCallInput(decoded);
+    if (Object.keys(parsed).length > 0) {
+      if (Object.keys(parsed).length === 1 && "_raw" in parsed) {
+        const rawValue = parsed["_raw"];
+        const looseArray2 = parseLooseJSONArrayValue(
+          rawValue,
+          paramName
+        );
+        if (looseArray2) return looseArray2;
+        return rawValue;
+      }
+      const coerced = coerceArrayValue(parsed, paramName);
+      if (coerced) return coerced;
+      return parsed;
+    }
+  }
+  try {
+    const dt = decoded.trim();
+    if (/^[-0-9"[{tfnu]/.test(dt)) {
+      const parsed = JSON.parse(dt);
+      const coerced = coerceArrayValue(parsed, paramName);
+      if (coerced) return coerced;
+      return parsed;
+    }
+  } catch (e) {
+  }
+  const looseArray = parseLooseJSONArrayValue(decoded, paramName);
+  if (looseArray) return looseArray;
+  return decoded;
+}
+function parseStructuredCDATAParameterValue(paramName, raw) {
+  if (preservesCDATAStringParameter(paramName)) {
+    return { value: null, ok: false };
+  }
+  const normalized = normalizeCDATAForStructuredParse(raw);
+  if (!normalized.includes("<") || !normalized.includes(">")) {
+    return { value: null, ok: false };
+  }
+  if (!cdataFragmentLooksExplicitlyStructured(normalized)) {
+    return { value: null, ok: false };
+  }
+  const { value, ok } = parseXMLFragmentValue(normalized);
+  if (!ok) return { value: null, ok: false };
+  if (Array.isArray(value)) return { value, ok: true };
+  if (value && typeof value === "object" && Object.keys(value).length > 0) {
+    return { value, ok: true };
+  }
+  return { value: null, ok: false };
+}
+function normalizeCDATAForStructuredParse(raw) {
+  if (!raw) return "";
+  const normalized = raw.replace(cdataBRSeparatorPattern, "\n");
+  return decode(normalized.trim());
+}
+function cdataFragmentLooksExplicitlyStructured(raw) {
+  const trimmed = raw.trim();
+  if (!trimmed) return false;
+  const tags = trimmed.match(/<[^>]+>/g);
+  if (!tags || tags.length < 2) return false;
+  if (!trimmed.startsWith("<") || !trimmed.endsWith(">")) return false;
+  return true;
+}
+function preservesCDATAStringParameter(name) {
+  const n = name.toLowerCase().trim();
+  return [
+    "content",
+    "file_content",
+    "text",
+    "prompt",
+    "query",
+    "command",
+    "cmd",
+    "script",
+    "code",
+    "old_string",
+    "new_string",
+    "pattern",
+    "path",
+    "file_path"
+  ].includes(n);
+}
+function parseToolCallsDetailed(text) {
+  const result = {
+    Calls: [],
+    SawToolCallSyntax: false,
+    RejectedByPolicy: false,
+    RejectedToolNames: []
+  };
+  const trimmed = text.trim();
+  if (!trimmed) return result;
+  const stripped = stripFencedCodeBlocks(trimmed);
+  const finalTrimmed = stripped.trim();
+  if (!finalTrimmed) return result;
+  const { text: normalized } = normalizeDSMLToolCallMarkup(finalTrimmed);
+  result.SawToolCallSyntax = looksLikeToolCallSyntax(normalized);
+  let parsed = parseXMLToolCalls(normalized);
+  if ((!parsed || parsed.length === 0) && indexToolCDATAOpen(normalized, 0) >= 0) {
+    const recovered = SanitizeLooseCDATA(normalized);
+    if (recovered !== normalized) {
+      parsed = parseXMLToolCalls(recovered);
+    }
+  }
+  if (!parsed || parsed.length === 0) {
+    return result;
+  }
+  result.SawToolCallSyntax = true;
+  const filtered = filterToolCallsDetailed(parsed);
+  result.Calls = filtered.calls;
+  result.RejectedToolNames = filtered.rejectedNames;
+  result.RejectedByPolicy = filtered.rejectedNames.length > 0 && filtered.calls.length === 0;
+  return result;
+}
+function filterToolCallsDetailed(parsed) {
+  const calls = [];
+  const rejectedNames = [];
+  for (const tc of parsed) {
+    if (!tc.Name) continue;
+    if (!tc.Input) tc.Input = {};
+    calls.push(tc);
+  }
+  return { calls, rejectedNames };
+}
+function looksLikeToolCallSyntax(text) {
+  return text.includes("<tool_calls>") || text.includes("<invoke") || text.includes("<|DSML|");
+}
+function stripFencedCodeBlocks(text) {
+  if (!text) return "";
+  const lines = text.split(/\r?\n/);
+  let out = "";
+  let inFence = false;
+  let fenceMarker = "";
+  let inCDATA = false;
+  let cdataFenceMarker = "";
+  let beforeFenceOut = "";
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i] + (i < lines.length - 1 ? "\n" : "");
+    if (inCDATA || cdataStartsBeforeFence(line)) {
+      out += line;
+      const res = updateCDATAStateForStrip(inCDATA, cdataFenceMarker, line);
+      inCDATA = res.state;
+      cdataFenceMarker = res.fenceMarker;
+      continue;
+    }
+    const trimmed = line.trimStart();
+    if (!inFence) {
+      const marker = parseFenceOpen(trimmed);
+      if (marker) {
+        inFence = true;
+        fenceMarker = marker;
+        beforeFenceOut = out;
+        continue;
+      }
+      out += line;
+      continue;
+    }
+    if (isFenceClose(trimmed, fenceMarker)) {
+      inFence = false;
+      fenceMarker = "";
+    }
+  }
+  if (inFence) {
+    return beforeFenceOut;
+  }
+  return out;
+}
+function cdataStartsBeforeFence(line) {
+  const cdataIdx = indexToolCDATAOpen(line, 0);
+  if (cdataIdx < 0) return false;
+  const fenceIdx = firstFenceMarkerIndex(line);
+  return fenceIdx < 0 || cdataIdx < fenceIdx;
+}
+function firstFenceMarkerIndex(line) {
+  const idx3 = line.indexOf("```");
+  const idxT = line.indexOf("~~~");
+  if (idx3 < 0) return idxT;
+  if (idxT < 0) return idx3;
+  return Math.min(idx3, idxT);
+}
+function updateCDATAStateForStrip(inCDATA, cdataFenceMarker, line) {
+  let pos = 0;
+  let state2 = inCDATA;
+  let fenceMarker = cdataFenceMarker;
+  let lineForFence = line;
+  if (!state2) {
+    const start = indexToolCDATAOpen(line, pos);
+    if (start < 0) return { state: false, fenceMarker: "" };
+    pos = start + toolCDATAOpenLenAt(line, start);
+    state2 = true;
+    lineForFence = line.slice(pos);
+  }
+  const trimmed = lineForFence.trimStart();
+  if (!fenceMarker) {
+    const m = parseFenceOpen(trimmed);
+    if (m) fenceMarker = m;
+  } else if (isFenceClose(trimmed, fenceMarker)) {
+    fenceMarker = "";
+  }
+  while (pos < line.length) {
+    let endPos = -1;
+    let closeLen = 0;
+    for (let search = pos; search < line.length; search++) {
+      const foundLen = toolCDATACloseLenAt(line, search);
+      if (foundLen > 0) {
+        endPos = search;
+        closeLen = foundLen;
+        break;
+      }
+    }
+    if (endPos < 0) return { state: true, fenceMarker };
+    pos = endPos + closeLen;
+    if (fenceMarker !== "") continue;
+    const tail = line.slice(pos).trimStart();
+    if (tail === "" || tail.startsWith("<")) {
+      state2 = false;
+      const nextStart = indexToolCDATAOpen(line, pos);
+      if (nextStart < 0) return { state: false, fenceMarker: "" };
+      pos = nextStart + toolCDATAOpenLenAt(line, nextStart);
+      state2 = true;
+      const trimmedTail = line.slice(pos).trimStart();
+      const m = parseFenceOpen(trimmedTail);
+      fenceMarker = m || "";
+    }
+  }
+  return { state: state2, fenceMarker };
+}
+function parseFenceOpen(line) {
+  if (line.length < 3) return null;
+  const ch = line[0];
+  if (ch !== "`" && ch !== "~") return null;
+  let count = 0;
+  while (count < line.length && line[count] === ch) count++;
+  if (count < 3) return null;
+  return ch.repeat(count);
+}
+function isFenceClose(line, marker) {
+  if (!marker) return false;
+  const ch = marker[0];
+  if (!line || line[0] !== ch) return false;
+  let count = 0;
+  while (count < line.length && line[count] === ch) count++;
+  if (count < marker.length) return false;
+  return line.slice(count).trim() === "";
+}
+let StreamToolSieve$1 = class StreamToolSieve {
+  constructor() {
+    __publicField(this, "state");
+    this.state = createToolSieveState();
+  }
+  processChunk(chunk) {
+    if (chunk) {
+      this.state.pending += chunk;
+    }
+    const events2 = [];
+    while (true) {
+      if (this.state.pendingToolCalls.length > 0) {
+        events2.push({
+          type: "tool_calls",
+          calls: this.state.pendingToolCalls
+        });
+        this.state.pendingToolRaw = "";
+        this.state.pendingToolCalls = [];
+        continue;
+      }
+      if (this.state.capturing) {
+        if (this.state.pending) {
+          this.state.capture += this.state.pending;
+          this.state.pending = "";
+        }
+        const result = this.consumeToolCapture();
+        if (!result.ready) break;
+        const captured = this.state.capture;
+        this.state.capture = "";
+        this.state.capturing = false;
+        resetIncrementalToolState(this.state);
+        if (result.calls.length > 0) {
+          if (result.prefix) {
+            noteText(this.state, result.prefix);
+            events2.push({ type: "text", text: result.prefix });
+          }
+          this.state.pendingToolRaw = captured;
+          this.state.pendingToolCalls = result.calls;
+          if (result.suffix) {
+            this.state.pending = result.suffix + this.state.pending;
+          }
+          continue;
+        }
+        if (result.prefix) {
+          noteText(this.state, result.prefix);
+          events2.push({ type: "text", text: result.prefix });
+        }
+        if (result.suffix) {
+          this.state.pending = result.suffix + this.state.pending;
+        }
+        continue;
+      }
+      const pending = this.state.pending;
+      if (!pending) break;
+      const start = this.findToolSegmentStart(pending);
+      if (start >= 0) {
+        const prefix = pending.slice(0, start);
+        if (prefix) {
+          noteText(this.state, prefix);
+          events2.push({ type: "text", text: prefix });
+        }
+        this.state.pending = "";
+        this.state.capture = pending.slice(start);
+        this.state.capturing = true;
+        resetIncrementalToolState(this.state);
+        continue;
+      }
+      const [safe, hold] = this.splitSafeContent(pending);
+      if (!safe && hold) break;
+      this.state.pending = hold;
+      if (safe) {
+        noteText(this.state, safe);
+        events2.push({ type: "text", text: safe });
+      }
+      if (!safe) break;
+    }
+    return events2;
+  }
+  findToolSegmentStart(text) {
+    let offset = 0;
+    while (true) {
+      const tag = findToolMarkupTagOutsideIgnored(text, offset);
+      if (!tag) return -1;
+      if (insideCodeFenceWithState(this.state, text.slice(0, tag.Start))) {
+        offset = tag.End + 1;
+        continue;
+      }
+      if (!tag.Closing && tag.Name === "tool_calls") {
+        return tag.Start;
+      }
+      offset = tag.End + 1;
+    }
+  }
+  splitSafeContent(text) {
+    const lastLt = text.lastIndexOf("<");
+    if (lastLt >= 0 && lastLt > text.length - 20) {
+      return [text.slice(0, lastLt), text.slice(lastLt)];
+    }
+    return [text, ""];
+  }
+  consumeToolCapture() {
+    const captured = this.state.capture;
+    const tag = findToolMarkupTagOutsideIgnored(captured, 0);
+    if (tag && !tag.Closing && tag.Name === "tool_calls") {
+      const closeTag = findMatchingToolMarkupClose(captured, tag);
+      if (closeTag) {
+        const fullBlock = captured.slice(tag.Start, closeTag.End + 1);
+        const parseResult = parseToolCallsDetailed(fullBlock);
+        return {
+          ready: true,
+          prefix: captured.slice(0, tag.Start),
+          calls: parseResult.Calls,
+          suffix: captured.slice(closeTag.End + 1)
+        };
+      }
+      return { ready: false, prefix: "", calls: [], suffix: "" };
+    }
+    return { ready: true, prefix: captured, calls: [], suffix: "" };
+  }
+  flush() {
+    const events2 = this.processChunk("");
+    if (this.state.capture) {
+      events2.push({ type: "text", text: this.state.capture });
+      this.state.capture = "";
+    }
+    if (this.state.pending) {
+      events2.push({ type: "text", text: this.state.pending });
+      this.state.pending = "";
+    }
+    return events2;
+  }
+};
 function buildToolPrompt(tools) {
   if (!tools || tools.length === 0) return "";
   const toolSchemas = [];
@@ -19568,99 +21852,62 @@ Parameters: ${parameters}`
   return fullPrompt;
 }
 function parseDSMLToolCalls(xmlContent) {
-  const results = [];
-  const invokeRegex = /<\|DSML\|invoke\s+name="([^"]+)">([\s\S]*?)<\/\|DSML\|invoke>/g;
-  const paramRegex = /<\|DSML\|parameter\s+name="([^"]+)">([\s\S]*?)<\/\|DSML\|parameter>/g;
-  const cdataRegex = /^\s*<!\[CDATA\[([\s\S]*?)\]\]>\s*$/;
-  let match;
-  while ((match = invokeRegex.exec(xmlContent)) !== null) {
-    const name = match[1];
-    const paramsStr = match[2];
-    const args = {};
-    let paramMatch;
-    while ((paramMatch = paramRegex.exec(paramsStr)) !== null) {
-      const pName = paramMatch[1];
-      let pValue = paramMatch[2].trim();
-      const cdataMatch = pValue.match(cdataRegex);
-      if (cdataMatch) {
-        pValue = cdataMatch[1];
-      }
-      args[pName] = pValue;
+  const result = parseToolCalls(xmlContent);
+  return result.calls.map((c) => ({
+    id: `call_${crypto$1.randomUUID().replace(/-/g, "")}`,
+    type: "function",
+    function: {
+      name: c.name,
+      arguments: JSON.stringify(c.input)
     }
-    results.push({
-      id: `call_${crypto$1.randomUUID().replace(/-/g, "")}`,
-      type: "function",
-      function: {
-        name,
-        arguments: JSON.stringify(args)
-      }
-    });
-  }
-  return results;
+  }));
 }
-class StreamToolSieve {
+class StreamToolSieve2 {
   constructor() {
-    __publicField(this, "buffer", "");
-    __publicField(this, "inTool", false);
-    __publicField(this, "finishedTool", false);
+    __publicField(this, "sieve");
+    this.sieve = new StreamToolSieve$1();
   }
   processChunk(text) {
-    if (this.finishedTool) return { outputText: text, toolCalls: null };
-    this.buffer += text;
-    const toolStartIdx = this.buffer.indexOf("<|DSML|tool_calls>");
-    if (toolStartIdx !== -1) {
-      this.inTool = true;
-      const toolEndIdx = this.buffer.indexOf("</|DSML|tool_calls>");
-      if (toolEndIdx !== -1) {
-        const fullXml = this.buffer.substring(
-          toolStartIdx,
-          toolEndIdx + "</|DSML|tool_calls>".length
-        );
-        this.finishedTool = true;
-        const preText = this.buffer.substring(0, toolStartIdx);
-        const postText = this.buffer.substring(
-          toolEndIdx + "</|DSML|tool_calls>".length
-        );
-        const toolCalls = parseDSMLToolCalls(fullXml);
-        this.buffer = postText;
-        return {
-          outputText: preText,
-          toolCalls: toolCalls.length > 0 ? toolCalls : null
-        };
+    const events2 = this.sieve.processChunk(text);
+    let outputText = "";
+    let toolCalls = null;
+    for (const ev of events2) {
+      if (ev.type === "text" && ev.text) {
+        outputText += ev.text;
+      } else if (ev.type === "tool_calls" && ev.calls) {
+        const formatted = ev.calls.map((c) => ({
+          id: `call_${crypto$1.randomUUID().replace(/-/g, "")}`,
+          type: "function",
+          function: {
+            name: c.name,
+            arguments: JSON.stringify(c.input)
+          }
+        }));
+        toolCalls = [...toolCalls || [], ...formatted];
       }
-      if (toolStartIdx > 0) {
-        const preText = this.buffer.substring(0, toolStartIdx);
-        this.buffer = this.buffer.substring(toolStartIdx);
-        return { outputText: preText, toolCalls: null };
-      }
-      return { outputText: "", toolCalls: null };
     }
-    const lastLt = this.buffer.lastIndexOf("<");
-    if (lastLt !== -1) {
-      const safeText2 = this.buffer.substring(0, lastLt);
-      this.buffer = this.buffer.substring(lastLt);
-      return { outputText: safeText2, toolCalls: null };
-    }
-    const safeText = this.buffer;
-    this.buffer = "";
-    return { outputText: safeText, toolCalls: null };
+    return { outputText, toolCalls };
   }
   flush() {
-    if (this.inTool && this.buffer.includes("<|DSML|tool_calls>")) {
-      const fullXml = this.buffer + "</|DSML|invoke></|DSML|tool_calls>";
-      const toolCalls = parseDSMLToolCalls(fullXml);
-      const preText = this.buffer.substring(
-        0,
-        this.buffer.indexOf("<|DSML|tool_calls>")
-      );
-      return {
-        outputText: preText,
-        toolCalls: toolCalls.length > 0 ? toolCalls : null
-      };
+    const events2 = this.sieve.flush();
+    let outputText = "";
+    let toolCalls = null;
+    for (const ev of events2) {
+      if (ev.type === "text" && ev.text) {
+        outputText += ev.text;
+      } else if (ev.type === "tool_calls" && ev.calls) {
+        const formatted = ev.calls.map((c) => ({
+          id: `call_${crypto$1.randomUUID().replace(/-/g, "")}`,
+          type: "function",
+          function: {
+            name: c.name,
+            arguments: JSON.stringify(c.input)
+          }
+        }));
+        toolCalls = [...toolCalls || [], ...formatted];
+      }
     }
-    const remainder = this.buffer;
-    this.buffer = "";
-    return { outputText: remainder, toolCalls: null };
+    return { outputText, toolCalls };
   }
 }
 const fileCache = /* @__PURE__ */ new Map();
@@ -20996,7 +23243,7 @@ async function handleStreamResponse(res, stream2, model, thinkingEnabled) {
   let buffer = "";
   let thinkingStartSent = false;
   let hasToolCalls = false;
-  const sieve = new StreamToolSieve();
+  const sieve = new StreamToolSieve2();
   return new Promise((resolve2, reject) => {
     const sendSSE = (data) => {
       res.write(`data: ${JSON.stringify(data)}

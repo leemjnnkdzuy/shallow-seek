@@ -13,4 +13,3 @@ export function registerIpcs(
 	registerDatabaseIpcs();
 	registerServerIpcs();
 }
- 
