@@ -1,1 +1,113 @@
-"use strict";const n=require("electron");try{Object.defineProperty(navigator,"webdriver",{get:()=>{}}),window.chrome||(window.chrome={runtime:{}})}catch{}n.contextBridge.exposeInMainWorld("electron",{send:(e,r)=>{["toMain"].includes(e)&&n.ipcRenderer.send(e,r)},receive:(e,r)=>{["fromMain"].includes(e)&&n.ipcRenderer.on(e,(i,...d)=>r(...d))},windowControls:{minimize:()=>n.ipcRenderer.send("window-minimize"),maximize:()=>n.ipcRenderer.send("window-maximize"),close:()=>n.ipcRenderer.send("window-close"),zoomIn:()=>n.ipcRenderer.send("window-zoom-in"),zoomOut:()=>n.ipcRenderer.send("window-zoom-out"),resetZoom:()=>n.ipcRenderer.send("window-zoom-reset"),onWindowStateChange:e=>{n.ipcRenderer.on("window-state-changed",(r,t)=>e(t))},openAddAccount:()=>n.ipcRenderer.send("open-add-account"),openCreateApiKey:e=>n.ipcRenderer.send("open-create-api-key",e),openSettings:()=>n.ipcRenderer.send("open-settings"),notifyThemeChanged:e=>n.ipcRenderer.send("theme-changed",e),onThemeChanged:e=>{const r=(t,i)=>e(i);return n.ipcRenderer.on("on-theme-changed",r),()=>n.ipcRenderer.off("on-theme-changed",r)},notifyLanguageChanged:e=>n.ipcRenderer.send("language-changed",e),onLanguageChanged:e=>{const r=(t,i)=>e(i);return n.ipcRenderer.on("on-language-changed",r),()=>n.ipcRenderer.off("on-language-changed",r)},openConfirm:e=>n.ipcRenderer.invoke("open-confirm",e),confirmResult:e=>n.ipcRenderer.send("confirm-result",e),openExternal:e=>n.ipcRenderer.send("open-external",e)},db:{addAccount:e=>n.ipcRenderer.invoke("db-add-account",e),getAccounts:()=>n.ipcRenderer.invoke("db-get-accounts"),deleteAccount:e=>n.ipcRenderer.invoke("db-delete-account",e),checkAccountExists:e=>n.ipcRenderer.invoke("db-check-account-exists",e),getSetting:e=>n.ipcRenderer.invoke("db-get-setting",e),setSetting:(e,r)=>n.ipcRenderer.invoke("db-set-setting",e,r),getAllSettings:()=>n.ipcRenderer.invoke("db-get-all-settings")},deepseek:{login:e=>n.ipcRenderer.invoke("deepseek-login",e),fetchHistory:e=>n.ipcRenderer.invoke("deepseek-fetch-history",e),fetchSessionMessages:e=>n.ipcRenderer.invoke("deepseek-fetch-session-messages",e),createChatSession:e=>n.ipcRenderer.invoke("deepseek-create-session",e),deleteChatSession:e=>n.ipcRenderer.invoke("deepseek-delete-session",e),getApiKeys:e=>n.ipcRenderer.invoke("deepseek-get-api-keys",e),editApiKeys:e=>n.ipcRenderer.invoke("deepseek-edit-api-keys",e),uploadFile:e=>n.ipcRenderer.invoke("deepseek-upload-file",e),fetchFiles:e=>n.ipcRenderer.invoke("deepseek-fetch-files",e),saveTempFile:e=>n.ipcRenderer.invoke("deepseek-save-temp-file",e),startChatStream:e=>n.ipcRenderer.send("deepseek-chat-stream",e),onChatChunk:e=>{const r=(t,i)=>e(i);return n.ipcRenderer.on("deepseek-chat-chunk",r),()=>n.ipcRenderer.off("deepseek-chat-chunk",r)},onChatEnd:e=>{const r=()=>e();return n.ipcRenderer.on("deepseek-chat-end",r),()=>n.ipcRenderer.off("deepseek-chat-end",r)},onChatError:e=>{const r=(t,i)=>e(i);return n.ipcRenderer.on("deepseek-chat-error",r),()=>n.ipcRenderer.off("deepseek-chat-error",r)}},server:{start:e=>n.ipcRenderer.invoke("server-start",e),stop:()=>n.ipcRenderer.invoke("server-stop"),status:()=>n.ipcRenderer.invoke("server-status"),getLogs:()=>n.ipcRenderer.invoke("server-logs"),onLog:e=>{const r=(t,i)=>e(i);return n.ipcRenderer.on("server-log",r),()=>n.ipcRenderer.off("server-log",r)},onStatusChanged:e=>{const r=(t,i,d)=>e(i,d);return n.ipcRenderer.on("server-status-changed",r),()=>n.ipcRenderer.off("server-status-changed",r)}},log:e=>n.ipcRenderer.send("renderer-log",e)});
+"use strict";
+const electron = require("electron");
+try {
+  Object.defineProperty(navigator, "webdriver", {
+    get: () => void 0
+  });
+  if (!window.chrome) {
+    window.chrome = {
+      runtime: {}
+    };
+  }
+} catch (e) {
+}
+electron.contextBridge.exposeInMainWorld("electron", {
+  send: (channel, data) => {
+    let validChannels = ["toMain"];
+    if (validChannels.includes(channel)) {
+      electron.ipcRenderer.send(channel, data);
+    }
+  },
+  receive: (channel, func) => {
+    let validChannels = ["fromMain"];
+    if (validChannels.includes(channel)) {
+      electron.ipcRenderer.on(channel, (_event, ...args) => func(...args));
+    }
+  },
+  windowControls: {
+    minimize: () => electron.ipcRenderer.send("window-minimize"),
+    maximize: () => electron.ipcRenderer.send("window-maximize"),
+    close: () => electron.ipcRenderer.send("window-close"),
+    zoomIn: () => electron.ipcRenderer.send("window-zoom-in"),
+    zoomOut: () => electron.ipcRenderer.send("window-zoom-out"),
+    resetZoom: () => electron.ipcRenderer.send("window-zoom-reset"),
+    onWindowStateChange: (callback) => {
+      electron.ipcRenderer.on(
+        "window-state-changed",
+        (_event, state) => callback(state)
+      );
+    },
+    openAddAccount: () => electron.ipcRenderer.send("open-add-account"),
+    openCreateApiKey: (token) => electron.ipcRenderer.send("open-create-api-key", token),
+    openSettings: () => electron.ipcRenderer.send("open-settings"),
+    notifyThemeChanged: (theme) => electron.ipcRenderer.send("theme-changed", theme),
+    onThemeChanged: (callback) => {
+      const listener = (_event, theme) => callback(theme);
+      electron.ipcRenderer.on("on-theme-changed", listener);
+      return () => electron.ipcRenderer.off("on-theme-changed", listener);
+    },
+    notifyLanguageChanged: (lang) => electron.ipcRenderer.send("language-changed", lang),
+    onLanguageChanged: (callback) => {
+      const listener = (_event, lang) => callback(lang);
+      electron.ipcRenderer.on("on-language-changed", listener);
+      return () => electron.ipcRenderer.off("on-language-changed", listener);
+    },
+    openConfirm: (options) => electron.ipcRenderer.invoke("open-confirm", options),
+    confirmResult: (result) => electron.ipcRenderer.send("confirm-result", result),
+    openExternal: (url) => electron.ipcRenderer.send("open-external", url)
+  },
+  db: {
+    addAccount: (account) => electron.ipcRenderer.invoke("db-add-account", account),
+    getAccounts: () => electron.ipcRenderer.invoke("db-get-accounts"),
+    deleteAccount: (id) => electron.ipcRenderer.invoke("db-delete-account", id),
+    checkAccountExists: (email) => electron.ipcRenderer.invoke("db-check-account-exists", email),
+    getSetting: (key) => electron.ipcRenderer.invoke("db-get-setting", key),
+    setSetting: (key, value) => electron.ipcRenderer.invoke("db-set-setting", key, value),
+    getAllSettings: () => electron.ipcRenderer.invoke("db-get-all-settings")
+  },
+  deepseek: {
+    login: (payload) => electron.ipcRenderer.invoke("deepseek-login", payload),
+    fetchHistory: (payload) => electron.ipcRenderer.invoke("deepseek-fetch-history", payload),
+    fetchSessionMessages: (payload) => electron.ipcRenderer.invoke("deepseek-fetch-session-messages", payload),
+    createChatSession: (payload) => electron.ipcRenderer.invoke("deepseek-create-session", payload),
+    deleteChatSession: (payload) => electron.ipcRenderer.invoke("deepseek-delete-session", payload),
+    getApiKeys: (payload) => electron.ipcRenderer.invoke("deepseek-get-api-keys", payload),
+    editApiKeys: (payload) => electron.ipcRenderer.invoke("deepseek-edit-api-keys", payload),
+    uploadFile: (payload) => electron.ipcRenderer.invoke("deepseek-upload-file", payload),
+    fetchFiles: (payload) => electron.ipcRenderer.invoke("deepseek-fetch-files", payload),
+    saveTempFile: (payload) => electron.ipcRenderer.invoke("deepseek-save-temp-file", payload),
+    startChatStream: (payload) => electron.ipcRenderer.send("deepseek-chat-stream", payload),
+    onChatChunk: (callback) => {
+      const listener = (_event, chunk) => callback(chunk);
+      electron.ipcRenderer.on("deepseek-chat-chunk", listener);
+      return () => electron.ipcRenderer.off("deepseek-chat-chunk", listener);
+    },
+    onChatEnd: (callback) => {
+      const listener = () => callback();
+      electron.ipcRenderer.on("deepseek-chat-end", listener);
+      return () => electron.ipcRenderer.off("deepseek-chat-end", listener);
+    },
+    onChatError: (callback) => {
+      const listener = (_event, err) => callback(err);
+      electron.ipcRenderer.on("deepseek-chat-error", listener);
+      return () => electron.ipcRenderer.off("deepseek-chat-error", listener);
+    }
+  },
+  server: {
+    start: (config) => electron.ipcRenderer.invoke("server-start", config),
+    stop: () => electron.ipcRenderer.invoke("server-stop"),
+    status: () => electron.ipcRenderer.invoke("server-status"),
+    getLogs: () => electron.ipcRenderer.invoke("server-logs"),
+    onLog: (callback) => {
+      const listener = (_event, msg) => callback(msg);
+      electron.ipcRenderer.on("server-log", listener);
+      return () => electron.ipcRenderer.off("server-log", listener);
+    },
+    onStatusChanged: (callback) => {
+      const listener = (_event, isRunning, port, accountPorts) => callback(isRunning, port, accountPorts);
+      electron.ipcRenderer.on("server-status-changed", listener);
+      return () => electron.ipcRenderer.off("server-status-changed", listener);
+    }
+  },
+  log: (payload) => electron.ipcRenderer.send("renderer-log", payload)
+});

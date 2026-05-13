@@ -51,7 +51,6 @@ const phaseVariants = {
 	exit: {opacity: 0, y: -8, scale: 0.995, transition: {duration: 0.18}},
 };
 
-
 const buildLoginErrorLog = (params: {
 	err: unknown;
 	email: string;
@@ -99,7 +98,9 @@ const AddAccountPage: React.FC = () => {
 		setEmailExists(false);
 		setErrorMessage("");
 
-		const check = await window.electron?.db.checkAccountExists(username.trim());
+		const check = await window.electron?.db.checkAccountExists(
+			username.trim(),
+		);
 		if (check?.success && check.exists) {
 			setEmailExists(true);
 			setErrorMessage("Tài khoản này đã tồn tại trong hệ thống.");
@@ -168,14 +169,14 @@ const AddAccountPage: React.FC = () => {
 					id: user.id,
 					email: user.email,
 					chat_token: user.token,
-					platform_token: result.platformToken || undefined
+					platform_token: result.platformToken || undefined,
 				});
 
 				if (res?.success) {
 					if (result.platformToken) {
 						await window.electron?.db.setSetting(
-							`platform_token_${user.id}`, 
-							result.platformToken
+							`platform_token_${user.id}`,
+							result.platformToken,
 						);
 					}
 

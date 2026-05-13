@@ -14,13 +14,8 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
-interface ApiKey {
-	created_at: number;
-	last_use: string | null;
-	tracking_id: string;
-	sensitive_id: string;
-	name: string;
-}
+import {ApiKey} from "@/types";
+import {createKey as onCreateKeyHandler, copyToClipboard as onCopyHandler} from "@/handlers";
 
 const phaseVariants = {
 	initial: { opacity: 0, y: 8, scale: 0.995 },
@@ -54,45 +49,17 @@ const CreateAPIKeyPage: React.FC = () => {
 		return () => resetConfig();
 	}, [setConfig, resetConfig]);
 
-	const handleCreateKey = async () => {
-		const trimmedName = keyName.trim();
-		if (!trimmedName || !token) return;
-
-		setCreating(true);
-		setErrorMessage("");
-		try {
-			const res = await window.electron?.deepseek?.editApiKeys({
-				token,
-				body: {
-					action: "create",
-					name: trimmedName,
-					redacted_key: null,
-					created_at: null,
-				},
-			});
-
-			if (res?.ok && res.data?.code === 0 && res.data?.data?.biz_data?.api_key) {
-				setCreatedKey(res.data.data.biz_data.api_key);
-				setPhase(2);
-			} else {
-				setErrorMessage(res?.data?.msg || res?.data?.biz_msg || "Không thể tạo API Key. Vui lòng thử lại.");
-			}
-		} catch (err) {
-			console.error("Error creating API key in popup:", err);
-			setErrorMessage("Có lỗi xảy ra khi kết nối tới hệ thống.");
-		} finally {
-			setCreating(false);
-		}
+	const handleCreateKey = () => {
+		onCreateKeyHandler(token, keyName, {
+			setCreating,
+			setErrorMessage,
+			setCreatedKey,
+			setPhase,
+		});
 	};
 
-	const copyToClipboard = async (text: string) => {
-		try {
-			await navigator.clipboard.writeText(text);
-			setCopied(true);
-			setTimeout(() => setCopied(false), 2000);
-		} catch (err) {
-			console.error("Failed to copy key:", err);
-		}
+	const copyToClipboard = (text: string) => {
+		onCopyHandler(text, {setCopied});
 	};
 
 	return (

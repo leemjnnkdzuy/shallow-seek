@@ -8,7 +8,7 @@ try {
 	// Mock chrome object
 	if (!(window as any).chrome) {
 		(window as any).chrome = {
-			runtime: {}
+			runtime: {},
 		};
 	}
 } catch (e) {
@@ -43,15 +43,18 @@ contextBridge.exposeInMainWorld("electron", {
 			);
 		},
 		openAddAccount: () => ipcRenderer.send("open-add-account"),
-		openCreateApiKey: (token: string) => ipcRenderer.send("open-create-api-key", token),
+		openCreateApiKey: (token: string) =>
+			ipcRenderer.send("open-create-api-key", token),
 		openSettings: () => ipcRenderer.send("open-settings"),
-		notifyThemeChanged: (theme: string) => ipcRenderer.send("theme-changed", theme),
+		notifyThemeChanged: (theme: string) =>
+			ipcRenderer.send("theme-changed", theme),
 		onThemeChanged: (callback: (theme: string) => void) => {
 			const listener = (_event: any, theme: string) => callback(theme);
 			ipcRenderer.on("on-theme-changed", listener);
 			return () => ipcRenderer.off("on-theme-changed", listener);
 		},
-		notifyLanguageChanged: (lang: string) => ipcRenderer.send("language-changed", lang),
+		notifyLanguageChanged: (lang: string) =>
+			ipcRenderer.send("language-changed", lang),
 		onLanguageChanged: (callback: (lang: string) => void) => {
 			const listener = (_event: any, lang: string) => callback(lang);
 			ipcRenderer.on("on-language-changed", listener);
@@ -68,8 +71,7 @@ contextBridge.exposeInMainWorld("electron", {
 		}) => ipcRenderer.invoke("open-confirm", options),
 		confirmResult: (result: boolean) =>
 			ipcRenderer.send("confirm-result", result),
-		openExternal: (url: string) =>
-			ipcRenderer.send("open-external", url),
+		openExternal: (url: string) => ipcRenderer.send("open-external", url),
 	},
 	db: {
 		addAccount: (account: any) =>
@@ -89,24 +91,41 @@ contextBridge.exposeInMainWorld("electron", {
 			ipcRenderer.invoke("deepseek-login", payload),
 		fetchHistory: (payload: {token: string; cookies?: string}) =>
 			ipcRenderer.invoke("deepseek-fetch-history", payload),
-		fetchSessionMessages: (payload: {token: string; cookies?: string; sessionId: string}) =>
-			ipcRenderer.invoke("deepseek-fetch-session-messages", payload),
+		fetchSessionMessages: (payload: {
+			token: string;
+			cookies?: string;
+			sessionId: string;
+		}) => ipcRenderer.invoke("deepseek-fetch-session-messages", payload),
 		createChatSession: (payload: {token: string; cookies?: string}) =>
 			ipcRenderer.invoke("deepseek-create-session", payload),
-		deleteChatSession: (payload: {token: string; cookies?: string; sessionId: string}) =>
-			ipcRenderer.invoke("deepseek-delete-session", payload),
+		deleteChatSession: (payload: {
+			token: string;
+			cookies?: string;
+			sessionId: string;
+		}) => ipcRenderer.invoke("deepseek-delete-session", payload),
 		getApiKeys: (payload: {token: string}) =>
 			ipcRenderer.invoke("deepseek-get-api-keys", payload),
 		editApiKeys: (payload: {token: string; body: any}) =>
 			ipcRenderer.invoke("deepseek-edit-api-keys", payload),
-		uploadFile: (payload: {token: string; cookies?: string; filePath: string; fileName: string; fileSize?: number}) =>
-			ipcRenderer.invoke("deepseek-upload-file", payload),
-		fetchFiles: (payload: {token: string; cookies?: string; fileIds: string[]}) =>
-			ipcRenderer.invoke("deepseek-fetch-files", payload),
+		uploadFile: (payload: {
+			token: string;
+			cookies?: string;
+			filePath: string;
+			fileName: string;
+			fileSize?: number;
+		}) => ipcRenderer.invoke("deepseek-upload-file", payload),
+		fetchFiles: (payload: {
+			token: string;
+			cookies?: string;
+			fileIds: string[];
+		}) => ipcRenderer.invoke("deepseek-fetch-files", payload),
 		saveTempFile: (payload: {base64Data: string; fileName: string}) =>
 			ipcRenderer.invoke("deepseek-save-temp-file", payload),
-		startChatStream: (payload: {token: string; cookies?: string; payload: any}) =>
-			ipcRenderer.send("deepseek-chat-stream", payload),
+		startChatStream: (payload: {
+			token: string;
+			cookies?: string;
+			payload: any;
+		}) => ipcRenderer.send("deepseek-chat-stream", payload),
 		onChatChunk: (callback: (chunk: string) => void) => {
 			const listener = (_event: any, chunk: string) => callback(chunk);
 			ipcRenderer.on("deepseek-chat-chunk", listener);
@@ -118,13 +137,15 @@ contextBridge.exposeInMainWorld("electron", {
 			return () => ipcRenderer.off("deepseek-chat-end", listener);
 		},
 		onChatError: (callback: (err: {message: string}) => void) => {
-			const listener = (_event: any, err: {message: string}) => callback(err);
+			const listener = (_event: any, err: {message: string}) =>
+				callback(err);
 			ipcRenderer.on("deepseek-chat-error", listener);
 			return () => ipcRenderer.off("deepseek-chat-error", listener);
 		},
 	},
 	server: {
-		start: (config?: { token?: string; port?: number; apiKey?: string }) => ipcRenderer.invoke("server-start", config),
+		start: (config?: {token?: string; port?: number; apiKey?: string}) =>
+			ipcRenderer.invoke("server-start", config),
 		stop: () => ipcRenderer.invoke("server-stop"),
 		status: () => ipcRenderer.invoke("server-status"),
 		getLogs: () => ipcRenderer.invoke("server-logs"),
@@ -133,11 +154,22 @@ contextBridge.exposeInMainWorld("electron", {
 			ipcRenderer.on("server-log", listener);
 			return () => ipcRenderer.off("server-log", listener);
 		},
-		onStatusChanged: (callback: (isRunning: boolean, port?: number) => void) => {
-			const listener = (_event: any, isRunning: boolean, port?: number) => callback(isRunning, port);
+		onStatusChanged: (
+			callback: (
+				isRunning: boolean,
+				port?: number,
+				accountPorts?: Record<string, number>,
+			) => void,
+		) => {
+			const listener = (
+				_event: any,
+				isRunning: boolean,
+				port?: number,
+				accountPorts?: Record<string, number>,
+			) => callback(isRunning, port, accountPorts);
 			ipcRenderer.on("server-status-changed", listener);
 			return () => ipcRenderer.off("server-status-changed", listener);
-		}
+		},
 	},
 	log: (payload: unknown) => ipcRenderer.send("renderer-log", payload),
 });
