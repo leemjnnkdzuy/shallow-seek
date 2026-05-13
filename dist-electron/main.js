@@ -18,11 +18,11 @@ import require$$1$2 from "tty";
 import require$$0$1 from "os";
 import zlib from "zlib";
 import { EventEmitter } from "events";
-import crypto$1 from "node:crypto";
 import fs$1 from "node:fs";
 import Database from "better-sqlite3";
 import http$2 from "node:http";
 import { Readable as Readable$1 } from "node:stream";
+import crypto$1 from "node:crypto";
 function registerWindowIpcs(__dirname, VITE_DEV_SERVER_URL2, RENDERER_DIST2) {
   ipcMain.on("window-minimize", (event) => {
     const webContents = event.sender;
@@ -12225,14 +12225,7 @@ var _eval = EvalError;
 var range = RangeError;
 var ref = ReferenceError;
 var syntax = SyntaxError;
-var type;
-var hasRequiredType;
-function requireType() {
-  if (hasRequiredType) return type;
-  hasRequiredType = 1;
-  type = TypeError;
-  return type;
-}
+var type = TypeError;
 var uri = URIError;
 var abs$1 = Math.abs;
 var floor$1 = Math.floor;
@@ -12478,7 +12471,7 @@ function requireCallBindApplyHelpers() {
   if (hasRequiredCallBindApplyHelpers) return callBindApplyHelpers;
   hasRequiredCallBindApplyHelpers = 1;
   var bind3 = functionBind;
-  var $TypeError2 = requireType();
+  var $TypeError2 = type;
   var $call2 = requireFunctionCall();
   var $actualApply = requireActualApply();
   callBindApplyHelpers = function callBindBasic(args) {
@@ -12551,7 +12544,7 @@ var $EvalError = _eval;
 var $RangeError = range;
 var $ReferenceError = ref;
 var $SyntaxError = syntax;
-var $TypeError$1 = requireType();
+var $TypeError$1 = type;
 var $URIError = uri;
 var abs = abs$1;
 var floor = floor$1;
@@ -12882,7 +12875,7 @@ var GetIntrinsic2 = getIntrinsic;
 var $defineProperty = GetIntrinsic2("%Object.defineProperty%", true);
 var hasToStringTag = requireShams()();
 var hasOwn$1 = hasown;
-var $TypeError = requireType();
+var $TypeError = type;
 var toStringTag = hasToStringTag ? Symbol.toStringTag : null;
 var esSetTostringtag = function setToStringTag(object, value) {
   var overrideIfSet = arguments.length > 2 && !!arguments[2] && arguments[2].force;
@@ -12923,9 +12916,9 @@ var asynckit = asynckit$1;
 var setToStringTag2 = esSetTostringtag;
 var hasOwn = hasown;
 var populate = populate$1;
-function FormData$1(options) {
-  if (!(this instanceof FormData$1)) {
-    return new FormData$1(options);
+function FormData$2(options) {
+  if (!(this instanceof FormData$2)) {
+    return new FormData$2(options);
   }
   this._overheadLength = 0;
   this._valueLength = 0;
@@ -12936,10 +12929,10 @@ function FormData$1(options) {
     this[option] = options[option];
   }
 }
-util.inherits(FormData$1, CombinedStream);
-FormData$1.LINE_BREAK = "\r\n";
-FormData$1.DEFAULT_CONTENT_TYPE = "application/octet-stream";
-FormData$1.prototype.append = function(field, value, options) {
+util.inherits(FormData$2, CombinedStream);
+FormData$2.LINE_BREAK = "\r\n";
+FormData$2.DEFAULT_CONTENT_TYPE = "application/octet-stream";
+FormData$2.prototype.append = function(field, value, options) {
   options = options || {};
   if (typeof options === "string") {
     options = { filename: options };
@@ -12959,7 +12952,7 @@ FormData$1.prototype.append = function(field, value, options) {
   append2(footer);
   this._trackLength(header, value, options);
 };
-FormData$1.prototype._trackLength = function(header, value, options) {
+FormData$2.prototype._trackLength = function(header, value, options) {
   var valueLength = 0;
   if (options.knownLength != null) {
     valueLength += Number(options.knownLength);
@@ -12969,7 +12962,7 @@ FormData$1.prototype._trackLength = function(header, value, options) {
     valueLength = Buffer.byteLength(value);
   }
   this._valueLength += valueLength;
-  this._overheadLength += Buffer.byteLength(header) + FormData$1.LINE_BREAK.length;
+  this._overheadLength += Buffer.byteLength(header) + FormData$2.LINE_BREAK.length;
   if (!value || !value.path && !(value.readable && hasOwn(value, "httpVersion")) && !(value instanceof Stream)) {
     return;
   }
@@ -12977,7 +12970,7 @@ FormData$1.prototype._trackLength = function(header, value, options) {
     this._valuesToMeasure.push(value);
   }
 };
-FormData$1.prototype._lengthRetriever = function(value, callback) {
+FormData$2.prototype._lengthRetriever = function(value, callback) {
   if (hasOwn(value, "fd")) {
     if (value.end != void 0 && value.end != Infinity && value.start != void 0) {
       callback(null, value.end + 1 - (value.start ? value.start : 0));
@@ -13003,7 +12996,7 @@ FormData$1.prototype._lengthRetriever = function(value, callback) {
     callback("Unknown stream");
   }
 };
-FormData$1.prototype._multiPartHeader = function(field, value, options) {
+FormData$2.prototype._multiPartHeader = function(field, value, options) {
   if (typeof options.header === "string") {
     return options.header;
   }
@@ -13030,13 +13023,13 @@ FormData$1.prototype._multiPartHeader = function(field, value, options) {
         header = [header];
       }
       if (header.length) {
-        contents += prop + ": " + header.join("; ") + FormData$1.LINE_BREAK;
+        contents += prop + ": " + header.join("; ") + FormData$2.LINE_BREAK;
       }
     }
   }
-  return "--" + this.getBoundary() + FormData$1.LINE_BREAK + contents + FormData$1.LINE_BREAK;
+  return "--" + this.getBoundary() + FormData$2.LINE_BREAK + contents + FormData$2.LINE_BREAK;
 };
-FormData$1.prototype._getContentDisposition = function(value, options) {
+FormData$2.prototype._getContentDisposition = function(value, options) {
   var filename;
   if (typeof options.filepath === "string") {
     filename = path.normalize(options.filepath).replace(/\\/g, "/");
@@ -13049,7 +13042,7 @@ FormData$1.prototype._getContentDisposition = function(value, options) {
     return 'filename="' + filename + '"';
   }
 };
-FormData$1.prototype._getContentType = function(value, options) {
+FormData$2.prototype._getContentType = function(value, options) {
   var contentType = options.contentType;
   if (!contentType && value && value.name) {
     contentType = mime.lookup(value.name);
@@ -13064,13 +13057,13 @@ FormData$1.prototype._getContentType = function(value, options) {
     contentType = mime.lookup(options.filepath || options.filename);
   }
   if (!contentType && value && typeof value === "object") {
-    contentType = FormData$1.DEFAULT_CONTENT_TYPE;
+    contentType = FormData$2.DEFAULT_CONTENT_TYPE;
   }
   return contentType;
 };
-FormData$1.prototype._multiPartFooter = function() {
+FormData$2.prototype._multiPartFooter = function() {
   return (function(next) {
-    var footer = FormData$1.LINE_BREAK;
+    var footer = FormData$2.LINE_BREAK;
     var lastPart = this._streams.length === 0;
     if (lastPart) {
       footer += this._lastBoundary();
@@ -13078,10 +13071,10 @@ FormData$1.prototype._multiPartFooter = function() {
     next(footer);
   }).bind(this);
 };
-FormData$1.prototype._lastBoundary = function() {
-  return "--" + this.getBoundary() + "--" + FormData$1.LINE_BREAK;
+FormData$2.prototype._lastBoundary = function() {
+  return "--" + this.getBoundary() + "--" + FormData$2.LINE_BREAK;
 };
-FormData$1.prototype.getHeaders = function(userHeaders) {
+FormData$2.prototype.getHeaders = function(userHeaders) {
   var header;
   var formHeaders = {
     "content-type": "multipart/form-data; boundary=" + this.getBoundary()
@@ -13093,19 +13086,19 @@ FormData$1.prototype.getHeaders = function(userHeaders) {
   }
   return formHeaders;
 };
-FormData$1.prototype.setBoundary = function(boundary) {
+FormData$2.prototype.setBoundary = function(boundary) {
   if (typeof boundary !== "string") {
     throw new TypeError("FormData boundary must be a string");
   }
   this._boundary = boundary;
 };
-FormData$1.prototype.getBoundary = function() {
+FormData$2.prototype.getBoundary = function() {
   if (!this._boundary) {
     this._generateBoundary();
   }
   return this._boundary;
 };
-FormData$1.prototype.getBuffer = function() {
+FormData$2.prototype.getBuffer = function() {
   var dataBuffer = new Buffer.alloc(0);
   var boundary = this.getBoundary();
   for (var i = 0, len = this._streams.length; i < len; i++) {
@@ -13116,16 +13109,16 @@ FormData$1.prototype.getBuffer = function() {
         dataBuffer = Buffer.concat([dataBuffer, Buffer.from(this._streams[i])]);
       }
       if (typeof this._streams[i] !== "string" || this._streams[i].substring(2, boundary.length + 2) !== boundary) {
-        dataBuffer = Buffer.concat([dataBuffer, Buffer.from(FormData$1.LINE_BREAK)]);
+        dataBuffer = Buffer.concat([dataBuffer, Buffer.from(FormData$2.LINE_BREAK)]);
       }
     }
   }
   return Buffer.concat([dataBuffer, Buffer.from(this._lastBoundary())]);
 };
-FormData$1.prototype._generateBoundary = function() {
+FormData$2.prototype._generateBoundary = function() {
   this._boundary = "--------------------------" + crypto.randomBytes(12).toString("hex");
 };
-FormData$1.prototype.getLengthSync = function() {
+FormData$2.prototype.getLengthSync = function() {
   var knownLength = this._overheadLength + this._valueLength;
   if (this._streams.length) {
     knownLength += this._lastBoundary().length;
@@ -13135,14 +13128,14 @@ FormData$1.prototype.getLengthSync = function() {
   }
   return knownLength;
 };
-FormData$1.prototype.hasKnownLength = function() {
+FormData$2.prototype.hasKnownLength = function() {
   var hasKnownLength = true;
   if (this._valuesToMeasure.length) {
     hasKnownLength = false;
   }
   return hasKnownLength;
 };
-FormData$1.prototype.getLength = function(cb) {
+FormData$2.prototype.getLength = function(cb) {
   var knownLength = this._overheadLength + this._valueLength;
   if (this._streams.length) {
     knownLength += this._lastBoundary().length;
@@ -13162,7 +13155,7 @@ FormData$1.prototype.getLength = function(cb) {
     cb(null, knownLength);
   });
 };
-FormData$1.prototype.submit = function(params, cb) {
+FormData$2.prototype.submit = function(params, cb) {
   var request;
   var options;
   var defaults2 = { method: "post" };
@@ -13209,19 +13202,19 @@ FormData$1.prototype.submit = function(params, cb) {
   }).bind(this));
   return request;
 };
-FormData$1.prototype._error = function(err) {
+FormData$2.prototype._error = function(err) {
   if (!this.error) {
     this.error = err;
     this.pause();
     this.emit("error", err);
   }
 };
-FormData$1.prototype.toString = function() {
+FormData$2.prototype.toString = function() {
   return "[object FormData]";
 };
-setToStringTag2(FormData$1.prototype, "FormData");
-var form_data = FormData$1;
-const FormData$2 = /* @__PURE__ */ getDefaultExportFromCjs(form_data);
+setToStringTag2(FormData$2.prototype, "FormData");
+var form_data = FormData$2;
+const FormData$1 = /* @__PURE__ */ getDefaultExportFromCjs(form_data);
 function isVisitable(thing) {
   return utils$1.isPlainObject(thing) || utils$1.isArray(thing);
 }
@@ -13245,7 +13238,7 @@ function toFormData$1(obj, formData, options) {
   if (!utils$1.isObject(obj)) {
     throw new TypeError("target must be an object");
   }
-  formData = formData || new (FormData$2 || FormData)();
+  formData = formData || new (FormData$1 || FormData)();
   options = utils$1.toFlatObject(
     options,
     {
@@ -13490,7 +13483,7 @@ const platform$1 = {
   isNode: true,
   classes: {
     URLSearchParams: URLSearchParams$1,
-    FormData: FormData$2,
+    FormData: FormData$1,
     Blob: typeof Blob !== "undefined" && Blob || null
   },
   ALPHABET,
@@ -17983,359 +17976,6 @@ const DEEPSEEK_PLATFORM_GET_API_KEYS_URL = "https://platform.deepseek.com/api/v0
 const DEEPSEEK_PLATFORM_EDIT_API_KEYS_URL = "https://platform.deepseek.com/api/v0/users/edit_api_keys";
 const DEEPSEEK_UPLOAD_FILE_URL = "https://chat.deepseek.com/api/v0/file/upload_file";
 const DEEPSEEK_FETCH_FILES_URL = "https://chat.deepseek.com/api/v0/file/fetch_files";
-function buildToolPrompt(tools) {
-  if (!tools || tools.length === 0) return "";
-  const toolSchemas = [];
-  const names = [];
-  for (const t of tools) {
-    if (t.type !== "function" || !t.function) continue;
-    const name = t.function.name;
-    const desc = t.function.description || "No description available";
-    const parameters = JSON.stringify(t.function.parameters || {});
-    names.push(name);
-    toolSchemas.push(
-      `Tool: ${name}
-Description: ${desc}
-Parameters: ${parameters}`
-    );
-  }
-  if (names.length === 0) return "";
-  const descriptions = "You have access to these tools:\n\n" + toolSchemas.join("\n\n");
-  let fullPrompt = descriptions + "\n\n" + TOOL_CALL_INSTRUCTIONS;
-  const examples = buildCorrectToolExamples(names);
-  if (examples) {
-    fullPrompt += "\n\n" + examples;
-  }
-  if (hasReadLikeTool(names)) {
-    fullPrompt += "\n\n" + READ_TOOL_CACHE_GUARD;
-  }
-  return fullPrompt;
-}
-function parseDSMLToolCalls(xmlContent) {
-  const results = [];
-  const invokeRegex = /<\|DSML\|invoke\s+name="([^"]+)">([\s\S]*?)<\/\|DSML\|invoke>/g;
-  const paramRegex = /<\|DSML\|parameter\s+name="([^"]+)">([\s\S]*?)<\/\|DSML\|parameter>/g;
-  const cdataRegex = /^\s*<!\[CDATA\[([\s\S]*?)\]\]>\s*$/;
-  let match;
-  while ((match = invokeRegex.exec(xmlContent)) !== null) {
-    const name = match[1];
-    const paramsStr = match[2];
-    const args = {};
-    let paramMatch;
-    while ((paramMatch = paramRegex.exec(paramsStr)) !== null) {
-      const pName = paramMatch[1];
-      let pValue = paramMatch[2].trim();
-      const cdataMatch = pValue.match(cdataRegex);
-      if (cdataMatch) {
-        pValue = cdataMatch[1];
-      }
-      args[pName] = pValue;
-    }
-    results.push({
-      id: `call_${crypto$1.randomUUID().replace(/-/g, "")}`,
-      type: "function",
-      function: {
-        name,
-        arguments: JSON.stringify(args)
-      }
-    });
-  }
-  return results;
-}
-class StreamToolSieve {
-  constructor() {
-    __publicField(this, "buffer", "");
-    __publicField(this, "inTool", false);
-    __publicField(this, "finishedTool", false);
-  }
-  processChunk(text) {
-    if (this.finishedTool) return { outputText: text, toolCalls: null };
-    this.buffer += text;
-    const toolStartIdx = this.buffer.indexOf("<|DSML|tool_calls>");
-    if (toolStartIdx !== -1) {
-      this.inTool = true;
-      const toolEndIdx = this.buffer.indexOf("</|DSML|tool_calls>");
-      if (toolEndIdx !== -1) {
-        const fullXml = this.buffer.substring(
-          toolStartIdx,
-          toolEndIdx + "</|DSML|tool_calls>".length
-        );
-        this.finishedTool = true;
-        const preText = this.buffer.substring(0, toolStartIdx);
-        const postText = this.buffer.substring(
-          toolEndIdx + "</|DSML|tool_calls>".length
-        );
-        const toolCalls = parseDSMLToolCalls(fullXml);
-        this.buffer = postText;
-        return {
-          outputText: preText,
-          toolCalls: toolCalls.length > 0 ? toolCalls : null
-        };
-      }
-      if (toolStartIdx > 0) {
-        const preText = this.buffer.substring(0, toolStartIdx);
-        this.buffer = this.buffer.substring(toolStartIdx);
-        return { outputText: preText, toolCalls: null };
-      }
-      return { outputText: "", toolCalls: null };
-    }
-    const lastLt = this.buffer.lastIndexOf("<");
-    if (lastLt !== -1) {
-      const safeText2 = this.buffer.substring(0, lastLt);
-      this.buffer = this.buffer.substring(lastLt);
-      return { outputText: safeText2, toolCalls: null };
-    }
-    const safeText = this.buffer;
-    this.buffer = "";
-    return { outputText: safeText, toolCalls: null };
-  }
-  flush() {
-    if (this.inTool && this.buffer.includes("<|DSML|tool_calls>")) {
-      const fullXml = this.buffer + "</|DSML|invoke></|DSML|tool_calls>";
-      const toolCalls = parseDSMLToolCalls(fullXml);
-      const preText = this.buffer.substring(
-        0,
-        this.buffer.indexOf("<|DSML|tool_calls>")
-      );
-      return {
-        outputText: preText,
-        toolCalls: toolCalls.length > 0 ? toolCalls : null
-      };
-    }
-    const remainder = this.buffer;
-    this.buffer = "";
-    return { outputText: remainder, toolCalls: null };
-  }
-}
-function normalizeContent(v) {
-  if (v == null) return "";
-  if (typeof v === "string") return v;
-  if (Array.isArray(v)) {
-    const texts = [];
-    for (const item of v) {
-      if (typeof item !== "object" || item === null) continue;
-      const obj = item;
-      const typeStr = (typeof obj.type === "string" ? obj.type : "").toLowerCase().trim();
-      if (typeStr === "text" || typeStr === "output_text" || typeStr === "input_text") {
-        const txt = typeof obj.text === "string" ? obj.text : typeof obj.content === "string" ? obj.content : "";
-        if (txt) texts.push(txt);
-      }
-    }
-    if (texts.length > 0) return texts.join("\n");
-  }
-  try {
-    return JSON.stringify(v);
-  } catch {
-    return String(v);
-  }
-}
-function normalizeRole(role) {
-  const r = (role || "user").toLowerCase().trim();
-  if (r === "developer") return "system";
-  return r;
-}
-function renderPromptCDATA(text) {
-  if (!text) return "";
-  if (text.includes("]]>")) {
-    return "<![CDATA[" + text.replace(/]]>/g, "]]]><![CDATA[>") + "]]>";
-  }
-  return "<![CDATA[" + text + "]]>";
-}
-function formatToolCallsForPrompt(toolCalls) {
-  if (!Array.isArray(toolCalls) || toolCalls.length === 0) return "";
-  const blocks = [];
-  for (const item of toolCalls) {
-    if (typeof item !== "object" || item === null) continue;
-    const call2 = item;
-    let name = "";
-    let argsRaw = null;
-    const fn = call2.function;
-    if (fn && typeof fn === "object") {
-      name = typeof fn.name === "string" ? fn.name.trim() : "";
-      argsRaw = fn.arguments ?? fn.input ?? null;
-    }
-    if (!name) {
-      name = typeof call2.name === "string" ? call2.name.trim() : "";
-      if (!argsRaw) argsRaw = call2.arguments ?? call2.input ?? null;
-    }
-    if (!name) continue;
-    let args = null;
-    if (typeof argsRaw === "string") {
-      const trimmed = argsRaw.trim();
-      if (trimmed) {
-        try {
-          args = JSON.parse(trimmed);
-        } catch {
-        }
-      }
-    } else if (typeof argsRaw === "object" && argsRaw !== null) {
-      args = argsRaw;
-    }
-    let paramLines = "";
-    if (args && typeof args === "object" && !Array.isArray(args)) {
-      for (const [k, v] of Object.entries(args)) {
-        const valStr = typeof v === "object" && v !== null ? JSON.stringify(v) : String(v ?? "");
-        paramLines += `    <|DSML|parameter name="${k}">${renderPromptCDATA(valStr)}</|DSML|parameter>
-`;
-      }
-    } else if (typeof argsRaw === "string" && argsRaw.trim()) {
-      paramLines = `    <|DSML|parameter name="content">${renderPromptCDATA(argsRaw)}</|DSML|parameter>
-`;
-    }
-    if (paramLines) {
-      blocks.push(
-        `  <|DSML|invoke name="${name}">
-${paramLines}  </|DSML|invoke>`
-      );
-    } else {
-      blocks.push(`  <|DSML|invoke name="${name}"></|DSML|invoke>`);
-    }
-  }
-  if (blocks.length === 0) return "";
-  return "<|DSML|tool_calls>\n" + blocks.join("\n") + "\n</|DSML|tool_calls>";
-}
-function buildPromptText(messages, tools) {
-  if (!Array.isArray(messages) || messages.length === 0) return "";
-  const toolPrompt = buildToolPrompt(tools || []);
-  const normalized = [];
-  normalized.push({ role: "system", content: OUTPUT_INTEGRITY_GUARD });
-  let systemInjected = false;
-  for (const msg of messages) {
-    const role = normalizeRole(msg.role);
-    let content = normalizeContent(msg.content);
-    if (role === "assistant") {
-      const toolHistory = formatToolCallsForPrompt(msg.tool_calls);
-      if (toolHistory) {
-        content = content ? content + "\n\n" + toolHistory : toolHistory;
-      }
-    } else if (role === "system") {
-      if (toolPrompt && !systemInjected) {
-        content = content ? content + "\n\n" + toolPrompt : toolPrompt;
-        systemInjected = true;
-      }
-    } else if (role === "tool") {
-      if (!content.trim()) content = "null";
-    }
-    normalized.push({ role, content });
-  }
-  if (toolPrompt && !systemInjected) {
-    normalized.splice(1, 0, { role: "system", content: toolPrompt });
-  }
-  const merged = [];
-  for (const msg of normalized) {
-    if (merged.length > 0 && merged[merged.length - 1].role === msg.role) {
-      merged[merged.length - 1].content += "\n\n" + msg.content;
-    } else {
-      merged.push({ ...msg });
-    }
-  }
-  const parts = [BEGIN_SENTENCE];
-  let lastRole = "";
-  for (const msg of merged) {
-    lastRole = msg.role;
-    switch (msg.role) {
-      case "system": {
-        const text = msg.content.trim();
-        if (text) {
-          parts.push(SYSTEM_MARKER + text + END_INSTRUCTIONS);
-        }
-        break;
-      }
-      case "user":
-        parts.push(USER_MARKER + msg.content);
-        break;
-      case "assistant":
-        parts.push(ASSISTANT_MARKER + msg.content + END_SENTENCE);
-        break;
-      case "tool": {
-        const text = msg.content.trim();
-        if (text) {
-          parts.push(TOOL_MARKER + text + END_TOOL_RESULTS);
-        }
-        break;
-      }
-      default: {
-        const text = msg.content.trim();
-        if (text) parts.push(text);
-        break;
-      }
-    }
-  }
-  if (lastRole !== "assistant") {
-    parts.push(ASSISTANT_MARKER);
-  }
-  return parts.join("");
-}
-function extractSystemAndUserMessages(messages) {
-  const systemMessages = [];
-  const conversationMessages = [];
-  for (const msg of messages) {
-    const role = normalizeRole(msg.role);
-    const content = normalizeContent(msg.content);
-    if (role === "system" || role === "developer") {
-      if (content.trim()) {
-        systemMessages.push(content);
-      }
-    } else {
-      conversationMessages.push(msg);
-    }
-  }
-  return { systemMessages, conversationMessages };
-}
-function buildUserOnlyPromptText(messages) {
-  if (!Array.isArray(messages) || messages.length === 0) return "";
-  const normalized = [];
-  for (const msg of messages) {
-    const role = normalizeRole(msg.role);
-    let content = normalizeContent(msg.content);
-    if (role === "assistant") {
-      const toolHistory = formatToolCallsForPrompt(msg.tool_calls);
-      if (toolHistory) {
-        content = content ? content + "\n\n" + toolHistory : toolHistory;
-      }
-    } else if (role === "tool") {
-      if (!content.trim()) content = "null";
-    }
-    normalized.push({ role, content });
-  }
-  const merged = [];
-  for (const msg of normalized) {
-    if (merged.length > 0 && merged[merged.length - 1].role === msg.role) {
-      merged[merged.length - 1].content += "\n\n" + msg.content;
-    } else {
-      merged.push({ ...msg });
-    }
-  }
-  const parts = [BEGIN_SENTENCE];
-  let lastRole = "";
-  for (const msg of merged) {
-    lastRole = msg.role;
-    switch (msg.role) {
-      case "user":
-        parts.push(USER_MARKER + msg.content);
-        break;
-      case "assistant":
-        parts.push(ASSISTANT_MARKER + msg.content + END_SENTENCE);
-        break;
-      case "tool": {
-        const text = msg.content.trim();
-        if (text) {
-          parts.push(TOOL_MARKER + text + END_TOOL_RESULTS);
-        }
-        break;
-      }
-      default: {
-        const text = msg.content.trim();
-        if (text) parts.push(text);
-        break;
-      }
-    }
-  }
-  if (lastRole !== "assistant") {
-    parts.push(ASSISTANT_MARKER);
-  }
-  return parts.join("");
-}
 const RULES_FILENAME = "SHALLOW_SEEK_RULES.md";
 const TOOLS_FILENAME = "SHALLOW_SEEK_TOOLS.md";
 const CONTENT_TYPE = "text/plain; charset=utf-8";
@@ -19327,7 +18967,7 @@ async function uploadFile(payload) {
     }
     const challenge = (_d = (_c = (_b = powResponse.data) == null ? void 0 : _b.data) == null ? void 0 : _c.biz_data) == null ? void 0 : _d.challenge;
     const powHeaderStr = solveAndBuildHeader(challenge);
-    const formData = new FormData$2();
+    const formData = new FormData$1();
     formData.append("file", fs$1.createReadStream(payload.filePath), payload.fileName);
     const headers = {
       ...getHistoryHeaders(payload.token, payload.cookies),
@@ -19822,6 +19462,130 @@ async function deleteSession(token, sessionId) {
     console.warn("[shallowseek-api] delete_session error", err.message);
   }
 }
+function buildToolPrompt(tools) {
+  if (!tools || tools.length === 0) return "";
+  const toolSchemas = [];
+  const names = [];
+  for (const t of tools) {
+    if (t.type !== "function" || !t.function) continue;
+    const name = t.function.name;
+    const desc = t.function.description || "No description available";
+    const parameters = JSON.stringify(t.function.parameters || {});
+    names.push(name);
+    toolSchemas.push(
+      `Tool: ${name}
+Description: ${desc}
+Parameters: ${parameters}`
+    );
+  }
+  if (names.length === 0) return "";
+  const descriptions = "You have access to these tools:\n\n" + toolSchemas.join("\n\n");
+  let fullPrompt = descriptions + "\n\n" + TOOL_CALL_INSTRUCTIONS;
+  const examples = buildCorrectToolExamples(names);
+  if (examples) {
+    fullPrompt += "\n\n" + examples;
+  }
+  if (hasReadLikeTool(names)) {
+    fullPrompt += "\n\n" + READ_TOOL_CACHE_GUARD;
+  }
+  return fullPrompt;
+}
+function parseDSMLToolCalls(xmlContent) {
+  const results = [];
+  const invokeRegex = /<\|DSML\|invoke\s+name="([^"]+)">([\s\S]*?)<\/\|DSML\|invoke>/g;
+  const paramRegex = /<\|DSML\|parameter\s+name="([^"]+)">([\s\S]*?)<\/\|DSML\|parameter>/g;
+  const cdataRegex = /^\s*<!\[CDATA\[([\s\S]*?)\]\]>\s*$/;
+  let match;
+  while ((match = invokeRegex.exec(xmlContent)) !== null) {
+    const name = match[1];
+    const paramsStr = match[2];
+    const args = {};
+    let paramMatch;
+    while ((paramMatch = paramRegex.exec(paramsStr)) !== null) {
+      const pName = paramMatch[1];
+      let pValue = paramMatch[2].trim();
+      const cdataMatch = pValue.match(cdataRegex);
+      if (cdataMatch) {
+        pValue = cdataMatch[1];
+      }
+      args[pName] = pValue;
+    }
+    results.push({
+      id: `call_${crypto$1.randomUUID().replace(/-/g, "")}`,
+      type: "function",
+      function: {
+        name,
+        arguments: JSON.stringify(args)
+      }
+    });
+  }
+  return results;
+}
+class StreamToolSieve {
+  constructor() {
+    __publicField(this, "buffer", "");
+    __publicField(this, "inTool", false);
+    __publicField(this, "finishedTool", false);
+  }
+  processChunk(text) {
+    if (this.finishedTool) return { outputText: text, toolCalls: null };
+    this.buffer += text;
+    const toolStartIdx = this.buffer.indexOf("<|DSML|tool_calls>");
+    if (toolStartIdx !== -1) {
+      this.inTool = true;
+      const toolEndIdx = this.buffer.indexOf("</|DSML|tool_calls>");
+      if (toolEndIdx !== -1) {
+        const fullXml = this.buffer.substring(
+          toolStartIdx,
+          toolEndIdx + "</|DSML|tool_calls>".length
+        );
+        this.finishedTool = true;
+        const preText = this.buffer.substring(0, toolStartIdx);
+        const postText = this.buffer.substring(
+          toolEndIdx + "</|DSML|tool_calls>".length
+        );
+        const toolCalls = parseDSMLToolCalls(fullXml);
+        this.buffer = postText;
+        return {
+          outputText: preText,
+          toolCalls: toolCalls.length > 0 ? toolCalls : null
+        };
+      }
+      if (toolStartIdx > 0) {
+        const preText = this.buffer.substring(0, toolStartIdx);
+        this.buffer = this.buffer.substring(toolStartIdx);
+        return { outputText: preText, toolCalls: null };
+      }
+      return { outputText: "", toolCalls: null };
+    }
+    const lastLt = this.buffer.lastIndexOf("<");
+    if (lastLt !== -1) {
+      const safeText2 = this.buffer.substring(0, lastLt);
+      this.buffer = this.buffer.substring(lastLt);
+      return { outputText: safeText2, toolCalls: null };
+    }
+    const safeText = this.buffer;
+    this.buffer = "";
+    return { outputText: safeText, toolCalls: null };
+  }
+  flush() {
+    if (this.inTool && this.buffer.includes("<|DSML|tool_calls>")) {
+      const fullXml = this.buffer + "</|DSML|invoke></|DSML|tool_calls>";
+      const toolCalls = parseDSMLToolCalls(fullXml);
+      const preText = this.buffer.substring(
+        0,
+        this.buffer.indexOf("<|DSML|tool_calls>")
+      );
+      return {
+        outputText: preText,
+        toolCalls: toolCalls.length > 0 ? toolCalls : null
+      };
+    }
+    const remainder = this.buffer;
+    this.buffer = "";
+    return { outputText: remainder, toolCalls: null };
+  }
+}
 const fileCache = /* @__PURE__ */ new Map();
 function buildRulesText(systemMessages) {
   const parts = [
@@ -19913,7 +19677,7 @@ async function uploadTextFile(token, filename, content) {
   }
   const challenge = (_d = (_c = (_b = powResponse.data) == null ? void 0 : _b.data) == null ? void 0 : _c.biz_data) == null ? void 0 : _d.challenge;
   const powHeaderStr = solveAndBuildHeader(challenge);
-  const formData = new FormData$2();
+  const formData = new FormData$1();
   const buffer = Buffer.from(content, "utf-8");
   formData.append("file", Readable$1.from(buffer), {
     filename,
@@ -20787,6 +20551,235 @@ function hasContentFilterStatusValue(v) {
     }
   }
   return false;
+}
+function normalizeContent(v) {
+  if (v == null) return "";
+  if (typeof v === "string") return v;
+  if (Array.isArray(v)) {
+    const texts = [];
+    for (const item of v) {
+      if (typeof item !== "object" || item === null) continue;
+      const obj = item;
+      const typeStr = (typeof obj.type === "string" ? obj.type : "").toLowerCase().trim();
+      if (typeStr === "text" || typeStr === "output_text" || typeStr === "input_text") {
+        const txt = typeof obj.text === "string" ? obj.text : typeof obj.content === "string" ? obj.content : "";
+        if (txt) texts.push(txt);
+      }
+    }
+    if (texts.length > 0) return texts.join("\n");
+  }
+  try {
+    return JSON.stringify(v);
+  } catch {
+    return String(v);
+  }
+}
+function normalizeRole(role) {
+  const r = (role || "user").toLowerCase().trim();
+  if (r === "developer") return "system";
+  return r;
+}
+function renderPromptCDATA(text) {
+  if (!text) return "";
+  if (text.includes("]]>")) {
+    return "<![CDATA[" + text.replace(/]]>/g, "]]]><![CDATA[>") + "]]>";
+  }
+  return "<![CDATA[" + text + "]]>";
+}
+function formatToolCallsForPrompt(toolCalls) {
+  if (!Array.isArray(toolCalls) || toolCalls.length === 0) return "";
+  const blocks = [];
+  for (const item of toolCalls) {
+    if (typeof item !== "object" || item === null) continue;
+    const call2 = item;
+    let name = "";
+    let argsRaw = null;
+    const fn = call2.function;
+    if (fn && typeof fn === "object") {
+      name = typeof fn.name === "string" ? fn.name.trim() : "";
+      argsRaw = fn.arguments ?? fn.input ?? null;
+    }
+    if (!name) {
+      name = typeof call2.name === "string" ? call2.name.trim() : "";
+      if (!argsRaw) argsRaw = call2.arguments ?? call2.input ?? null;
+    }
+    if (!name) continue;
+    let args = null;
+    if (typeof argsRaw === "string") {
+      const trimmed = argsRaw.trim();
+      if (trimmed) {
+        try {
+          args = JSON.parse(trimmed);
+        } catch {
+        }
+      }
+    } else if (typeof argsRaw === "object" && argsRaw !== null) {
+      args = argsRaw;
+    }
+    let paramLines = "";
+    if (args && typeof args === "object" && !Array.isArray(args)) {
+      for (const [k, v] of Object.entries(args)) {
+        const valStr = typeof v === "object" && v !== null ? JSON.stringify(v) : String(v ?? "");
+        paramLines += `    <|DSML|parameter name="${k}">${renderPromptCDATA(valStr)}</|DSML|parameter>
+`;
+      }
+    } else if (typeof argsRaw === "string" && argsRaw.trim()) {
+      paramLines = `    <|DSML|parameter name="content">${renderPromptCDATA(argsRaw)}</|DSML|parameter>
+`;
+    }
+    if (paramLines) {
+      blocks.push(
+        `  <|DSML|invoke name="${name}">
+${paramLines}  </|DSML|invoke>`
+      );
+    } else {
+      blocks.push(`  <|DSML|invoke name="${name}"></|DSML|invoke>`);
+    }
+  }
+  if (blocks.length === 0) return "";
+  return "<|DSML|tool_calls>\n" + blocks.join("\n") + "\n</|DSML|tool_calls>";
+}
+function buildPromptText(messages, tools) {
+  if (!Array.isArray(messages) || messages.length === 0) return "";
+  const toolPrompt = buildToolPrompt(tools || []);
+  const normalized = [];
+  normalized.push({ role: "system", content: OUTPUT_INTEGRITY_GUARD });
+  let systemInjected = false;
+  for (const msg of messages) {
+    const role = normalizeRole(msg.role);
+    let content = normalizeContent(msg.content);
+    if (role === "assistant") {
+      const toolHistory = formatToolCallsForPrompt(msg.tool_calls);
+      if (toolHistory) {
+        content = content ? content + "\n\n" + toolHistory : toolHistory;
+      }
+    } else if (role === "system") {
+      if (toolPrompt && !systemInjected) {
+        content = content ? content + "\n\n" + toolPrompt : toolPrompt;
+        systemInjected = true;
+      }
+    } else if (role === "tool") {
+      if (!content.trim()) content = "null";
+    }
+    normalized.push({ role, content });
+  }
+  if (toolPrompt && !systemInjected) {
+    normalized.splice(1, 0, { role: "system", content: toolPrompt });
+  }
+  const merged = [];
+  for (const msg of normalized) {
+    if (merged.length > 0 && merged[merged.length - 1].role === msg.role) {
+      merged[merged.length - 1].content += "\n\n" + msg.content;
+    } else {
+      merged.push({ ...msg });
+    }
+  }
+  const parts = [BEGIN_SENTENCE];
+  let lastRole = "";
+  for (const msg of merged) {
+    lastRole = msg.role;
+    switch (msg.role) {
+      case "system": {
+        const text = msg.content.trim();
+        if (text) {
+          parts.push(SYSTEM_MARKER + text + END_INSTRUCTIONS);
+        }
+        break;
+      }
+      case "user":
+        parts.push(USER_MARKER + msg.content);
+        break;
+      case "assistant":
+        parts.push(ASSISTANT_MARKER + msg.content + END_SENTENCE);
+        break;
+      case "tool": {
+        const text = msg.content.trim();
+        if (text) {
+          parts.push(TOOL_MARKER + text + END_TOOL_RESULTS);
+        }
+        break;
+      }
+      default: {
+        const text = msg.content.trim();
+        if (text) parts.push(text);
+        break;
+      }
+    }
+  }
+  if (lastRole !== "assistant") {
+    parts.push(ASSISTANT_MARKER);
+  }
+  return parts.join("");
+}
+function extractSystemAndUserMessages(messages) {
+  const systemMessages = [];
+  const conversationMessages = [];
+  for (const msg of messages) {
+    const role = normalizeRole(msg.role);
+    const content = normalizeContent(msg.content);
+    if (role === "system" || role === "developer") {
+      if (content.trim()) {
+        systemMessages.push(content);
+      }
+    } else {
+      conversationMessages.push(msg);
+    }
+  }
+  return { systemMessages, conversationMessages };
+}
+function buildUserOnlyPromptText(messages) {
+  if (!Array.isArray(messages) || messages.length === 0) return "";
+  const normalized = [];
+  for (const msg of messages) {
+    const role = normalizeRole(msg.role);
+    let content = normalizeContent(msg.content);
+    if (role === "assistant") {
+      const toolHistory = formatToolCallsForPrompt(msg.tool_calls);
+      if (toolHistory) {
+        content = content ? content + "\n\n" + toolHistory : toolHistory;
+      }
+    } else if (role === "tool") {
+      if (!content.trim()) content = "null";
+    }
+    normalized.push({ role, content });
+  }
+  const merged = [];
+  for (const msg of normalized) {
+    if (merged.length > 0 && merged[merged.length - 1].role === msg.role) {
+      merged[merged.length - 1].content += "\n\n" + msg.content;
+    } else {
+      merged.push({ ...msg });
+    }
+  }
+  const parts = [BEGIN_SENTENCE];
+  let lastRole = "";
+  for (const msg of merged) {
+    lastRole = msg.role;
+    switch (msg.role) {
+      case "user":
+        parts.push(USER_MARKER + msg.content);
+        break;
+      case "assistant":
+        parts.push(ASSISTANT_MARKER + msg.content + END_SENTENCE);
+        break;
+      case "tool": {
+        const text = msg.content.trim();
+        if (text) {
+          parts.push(TOOL_MARKER + text + END_TOOL_RESULTS);
+        }
+        break;
+      }
+      default: {
+        const text = msg.content.trim();
+        if (text) parts.push(text);
+        break;
+      }
+    }
+  }
+  if (lastRole !== "assistant") {
+    parts.push(ASSISTANT_MARKER);
+  }
+  return parts.join("");
 }
 async function handleChatCompletions(req, res, state2) {
   var _a;

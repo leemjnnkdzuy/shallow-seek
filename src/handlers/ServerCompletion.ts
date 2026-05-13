@@ -11,7 +11,7 @@ import {
 	buildPromptText,
 	extractSystemAndUserMessages,
 	buildUserOnlyPromptText,
-} from "@/constants";
+} from "@/server/PromptBuilder";
 import {uploadRuleFiles, buildLivePrompt} from "@/server/RuleFileUploader";
 import {
 	resolveModel,
