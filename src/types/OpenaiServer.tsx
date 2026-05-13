@@ -1,5 +1,3 @@
-/** Shared types for the built-in OpenAI-compatible API server */
-
 export interface AccountConfig {
 	id: string;
 	name?: string;

@@ -1,4 +1,7 @@
-import { ipcMain, BrowserWindow, session, app, Menu } from "electron";
+var __defProp = Object.defineProperty;
+var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
+import { ipcMain, BrowserWindow, shell, session, app, Menu } from "electron";
 import path$1 from "node:path";
 import { fileURLToPath } from "node:url";
 import require$$1 from "util";
@@ -137,6 +140,9 @@ function registerWindowIpcs(__dirname, VITE_DEV_SERVER_URL2, RENDERER_DIST2) {
     BrowserWindow.getAllWindows().forEach((win2) => {
       win2.webContents.send("on-language-changed", lang);
     });
+  });
+  ipcMain.on("open-external", (_event, url2) => {
+    shell.openExternal(url2);
   });
 }
 function bind$2(fn, thisArg) {
@@ -12218,14 +12224,7 @@ var _eval = EvalError;
 var range = RangeError;
 var ref = ReferenceError;
 var syntax = SyntaxError;
-var type;
-var hasRequiredType;
-function requireType() {
-  if (hasRequiredType) return type;
-  hasRequiredType = 1;
-  type = TypeError;
-  return type;
-}
+var type = TypeError;
 var uri = URIError;
 var abs$1 = Math.abs;
 var floor$1 = Math.floor;
@@ -12471,7 +12470,7 @@ function requireCallBindApplyHelpers() {
   if (hasRequiredCallBindApplyHelpers) return callBindApplyHelpers;
   hasRequiredCallBindApplyHelpers = 1;
   var bind3 = functionBind;
-  var $TypeError2 = requireType();
+  var $TypeError2 = type;
   var $call2 = requireFunctionCall();
   var $actualApply = requireActualApply();
   callBindApplyHelpers = function callBindBasic(args) {
@@ -12544,7 +12543,7 @@ var $EvalError = _eval;
 var $RangeError = range;
 var $ReferenceError = ref;
 var $SyntaxError = syntax;
-var $TypeError$1 = requireType();
+var $TypeError$1 = type;
 var $URIError = uri;
 var abs = abs$1;
 var floor = floor$1;
@@ -12875,7 +12874,7 @@ var GetIntrinsic2 = getIntrinsic;
 var $defineProperty = GetIntrinsic2("%Object.defineProperty%", true);
 var hasToStringTag = requireShams()();
 var hasOwn$1 = hasown;
-var $TypeError = requireType();
+var $TypeError = type;
 var toStringTag = hasToStringTag ? Symbol.toStringTag : null;
 var esSetTostringtag = function setToStringTag(object, value) {
   var overrideIfSet = arguments.length > 2 && !!arguments[2] && arguments[2].force;
@@ -18936,8 +18935,15 @@ db.exec(`
   );
 `);
 const addAccount = (account) => {
-  const stmt = db.prepare("INSERT OR REPLACE INTO accounts (id, email, chat_token, platform_token) VALUES (?, ?, ?, ?)");
-  return stmt.run(account.id, account.email, account.chat_token, account.platform_token || null);
+  const stmt = db.prepare(
+    "INSERT OR REPLACE INTO accounts (id, email, chat_token, platform_token) VALUES (?, ?, ?, ?)"
+  );
+  return stmt.run(
+    account.id,
+    account.email,
+    account.chat_token,
+    account.platform_token || null
+  );
 };
 const getAccounts = () => {
   const stmt = db.prepare("SELECT * FROM accounts ORDER BY created_at DESC");
@@ -18948,7 +18954,9 @@ const deleteAccount = (id) => {
   return stmt.run(id);
 };
 const checkAccountExists = (email) => {
-  const stmt = db.prepare("SELECT COUNT(*) as count FROM accounts WHERE LOWER(email) = LOWER(?)");
+  const stmt = db.prepare(
+    "SELECT COUNT(*) as count FROM accounts WHERE LOWER(email) = LOWER(?)"
+  );
   const result = stmt.get(email.trim());
   return result.count > 0;
 };
@@ -18958,7 +18966,9 @@ const getSetting = (key) => {
   return result ? result.value : null;
 };
 const setSetting = (key, value) => {
-  const stmt = db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)");
+  const stmt = db.prepare(
+    "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)"
+  );
   return stmt.run(key, value);
 };
 const getAllSettings = () => {
@@ -19416,6 +19426,133 @@ function hasContentFilterStatusValue(v) {
   }
   return false;
 }
+function buildToolPrompt(tools) {
+  if (!tools || tools.length === 0) return "";
+  const toolSchemas = [];
+  const names = [];
+  for (const t of tools) {
+    if (t.type !== "function" || !t.function) continue;
+    const name = t.function.name;
+    const desc = t.function.description || "No description available";
+    const parameters = JSON.stringify(t.function.parameters || {});
+    names.push(name);
+    toolSchemas.push(`Tool: ${name}
+Description: ${desc}
+Parameters: ${parameters}`);
+  }
+  if (names.length === 0) return "";
+  const descriptions = "You have access to these tools:\n\n" + toolSchemas.join("\n\n");
+  const instructions = `TOOL CALL FORMAT — FOLLOW EXACTLY:
+
+<|DSML|tool_calls>
+  <|DSML|invoke name="TOOL_NAME_HERE">
+    <|DSML|parameter name="PARAMETER_NAME"><![CDATA[PARAMETER_VALUE]]></|DSML|parameter>
+  </|DSML|invoke>
+</|DSML|tool_calls>
+
+RULES:
+1) Use the <|DSML|tool_calls> wrapper format.
+2) Put one or more <|DSML|invoke> entries under a single <|DSML|tool_calls> root.
+3) Put the tool name in the invoke name attribute: <|DSML|invoke name="TOOL_NAME">.
+4) All string values must use <![CDATA[...]]>, even short ones.
+5) Every top-level argument must be a <|DSML|parameter name="ARG_NAME">...</|DSML|parameter> node.
+6) Objects use nested XML elements inside the parameter body. Arrays may repeat <item> children.
+7) Numbers, booleans, and null stay plain text.
+8) Use only the parameter names in the tool schema. Do not invent fields.
+9) If you call a tool, the first non-whitespace characters of that tool block must be exactly <|DSML|tool_calls>.
+10) Do NOT wrap XML in markdown fences.
+
+PARAMETER SHAPES:
+- string => <|DSML|parameter name="x"><![CDATA[value]]></|DSML|parameter>
+- object => <|DSML|parameter name="x"><field>...</field></|DSML|parameter>
+- array => <|DSML|parameter name="x"><item>...</item><item>...</item></|DSML|parameter>
+- number/bool/null => <|DSML|parameter name="x">plain_text</|DSML|parameter>
+
+Remember: The ONLY valid way to use tools is the <|DSML|tool_calls>...</|DSML|tool_calls> block at the end of your response.`;
+  return descriptions + "\n\n" + instructions;
+}
+function parseDSMLToolCalls(xmlContent) {
+  const results = [];
+  const invokeRegex = /<\|DSML\|invoke\s+name="([^"]+)">([\s\S]*?)<\/\|DSML\|invoke>/g;
+  const paramRegex = /<\|DSML\|parameter\s+name="([^"]+)">([\s\S]*?)<\/\|DSML\|parameter>/g;
+  const cdataRegex = /^\s*<!\[CDATA\[([\s\S]*?)\]\]>\s*$/;
+  let match;
+  while ((match = invokeRegex.exec(xmlContent)) !== null) {
+    const name = match[1];
+    const paramsStr = match[2];
+    const args = {};
+    let paramMatch;
+    while ((paramMatch = paramRegex.exec(paramsStr)) !== null) {
+      const pName = paramMatch[1];
+      let pValue = paramMatch[2].trim();
+      const cdataMatch = pValue.match(cdataRegex);
+      if (cdataMatch) {
+        pValue = cdataMatch[1];
+      }
+      args[pName] = pValue;
+    }
+    results.push({
+      id: `call_${crypto$1.randomUUID().replace(/-/g, "")}`,
+      type: "function",
+      function: {
+        name,
+        arguments: JSON.stringify(args)
+      }
+    });
+  }
+  return results;
+}
+class StreamToolSieve {
+  constructor() {
+    __publicField(this, "buffer", "");
+    __publicField(this, "inTool", false);
+    __publicField(this, "finishedTool", false);
+  }
+  processChunk(text) {
+    if (this.finishedTool) return { outputText: text, toolCalls: null };
+    this.buffer += text;
+    const toolStartIdx = this.buffer.indexOf("<|DSML|tool_calls>");
+    if (toolStartIdx !== -1) {
+      this.inTool = true;
+      const toolEndIdx = this.buffer.indexOf("</|DSML|tool_calls>");
+      if (toolEndIdx !== -1) {
+        const fullXml = this.buffer.substring(toolStartIdx, toolEndIdx + "</|DSML|tool_calls>".length);
+        this.finishedTool = true;
+        const preText = this.buffer.substring(0, toolStartIdx);
+        const postText = this.buffer.substring(toolEndIdx + "</|DSML|tool_calls>".length);
+        const toolCalls = parseDSMLToolCalls(fullXml);
+        this.buffer = postText;
+        return { outputText: preText, toolCalls: toolCalls.length > 0 ? toolCalls : null };
+      }
+      if (toolStartIdx > 0) {
+        const preText = this.buffer.substring(0, toolStartIdx);
+        this.buffer = this.buffer.substring(toolStartIdx);
+        return { outputText: preText, toolCalls: null };
+      }
+      return { outputText: "", toolCalls: null };
+    }
+    const lastLt = this.buffer.lastIndexOf("<");
+    if (lastLt !== -1) {
+      const safeText2 = this.buffer.substring(0, lastLt);
+      this.buffer = this.buffer.substring(lastLt);
+      return { outputText: safeText2, toolCalls: null };
+    }
+    const safeText = this.buffer;
+    this.buffer = "";
+    return { outputText: safeText, toolCalls: null };
+  }
+  flush() {
+    if (this.inTool && this.buffer.includes("<|DSML|tool_calls>")) {
+      const fullXml = this.buffer + "</|DSML|invoke></|DSML|tool_calls>";
+      const toolCalls = parseDSMLToolCalls(fullXml);
+      const preText = this.buffer.substring(0, this.buffer.indexOf("<|DSML|tool_calls>"));
+      return { outputText: preText, toolCalls: toolCalls.length > 0 ? toolCalls : null };
+    }
+    const remainder = this.buffer;
+    this.buffer = "";
+    return { outputText: remainder, toolCalls: null };
+  }
+}
 const NO_THINKING_SUFFIX = "-nothinking";
 const DEEPSEEK_BASE_MODELS = [
   { id: "deepseek-v4-flash", object: "model", created: 1677610602, owned_by: "deepseek" },
@@ -19689,7 +19826,7 @@ async function handleChatCompletions(req, res) {
     serverLog(`[api]   session: ${sessionId.slice(0, 8)}...`);
     const powResponse = await getPow(token);
     serverLog(`[api]   pow: solved`);
-    const prompt = buildPromptText(request.messages);
+    const prompt = buildPromptText(request.messages, request.tools);
     const payload = {
       chat_session_id: sessionId,
       prompt,
@@ -19742,6 +19879,7 @@ async function handleStreamResponse(res, stream2, model, thinkingEnabled) {
   let currentType = thinkingEnabled ? "thinking" : "text";
   let buffer = "";
   let thinkingStartSent = false;
+  const sieve = new StreamToolSieve();
   const sendSSE = (data) => {
     res.write(`data: ${JSON.stringify(data)}
 
@@ -19835,23 +19973,66 @@ async function handleStreamResponse(res, stream2, model, thinkingEnabled) {
             }]
           });
         } else {
-          sendSSE({
-            id: completionId,
-            object: "chat.completion.chunk",
-            created,
-            model,
-            choices: [{
-              index: 0,
-              delta: { content: part.text },
-              finish_reason: null
-            }]
-          });
+          const result = sieve.processChunk(part.text);
+          if (result.outputText) {
+            sendSSE({
+              id: completionId,
+              object: "chat.completion.chunk",
+              created,
+              model,
+              choices: [{
+                index: 0,
+                delta: { content: result.outputText },
+                finish_reason: null
+              }]
+            });
+          }
+          if (result.toolCalls) {
+            sendSSE({
+              id: completionId,
+              object: "chat.completion.chunk",
+              created,
+              model,
+              choices: [{
+                index: 0,
+                delta: { tool_calls: result.toolCalls },
+                finish_reason: null
+              }]
+            });
+          }
         }
       }
     }
   });
   stream2.on("end", () => {
     if (!res.writableEnded) {
+      const finalResult = sieve.flush();
+      if (finalResult.outputText) {
+        sendSSE({
+          id: completionId,
+          object: "chat.completion.chunk",
+          created,
+          model,
+          choices: [{
+            index: 0,
+            delta: { content: finalResult.outputText },
+            finish_reason: null
+          }]
+        });
+      }
+      if (finalResult.toolCalls) {
+        sendSSE({
+          id: completionId,
+          object: "chat.completion.chunk",
+          created,
+          model,
+          choices: [{
+            index: 0,
+            delta: { tool_calls: finalResult.toolCalls },
+            finish_reason: null
+          }]
+        });
+      }
       sendSSE({
         id: completionId,
         object: "chat.completion.chunk",
@@ -19902,6 +20083,18 @@ async function handleNonStreamResponse(res, stream2, model, prompt, thinkingEnab
       }
     }
   }
+  let finalContent = contentText;
+  let toolCalls = void 0;
+  const toolStartIdx = contentText.indexOf("<|DSML|tool_calls>");
+  const toolEndIdx = contentText.indexOf("</|DSML|tool_calls>");
+  if (toolStartIdx !== -1 && toolEndIdx !== -1) {
+    const fullXml = contentText.substring(toolStartIdx, toolEndIdx + "</|DSML|tool_calls>".length);
+    const parsedTools = parseDSMLToolCalls(fullXml);
+    if (parsedTools.length > 0) {
+      toolCalls = parsedTools;
+      finalContent = contentText.substring(0, toolStartIdx);
+    }
+  }
   const responseBody = {
     id: completionId,
     object: "chat.completion",
@@ -19911,8 +20104,9 @@ async function handleNonStreamResponse(res, stream2, model, prompt, thinkingEnab
       index: 0,
       message: {
         role: "assistant",
-        content: contentText,
-        ...thinkingEnabled && thinkingText ? { reasoning_content: thinkingText } : {}
+        content: finalContent,
+        ...thinkingEnabled && thinkingText ? { reasoning_content: thinkingText } : {},
+        ...toolCalls ? { tool_calls: toolCalls } : {}
       },
       finish_reason: finishReason
     }],
@@ -19931,21 +20125,59 @@ function getNextToken() {
   accountIndex = (accountIndex + 1) % entries.length;
   return token;
 }
-function buildPromptText(messages) {
+function buildPromptText(messages, tools) {
   if (!Array.isArray(messages) || messages.length === 0) return "";
   const parts = [];
+  const toolPrompt = buildToolPrompt(tools || []);
+  let systemInjected = false;
   for (const msg of messages) {
     const role = msg.role || "user";
-    const content = typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content);
+    let content = typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content);
     if (role === "system") {
+      if (toolPrompt && !systemInjected) {
+        content = content + "\n\n" + toolPrompt;
+        systemInjected = true;
+      }
       parts.push(`[System]
 ${content}`);
     } else if (role === "user") {
       parts.push(content);
     } else if (role === "assistant") {
+      if (msg.tool_calls && Array.isArray(msg.tool_calls)) {
+        let historyToolCalls = "<|DSML|tool_calls>\n";
+        for (const call2 of msg.tool_calls) {
+          if (call2.function) {
+            historyToolCalls += `  <|DSML|invoke name="${call2.function.name}">
+`;
+            try {
+              const args = typeof call2.function.arguments === "string" ? JSON.parse(call2.function.arguments) : call2.function.arguments;
+              for (const [k, v] of Object.entries(args)) {
+                const valStr = typeof v === "object" ? JSON.stringify(v) : String(v);
+                historyToolCalls += `    <|DSML|parameter name="${k}"><![CDATA[${valStr}]]></|DSML|parameter>
+`;
+              }
+            } catch {
+              historyToolCalls += `    <|DSML|parameter name="args"><![CDATA[${call2.function.arguments}]]></|DSML|parameter>
+`;
+            }
+            historyToolCalls += `  </|DSML|invoke>
+`;
+          }
+        }
+        historyToolCalls += "</|DSML|tool_calls>";
+        content = content ? `${content}
+${historyToolCalls}` : historyToolCalls;
+      }
       parts.push(`[Assistant]
 ${content}`);
+    } else if (role === "tool") {
+      parts.push(`[Tool]
+Result: ${content}`);
     }
+  }
+  if (toolPrompt && !systemInjected) {
+    parts.unshift(`[System]
+${toolPrompt}`);
   }
   return parts.join("\n\n");
 }

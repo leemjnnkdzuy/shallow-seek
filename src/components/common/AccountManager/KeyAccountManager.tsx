@@ -13,12 +13,12 @@ import {
 import { Input } from "@/components/ui/input";
 
 import {
-	ApiKey,
 	fetchApiKeys,
 	connectPlatform,
 	deleteApiKey,
 	renameApiKey,
 } from "@/handlers/ApiKeyHandler";
+import type { ApiKey } from "@/types";
 
 interface KeyAccountManagerProps {
 	account: { id: string; email: string; chat_token: string; platform_token?: string };

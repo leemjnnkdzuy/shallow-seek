@@ -32,6 +32,11 @@ export default function AccountManagerPage() {
         if (acc) {
           console.log("[AccountManagerPage] Found account:", acc.email, "Token exists:", !!acc.chat_token);
           setAccount(acc);
+          setConfig({ 
+            title: `Quản lý: ${acc.email}`,
+            showBack: true,
+            onBack: () => window.location.hash = "/"
+          });
         } else {
           console.error("[AccountManagerPage] Account not found for id:", id);
         }
@@ -157,7 +162,6 @@ export default function AccountManagerPage() {
       isRunning={isRunning}
       onToggleStartStop={handleToggleStartStop}
       onRestart={handleRestart}
-      email={account?.email}
       port={port}
     >
       {activeTab === "history" && (

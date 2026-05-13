@@ -6,11 +6,10 @@ interface AccountManagerHeaderProps {
   isRunning: boolean;
   onToggleStartStop: () => void;
   onRestart: () => void;
-  email?: string;
   port?: number;
 }
 
-export default function AccountManagerHeader({ isRunning, onToggleStartStop, onRestart, email, port = 11434 }: AccountManagerHeaderProps) {
+export default function AccountManagerHeader({ isRunning, onToggleStartStop, onRestart, port = 11434 }: AccountManagerHeaderProps) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
@@ -21,11 +20,8 @@ export default function AccountManagerHeader({ isRunning, onToggleStartStop, onR
   };
 
   return (
-    <div className="flex items-center justify-between px-6 py-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-10 sticky top-0 border-b">
+    <div className="flex items-center justify-between px-6 py-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-10 sticky top-0">
       <div className="flex items-center gap-4">
-        <h2 className="text-lg font-semibold tracking-tight">
-          {email ? `Quản lý: ${email}` : "Quản lý tài khoản"}
-        </h2>
         <div className="flex items-center gap-3 text-sm">
           <div className="flex items-center gap-2">
             <span className="relative flex h-3 w-3">

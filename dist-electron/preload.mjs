@@ -53,7 +53,8 @@ electron.contextBridge.exposeInMainWorld("electron", {
       return () => electron.ipcRenderer.off("on-language-changed", listener);
     },
     openConfirm: (options) => electron.ipcRenderer.invoke("open-confirm", options),
-    confirmResult: (result) => electron.ipcRenderer.send("confirm-result", result)
+    confirmResult: (result) => electron.ipcRenderer.send("confirm-result", result),
+    openExternal: (url) => electron.ipcRenderer.send("open-external", url)
   },
   db: {
     addAccount: (account) => electron.ipcRenderer.invoke("db-add-account", account),

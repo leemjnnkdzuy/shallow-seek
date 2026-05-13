@@ -1,4 +1,4 @@
-import {ipcMain, BrowserWindow} from "electron";
+import {ipcMain, BrowserWindow, shell} from "electron";
 import path from "node:path";
 
 export function registerWindowIpcs(
@@ -145,5 +145,9 @@ export function registerWindowIpcs(
 		BrowserWindow.getAllWindows().forEach((win) => {
 			win.webContents.send("on-language-changed", lang);
 		});
+	});
+
+	ipcMain.on("open-external", (_event, url: string) => {
+		shell.openExternal(url);
 	});
 }

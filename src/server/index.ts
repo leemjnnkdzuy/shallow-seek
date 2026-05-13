@@ -1,33 +1,21 @@
-/**
- * OpenAI-compatible HTTP API server built-in to the Electron app.
- * Replaces the external Go ds2api process.
- *
- * Endpoints:
- *   GET  /v1/models              - List available models
- *   GET  /v1/models/:id          - Get specific model
- *   POST /v1/chat/completions    - Chat completion (stream + non-stream)
- *   GET  /healthz                - Health check
- */
 import http from "node:http";
 import crypto from "node:crypto";
 import { Readable } from "node:stream";
 
-import * as dsClient from "./deepseek-client";
-import { parseDeepSeekSSELine, parseSSEChunkForContent, hasContentFilterStatus } from "./sse-parser";
-import { resolveModel, getModelConfig, getModelType, openAIModelsResponse, ALL_MODELS } from "./model-config";
-import type { ServerConfig, OpenAIChatRequest } from "./types";
+import * as dsClient from "./DeepseekClient";
+import { parseDeepSeekSSELine, parseSSEChunkForContent, hasContentFilterStatus } from "./SSEParser";
+import { buildToolPrompt, StreamToolSieve, parseDSMLToolCalls } from "./ToolSieve";
+import { resolveModel, getModelConfig, getModelType, openAIModelsResponse, ALL_MODELS } from "./ModelConfig";
+import type { ServerConfig, OpenAIChatRequest } from "../types";
 
 let currentServer: http.Server | null = null;
 let currentConfig: ServerConfig | null = null;
 
-// Simple round-robin account pool
-let accountTokens: Map<string, string> = new Map(); // email -> token
+let accountTokens: Map<string, string> = new Map();
 let accountIndex = 0;
 
-// Pluggable log callback for piping logs to the UI
 let _logCallback: ((msg: string) => void) | null = null;
 
-/** Set a callback to receive all server log messages. */
 export function setLogCallback(cb: (msg: string) => void) {
 	_logCallback = cb;
 }
@@ -37,7 +25,6 @@ function serverLog(msg: string) {
 	if (_logCallback) _logCallback(msg);
 }
 
-/** Start the API server. Returns the port. */
 export async function startServer(config: ServerConfig): Promise<number> {
 	if (currentServer) throw new Error("Server is already running");
 	currentConfig = config;
@@ -72,7 +59,6 @@ export async function startServer(config: ServerConfig): Promise<number> {
 	});
 }
 
-/** Stop the API server. */
 export async function stopServer(): Promise<void> {
 	if (!currentServer) throw new Error("Server is not running");
 	return new Promise((resolve) => {
@@ -88,13 +74,10 @@ export function isRunning(): boolean {
 	return currentServer !== null;
 }
 
-// ─── Request Handling ─────────────────────────────────────────────────
-
 async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse) {
 	const startTime = Date.now();
 	const method = req.method || "GET";
 
-	// CORS
 	setCORS(res, req);
 	if (method === "OPTIONS") {
 		res.writeHead(204);
@@ -106,12 +89,10 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
 	const path = url.pathname;
 	const clientIP = req.socket.remoteAddress || "unknown";
 
-	// Wrap res.end to log after response is sent
 	const origEnd = res.end.bind(res);
 	(res as any).end = function (...args: any[]) {
 		const duration = Date.now() - startTime;
 		const status = res.statusCode;
-		// Skip noisy healthcheck logging
 		if (path !== "/healthz" && path !== "/readyz") {
 			serverLog(`[api] ${method} ${path} → ${status} (${duration}ms) [${clientIP}]`);
 		}
@@ -119,19 +100,16 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
 	};
 
 	try {
-		// Health check
 		if (path === "/healthz" || path === "/readyz") {
 			jsonResponse(res, 200, { status: "ok" });
 			return;
 		}
 
-		// Models
 		if ((path === "/v1/models" || path === "/models") && method === "GET") {
 			jsonResponse(res, 200, openAIModelsResponse());
 			return;
 		}
 
-		// Model by ID
 		const modelMatch = path.match(/^\/(?:v1\/)?models\/(.+)$/);
 		if (modelMatch && method === "GET") {
 			const modelId = modelMatch[1];
@@ -144,23 +122,18 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
 			return;
 		}
 
-		// Chat completions
 		if ((path === "/v1/chat/completions" || path === "/chat/completions") && method === "POST") {
-			// Auth check
 			if (!validateAuth(req, res)) return;
 			await handleChatCompletions(req, res);
 			return;
 		}
 
-		// 404
 		jsonResponse(res, 404, { error: { message: "Not found", type: "invalid_request_error" } });
 	} catch (err: any) {
 		serverLog(`[api] ✗ ${method} ${path} — unhandled error: ${err.message}`);
 		jsonResponse(res, 500, { error: { message: "Internal Server Error", type: "api_error" } });
 	}
 }
-
-// ─── Auth ─────────────────────────────────────────────────────────────
 
 function validateAuth(req: http.IncomingMessage, res: http.ServerResponse): boolean {
 	if (!currentConfig || currentConfig.apiKeys.length === 0) return true;
@@ -171,7 +144,6 @@ function validateAuth(req: http.IncomingMessage, res: http.ServerResponse): bool
 		key = authHeader.slice(7).trim();
 	}
 	if (!key) {
-		// Check query param
 		const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
 		key = url.searchParams.get("key") || url.searchParams.get("api_key") || "";
 	}
@@ -184,8 +156,6 @@ function validateAuth(req: http.IncomingMessage, res: http.ServerResponse): bool
 	}
 	return true;
 }
-
-// ─── Chat Completions ─────────────────────────────────────────────────
 
 async function handleChatCompletions(req: http.IncomingMessage, res: http.ServerResponse) {
 	const reqStart = Date.now();
@@ -201,7 +171,6 @@ async function handleChatCompletions(req: http.IncomingMessage, res: http.Server
 	const streamMode = request.stream ? "stream" : "sync";
 	const requestedModel = request.model || "(none)";
 
-	// Resolve model
 	const resolvedModel = resolveModel(request.model, currentConfig?.modelAliases);
 	if (!resolvedModel) {
 		serverLog(`[api] ✗ completion rejected — unsupported model: ${requestedModel}`);
@@ -217,7 +186,6 @@ async function handleChatCompletions(req: http.IncomingMessage, res: http.Server
 	const { thinking, search } = getModelConfig(resolvedModel);
 	const modelType = getModelType(resolvedModel);
 
-	// Get an account token
 	const token = getNextToken();
 	if (!token) {
 		serverLog(`[api] ✗ completion failed — no available accounts`);
@@ -229,16 +197,13 @@ async function handleChatCompletions(req: http.IncomingMessage, res: http.Server
 
 	let sessionId: string | undefined;
 	try {
-		// Create session
 		sessionId = await dsClient.createSession(token);
 		serverLog(`[api]   session: ${sessionId.slice(0, 8)}...`);
 
-		// Get PoW
 		const powResponse = await dsClient.getPow(token);
 		serverLog(`[api]   pow: solved`);
 
-		// Build completion payload
-		const prompt = buildPromptText(request.messages);
+		const prompt = buildPromptText(request.messages, request.tools);
 		const payload: Record<string, any> = {
 			chat_session_id: sessionId,
 			prompt: prompt,
@@ -250,7 +215,6 @@ async function handleChatCompletions(req: http.IncomingMessage, res: http.Server
 			payload.model_class = modelType;
 		}
 
-		// Call DeepSeek
 		const dsResponse = await dsClient.callCompletion(token, payload, powResponse);
 
 		if (dsResponse.status !== 200) {
@@ -279,14 +243,11 @@ async function handleChatCompletions(req: http.IncomingMessage, res: http.Server
 			error: { message: err.message || "Completion failed", type: "api_error" },
 		});
 	} finally {
-		// Auto-delete session
 		if (sessionId && token && currentConfig?.autoDeleteMode === "single") {
 			dsClient.deleteSession(token, sessionId).catch(() => { });
 		}
 	}
 }
-
-// ─── Stream Response ──────────────────────────────────────────────────
 
 async function handleStreamResponse(
 	res: http.ServerResponse,
@@ -306,6 +267,7 @@ async function handleStreamResponse(
 	let currentType = thinkingEnabled ? "thinking" : "text";
 	let buffer = "";
 	let thinkingStartSent = false;
+	const sieve = new StreamToolSieve();
 
 	const sendSSE = (data: any) => {
 		res.write(`data: ${JSON.stringify(data)}\n\n`);
@@ -323,7 +285,6 @@ async function handleStreamResponse(
 			const [parsed, isDone, isValid] = parseDeepSeekSSELine(trimmed);
 			if (!isValid) continue;
 			if (isDone) {
-				// Send final chunk with finish_reason
 				sendSSE({
 					id: completionId,
 					object: "chat.completion.chunk",
@@ -342,7 +303,6 @@ async function handleStreamResponse(
 
 			if (!parsed) continue;
 
-			// Check content filter
 			if (hasContentFilterStatus(parsed)) {
 				sendSSE({
 					id: completionId,
@@ -382,7 +342,6 @@ async function handleStreamResponse(
 
 			for (const part of parts) {
 				if (part.type === "thinking") {
-					// Send as reasoning_content (OpenAI thinking format)
 					if (!thinkingStartSent) {
 						sendSSE({
 							id: completionId,
@@ -409,17 +368,33 @@ async function handleStreamResponse(
 						}],
 					});
 				} else {
-					sendSSE({
-						id: completionId,
-						object: "chat.completion.chunk",
-						created,
-						model,
-						choices: [{
-							index: 0,
-							delta: { content: part.text },
-							finish_reason: null,
-						}],
-					});
+					const result = sieve.processChunk(part.text);
+					if (result.outputText) {
+						sendSSE({
+							id: completionId,
+							object: "chat.completion.chunk",
+							created,
+							model,
+							choices: [{
+								index: 0,
+								delta: { content: result.outputText },
+								finish_reason: null,
+							}],
+						});
+					}
+					if (result.toolCalls) {
+						sendSSE({
+							id: completionId,
+							object: "chat.completion.chunk",
+							created,
+							model,
+							choices: [{
+								index: 0,
+								delta: { tool_calls: result.toolCalls },
+								finish_reason: null,
+							}],
+						});
+					}
 				}
 			}
 		}
@@ -427,6 +402,34 @@ async function handleStreamResponse(
 
 	stream.on("end", () => {
 		if (!res.writableEnded) {
+			const finalResult = sieve.flush();
+			if (finalResult.outputText) {
+				sendSSE({
+					id: completionId,
+					object: "chat.completion.chunk",
+					created,
+					model,
+					choices: [{
+						index: 0,
+						delta: { content: finalResult.outputText },
+						finish_reason: null,
+					}],
+				});
+			}
+			if (finalResult.toolCalls) {
+				sendSSE({
+					id: completionId,
+					object: "chat.completion.chunk",
+					created,
+					model,
+					choices: [{
+						index: 0,
+						delta: { tool_calls: finalResult.toolCalls },
+						finish_reason: null,
+					}],
+				});
+			}
+
 			sendSSE({
 				id: completionId,
 				object: "chat.completion.chunk",
@@ -448,8 +451,6 @@ async function handleStreamResponse(
 		if (!res.writableEnded) res.end();
 	});
 }
-
-// ─── Non-Stream Response ──────────────────────────────────────────────
 
 async function handleNonStreamResponse(
 	res: http.ServerResponse,
@@ -496,6 +497,20 @@ async function handleNonStreamResponse(
 		}
 	}
 
+	let finalContent = contentText;
+	let toolCalls: any[] | undefined = undefined;
+
+	const toolStartIdx = contentText.indexOf("<|DSML|tool_calls>");
+	const toolEndIdx = contentText.indexOf("</|DSML|tool_calls>");
+	if (toolStartIdx !== -1 && toolEndIdx !== -1) {
+		const fullXml = contentText.substring(toolStartIdx, toolEndIdx + "</|DSML|tool_calls>".length);
+		const parsedTools = parseDSMLToolCalls(fullXml);
+		if (parsedTools.length > 0) {
+			toolCalls = parsedTools;
+			finalContent = contentText.substring(0, toolStartIdx);
+		}
+	}
+
 	const responseBody: Record<string, any> = {
 		id: completionId,
 		object: "chat.completion",
@@ -505,8 +520,9 @@ async function handleNonStreamResponse(
 			index: 0,
 			message: {
 				role: "assistant",
-				content: contentText,
+				content: finalContent,
 				...(thinkingEnabled && thinkingText ? { reasoning_content: thinkingText } : {}),
+				...(toolCalls ? { tool_calls: toolCalls } : {})
 			},
 			finish_reason: finishReason,
 		}],
@@ -530,22 +546,61 @@ function getNextToken(): string | null {
 	return token;
 }
 
-function buildPromptText(messages: any[]): string {
+function buildPromptText(messages: any[], tools?: any[]): string {
 	if (!Array.isArray(messages) || messages.length === 0) return "";
-	// For DeepSeek web API, we send the last user message as prompt
-	// and pack system/history into a special format
+	
 	const parts: string[] = [];
+	const toolPrompt = buildToolPrompt(tools || []);
+
+	let systemInjected = false;
+	
 	for (const msg of messages) {
 		const role = msg.role || "user";
-		const content = typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content);
+		let content = typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content);
+
 		if (role === "system") {
+			if (toolPrompt && !systemInjected) {
+				content = content + "\n\n" + toolPrompt;
+				systemInjected = true;
+			}
 			parts.push(`[System]\n${content}`);
 		} else if (role === "user") {
 			parts.push(content);
 		} else if (role === "assistant") {
+			// Restore tool calls in history
+			if (msg.tool_calls && Array.isArray(msg.tool_calls)) {
+				let historyToolCalls = "<|DSML|tool_calls>\n";
+				for (const call of msg.tool_calls) {
+					if (call.function) {
+						historyToolCalls += `  <|DSML|invoke name="${call.function.name}">\n`;
+						try {
+							const args = typeof call.function.arguments === "string" 
+								? JSON.parse(call.function.arguments) 
+								: call.function.arguments;
+							for (const [k, v] of Object.entries(args)) {
+								const valStr = typeof v === "object" ? JSON.stringify(v) : String(v);
+								historyToolCalls += `    <|DSML|parameter name="${k}"><![CDATA[${valStr}]]></|DSML|parameter>\n`;
+							}
+						} catch {
+							historyToolCalls += `    <|DSML|parameter name="args"><![CDATA[${call.function.arguments}]]></|DSML|parameter>\n`;
+						}
+						historyToolCalls += `  </|DSML|invoke>\n`;
+					}
+				}
+				historyToolCalls += "</|DSML|tool_calls>";
+				content = content ? `${content}\n${historyToolCalls}` : historyToolCalls;
+			}
 			parts.push(`[Assistant]\n${content}`);
+		} else if (role === "tool") {
+			parts.push(`[Tool]\nResult: ${content}`);
 		}
 	}
+
+	// If no system message existed but we have tools, prepend it.
+	if (toolPrompt && !systemInjected) {
+		parts.unshift(`[System]\n${toolPrompt}`);
+	}
+
 	return parts.join("\n\n");
 }
 

@@ -2,7 +2,7 @@ import { ipcMain, BrowserWindow } from "electron";
 import * as apiServer from "../server/index";
 import { setLogCallback } from "../server/index";
 import { getSetting, getAccounts } from "../services/QueryDB";
-import type { ServerConfig, AccountConfig } from "../server/types";
+import type { ServerConfig, AccountConfig } from "../types";
 
 let serverLogs: string[] = [];
 

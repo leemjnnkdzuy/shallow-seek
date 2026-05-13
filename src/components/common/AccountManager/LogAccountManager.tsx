@@ -31,10 +31,8 @@ export default function LogAccountManager({ logs, onClear }: LogAccountManagerPr
 	const formatLogLine = (line: string) => {
 		if (!line) return null;
 
-		// Highlight various prefixes and symbols
 		let element: React.ReactNode = line;
 
-		// Check for [shallowseek-api]
 		if (line.includes("[shallowseek-api]")) {
 			const parts = line.split("[shallowseek-api]");
 			element = (
@@ -42,7 +40,6 @@ export default function LogAccountManager({ logs, onClear }: LogAccountManagerPr
 					{parts[0]}
 					<span className="text-primary font-bold">[shallowseek-api]</span>
 					{parts.slice(1).map((part, idx) => {
-						// Highlight success / error
 						if (part.includes("✓")) {
 							const subParts = part.split("✓");
 							return (

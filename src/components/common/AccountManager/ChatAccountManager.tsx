@@ -7,7 +7,8 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import {formatDeepSeekMessages, type FormattedMessage} from "@/lib/utils";
+import {formatDeepSeekMessages} from "@/lib/utils";
+import type {FormattedMessage} from "@/types";
 import ChatMessage from "@/components/common/ChatMessage";
 import { Atom, ArrowUp, Paperclip, Globe } from "lucide-react";
 import { parseStreamLine } from "@/handlers/ChatStreamHandler";
@@ -27,6 +28,8 @@ export default function ChatAccountManager({
 	const [input, setInput] = useState("");
 	const [isStreaming, setIsStreaming] = useState(false);
 	const [model, setModel] = useState("deepseek-chat");
+	const [thinkingEnabled, setThinkingEnabled] = useState(false);
+	const [searchEnabled, setSearchEnabled] = useState(false);
 	const scrollRef = useRef<HTMLDivElement>(null);
 
 	const bufferRef = useRef("");
@@ -184,8 +187,8 @@ export default function ChatAccountManager({
 			model_type: model === "deepseek-coder" ? "expert" : "default",
 			prompt: userMessage,
 			ref_file_ids: [],
-			thinking_enabled: false,
-			search_enabled: false,
+			thinking_enabled: thinkingEnabled,
+			search_enabled: searchEnabled,
 		};
 
 		window.electron?.deepseek?.startChatStream({
@@ -195,13 +198,26 @@ export default function ChatAccountManager({
 	};
 
 	return (
-		<div className='flex flex-col h-full bg-transparent overflow-hidden gap-4'>
-			<div className='flex-1 overflow-y-auto space-y-4' ref={scrollRef}>
+		<div className='flex flex-col h-full bg-transparent overflow-hidden gap-0'>
+			<div 
+				className='flex-1 overflow-y-auto space-y-4 pt-10 pb-16 pr-1' 
+				ref={scrollRef}
+				style={{
+					WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 3%, black 92%, transparent 100%)',
+					maskImage: 'linear-gradient(to bottom, transparent 0%, black 3%, black 92%, transparent 100%)',
+				}}
+			>
 				{messages.length === 0 ?
 					<div className='text-center text-muted-foreground mt-10'>
 						Bắt đầu trò chuyện với DeepSeek
 					</div>
-				:	messages.map((m, i) => <ChatMessage key={i} message={m} />)}
+				:	messages.map((m, i) => (
+						<ChatMessage 
+							key={i} 
+							message={m} 
+							isStreaming={isStreaming && i === messages.length - 1} 
+						/>
+					))}
 				{isStreaming &&
 					messages[messages.length - 1]?.role === "user" && (
 						<div className='p-3 px-4 rounded-2xl w-fit bg-muted/50 border border-border/50 mr-auto rounded-tl-none flex items-center gap-2'>
@@ -234,9 +250,24 @@ export default function ChatAccountManager({
 							<Button variant='ghost' size='icon' className='h-7 w-7 rounded-lg hover:text-foreground hover:bg-muted/50'>
 								<Paperclip className='w-4 h-4' />
 							</Button>
-							<Button variant='ghost' size='sm' className='h-7 rounded-lg text-xs gap-1 hover:text-foreground hover:bg-muted/50 px-2.5 font-medium'>
+							<Button 
+								variant='ghost' 
+								size='sm' 
+								className={`h-7 rounded-lg text-xs gap-1.5 px-2.5 font-medium transition-colors ${thinkingEnabled ? 'text-primary bg-primary/10 hover:bg-primary/20 hover:text-primary' : 'hover:text-foreground hover:bg-muted/50'}`}
+								onClick={() => setThinkingEnabled(!thinkingEnabled)}
+							>
+								<Atom className='w-3.5 h-3.5' />
+								<span>Suy nghĩ sâu</span>
+							</Button>
+							
+							<Button 
+								variant='ghost' 
+								size='sm' 
+								className={`h-7 rounded-lg text-xs gap-1.5 px-2.5 font-medium transition-colors ${searchEnabled ? 'text-primary bg-primary/10 hover:bg-primary/20 hover:text-primary' : 'hover:text-foreground hover:bg-muted/50'}`}
+								onClick={() => setSearchEnabled(!searchEnabled)}
+							>
 								<Globe className='w-3.5 h-3.5' />
-								<span>All Sources</span>
+								<span>Tìm kiếm web</span>
 							</Button>
 
 							<Select value={model} onValueChange={setModel}>

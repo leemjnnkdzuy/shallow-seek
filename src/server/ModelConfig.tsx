@@ -2,7 +2,7 @@
  * Model definitions, aliases, and resolution logic.
  * Ported from ds2api/internal/config/models.go
  */
-import type { ModelInfo } from "./types";
+import type { ModelInfo } from "../types";
 
 const NO_THINKING_SUFFIX = "-nothinking";
 

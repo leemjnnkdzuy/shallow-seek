@@ -1,5 +1,3 @@
-import React from "react";
-
 // Layouts
 import NothingLayout from "@/components/layouts/NothingLayout";
 import SidebarLayout from "@/components/layouts/SidebarLayout";
@@ -14,11 +12,7 @@ import InterfacePage from "@/windows/setting/InterfacePage";
 import AccountManagerPage from "@/windows/main/AccountManagerPage";
 import CreateAPIKeyPage from "@/windows/popup/CreateAPIKeyPage";
 
-export interface RouteConfig {
-	path: string;
-	component: React.ComponentType<any>;
-	layout: React.ComponentType<{children: React.ReactNode}>;
-}
+import type { RouteConfig } from "../types";
 
 const routes: RouteConfig[] = [
 	{

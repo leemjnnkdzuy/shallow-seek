@@ -10,7 +10,6 @@ interface AccountManagerLayoutProps {
   isRunning: boolean;
   onToggleStartStop: () => void;
   onRestart: () => void;
-  email?: string;
   port?: number;
 }
 
@@ -21,7 +20,6 @@ export default function AccountManagerLayout({
   isRunning,
   onToggleStartStop,
   onRestart,
-  email,
   port
 }: AccountManagerLayoutProps) {
   return (
@@ -32,7 +30,6 @@ export default function AccountManagerLayout({
           isRunning={isRunning} 
           onToggleStartStop={onToggleStartStop} 
           onRestart={onRestart}
-          email={email}
           port={port}
         />
         <div className="flex-1 overflow-y-auto p-6">

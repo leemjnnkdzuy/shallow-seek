@@ -14,7 +14,7 @@ import {
 	getChatHeaders,
 } from "../constants/DeepseekApi";
 import {solveAndBuildHeader} from "../ipcs/Pow";
-import type {AccountConfig, DeepSeekPowChallenge} from "./types";
+import type {AccountConfig, DeepSeekPowChallenge} from "../types";
 
 function intFrom(v: any): number {
 	if (typeof v === "number") return Math.floor(v);
@@ -125,10 +125,6 @@ export async function getPow(token: string, maxAttempts = 3): Promise<string> {
 	throw new Error("get pow failed after retries");
 }
 
-/**
- * Call the DeepSeek completion endpoint. Returns the raw axios response
- * with responseType: "stream" so the body can be piped to SSE.
- */
 export async function callCompletion(
 	token: string,
 	payload: Record<string, any>,
@@ -142,7 +138,6 @@ export async function callCompletion(
 	});
 }
 
-/** Delete a specific session after use. */
 export async function deleteSession(
 	token: string,
 	sessionId: string,

@@ -2,7 +2,7 @@
  * SSE Parser for DeepSeek's JSON-patch streaming format.
  * Ported from ds2api/internal/sse/parser.go
  */
-import type { ContentPart } from "./types";
+import type { ContentPart } from "../types";
 
 const SKIP_CONTAINS_PATTERNS = [
 	"quasi_status",

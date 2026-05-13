@@ -3,7 +3,6 @@ import {Button} from "@/components/ui/button";
 import {
 	Plus,
 	Settings,
-	User,
 	Trash2,
 	RefreshCw,
 	ChevronRight,
@@ -218,10 +217,10 @@ const HomePage: React.FC = () => {
 									className='group hover:border-primary transition-all duration-300 shadow-sm hover:shadow-xl hover:shadow-primary/5 rounded-2xl overflow-hidden'
 								>
 									<CardHeader className='pb-3'>
-										<div className='flex items-start justify-between'>
-											<div className='flex items-center gap-4'>
-												<div className='flex flex-col'>
-													<CardTitle className='text-base font-bold truncate max-w-[150px]'>
+										<div className='flex items-start justify-between gap-2 w-full min-w-0'>
+											<div className='flex items-center gap-4 min-w-0 flex-1'>
+												<div className='flex flex-col min-w-0 flex-1'>
+													<CardTitle className='text-base font-bold truncate' title={account.email}>
 														{account.email}
 													</CardTitle>
 													<CardDescription className='text-[10px] uppercase font-bold tracking-wider mt-1 opacity-60'>

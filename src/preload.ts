@@ -68,6 +68,8 @@ contextBridge.exposeInMainWorld("electron", {
 		}) => ipcRenderer.invoke("open-confirm", options),
 		confirmResult: (result: boolean) =>
 			ipcRenderer.send("confirm-result", result),
+		openExternal: (url: string) =>
+			ipcRenderer.send("open-external", url),
 	},
 	db: {
 		addAccount: (account: any) =>
