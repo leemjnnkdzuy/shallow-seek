@@ -1,10 +1,10 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import '@fontsource-variable/inter';
-import './index.css';
-import routes from './routes';
-import { useTheme } from './hooks/useTheme';
-import { useLanguage } from './hooks/useLanguage';
+import '@/index.css';
+import routes from '@/routes';
+import { useTheme } from '@/hooks/useTheme';
+import { useLanguage } from '@/hooks/useLanguage';
 
 const App = () => {
   useTheme();
@@ -86,7 +86,7 @@ const App = () => {
   }
 };
 
-import { TitleBarProvider } from './hooks/useTitleBar';
+import { TitleBarProvider } from '@/hooks/useTitleBar';
 
 const rootElement = document.getElementById('root');
 if (rootElement) {

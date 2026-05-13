@@ -11,12 +11,10 @@ import {
 	DEEPSEEK_CREATE_POW_URL,
 	DEEPSEEK_UPLOAD_FILE_URL,
 	DEEPSEEK_FETCH_FILES_URL,
-} from "../constants/DeepseekURL";
-import {
 	getHistoryHeaders,
 	getPlatformHeaders,
-} from "../constants/DeepseekApi";
-import {solveAndBuildHeader} from "../ipcs/Pow";
+} from "@/constants";
+import {solveAndBuildHeader} from "@/ipcs/Pow";
 import type {
 	TokenPayload,
 	SessionPayload,
@@ -24,9 +22,7 @@ import type {
 	FetchFilesPayload,
 	EditApiKeysPayload,
 	IpcResult,
-} from "../types";
-
-// ── History ──
+} from "@/types";
 
 export async function fetchHistory(payload: TokenPayload): Promise<IpcResult> {
 	console.log(
@@ -56,8 +52,6 @@ export async function fetchHistory(payload: TokenPayload): Promise<IpcResult> {
 		return {ok: false, error: {message}};
 	}
 }
-
-// ── Session Messages ──
 
 export async function fetchSessionMessages(
 	payload: SessionPayload,
@@ -105,8 +99,6 @@ export async function fetchSessionMessages(
 	}
 }
 
-// ── Create Session ──
-
 export async function createSession(
 	payload: TokenPayload,
 ): Promise<IpcResult> {
@@ -138,8 +130,6 @@ export async function createSession(
 	}
 }
 
-// ── Delete Session ──
-
 export async function deleteSession(
 	payload: SessionPayload,
 ): Promise<IpcResult> {
@@ -170,8 +160,6 @@ export async function deleteSession(
 		return {ok: false, error: {message}};
 	}
 }
-
-// ── API Keys ──
 
 export async function getApiKeys(
 	payload: {token: string},
@@ -243,7 +231,6 @@ export async function editApiKeys(
 	}
 }
 
-// ── File Upload ──
 
 export async function uploadFile(
 	payload: UploadFilePayload,
@@ -298,8 +285,6 @@ export async function uploadFile(
 	}
 }
 
-// ── Fetch Files ──
-
 export async function fetchFiles(
 	payload: FetchFilesPayload,
 ): Promise<IpcResult> {
@@ -320,8 +305,6 @@ export async function fetchFiles(
 		return {ok: false, error: {message}};
 	}
 }
-
-// ── Save Temp File ──
 
 export async function saveTempFile(
 	payload: {base64Data: string; fileName: string},

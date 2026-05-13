@@ -1,3 +1,5 @@
+import type {ToolCall} from "@/types/Tool";
+
 export interface AccountConfig {
 	id: string;
 	name?: string;
@@ -45,6 +47,12 @@ export interface OpenAIChatRequest {
 	max_tokens?: number;
 	top_p?: number;
 	[key: string]: any;
+}
+
+export interface OpenAIChatMessageLike {
+	role?: string;
+	content?: unknown;
+	tool_calls?: ToolCall[];
 }
 
 export interface DeepSeekPowChallenge {

@@ -1,4 +1,4 @@
-import type { ChatSessionSummary } from "../types";
+import type { ChatSessionSummary } from "@/types";
 
 export function parseChatSession(session: unknown): ChatSessionSummary | null {
 	if (!session || typeof session !== "object") return null;

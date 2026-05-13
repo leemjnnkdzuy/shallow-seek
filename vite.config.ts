@@ -20,6 +20,11 @@ export default defineConfig({
       main: {
         entry: 'src/main.tsx',
         vite: {
+          resolve: {
+            alias: {
+              '@': path.resolve(__dirname, './src'),
+            },
+          },
           build: {
             rollupOptions: {
               external: ['better-sqlite3']

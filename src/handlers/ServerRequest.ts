@@ -1,13 +1,13 @@
 import http from "node:http";
-import {openAIModelsResponse, ALL_MODELS} from "../server/ModelConfig";
-import type {ServerInstanceState} from "../types/ServerInternal";
+import {openAIModelsResponse, ALL_MODELS} from "@/server/ModelConfig";
+import type {ServerInstanceState} from "@/types/ServerInternal";
 import {
 	logWithPort,
 	getErrorMessage,
 	jsonResponse,
 	setCORS,
-} from "./ServerHelpers";
-import {handleChatCompletions} from "./ServerCompletion";
+} from "@/handlers/ServerHelpers";
+import {handleChatCompletions} from "@/handlers/ServerCompletion";
 
 export async function handleRequest(
 	req: http.IncomingMessage,
@@ -76,6 +76,32 @@ export async function handleRequest(
 		) {
 			if (!validateAuth(req, res, state)) return;
 			await handleChatCompletions(req, res, state);
+			return;
+		}
+
+		// ── Session management endpoints ──
+		if (
+			(path === "/v1/sessions/reset" || path === "/sessions/reset") &&
+			method === "POST"
+		) {
+			if (!validateAuth(req, res, state)) return;
+			// Reset all active sessions — starts a fresh "section"
+			await state.sessionManager.cleanup();
+			logWithPort(state.port, `[api] ✓ All sessions reset (new section)`);
+			jsonResponse(res, 200, {status: "ok", message: "All sessions reset"});
+			return;
+		}
+
+		if (
+			(path === "/v1/sessions/info" || path === "/sessions/info") &&
+			method === "GET"
+		) {
+			if (!validateAuth(req, res, state)) return;
+			const info: Record<string, unknown>[] = [];
+			for (const [, token] of state.accountTokens) {
+				info.push(state.sessionManager.getSessionInfo(token));
+			}
+			jsonResponse(res, 200, {sessions: info});
 			return;
 		}
 

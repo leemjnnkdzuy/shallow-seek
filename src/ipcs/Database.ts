@@ -1,5 +1,5 @@
 import {ipcMain} from "electron";
-import {addAccount, getAccounts, deleteAccount, checkAccountExists, getSetting, setSetting, getAllSettings} from "../services/QueryDB";
+import {addAccount, getAccounts, deleteAccount, checkAccountExists, getSetting, setSetting, getAllSettings} from "@/services/QueryDB";
 
 export function registerDatabaseIpcs() {
 	ipcMain.handle("db-add-account", async (_event, account) => {

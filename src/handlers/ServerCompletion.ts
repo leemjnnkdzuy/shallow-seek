@@ -5,25 +5,26 @@ import {
 	parseDeepSeekSSELine,
 	parseSSEChunkForContent,
 	hasContentFilterStatus,
-} from "../server/SSEParser";
+} from "@/server/SSEParser";
+import {StreamToolSieve, parseDSMLToolCalls} from "@/server/ToolSieve";
 import {
-	buildToolPrompt,
-	StreamToolSieve,
-	parseDSMLToolCalls,
-} from "../server/ToolSieve";
+	buildPromptText,
+	extractSystemAndUserMessages,
+	buildUserOnlyPromptText,
+} from "@/constants";
+import {uploadRuleFiles, buildLivePrompt} from "@/server/RuleFileUploader";
 import {
 	resolveModel,
 	getModelConfig,
 	getModelType,
-} from "../server/ModelConfig";
-import * as dsClient from "../server/DeepseekClient";
-import type {OpenAIChatRequest} from "../types";
+} from "@/server/ModelConfig";
+import * as dsClient from "@/server/DeepseekClient";
+import type {OpenAIChatRequest} from "@/types";
 import type {
 	ServerInstanceState,
 	ToolCall,
 	DeepSeekCompletionPayload,
-	OpenAIChatMessageLike,
-} from "../types/ServerInternal";
+} from "@/types/ServerInternal";
 import {
 	logWithPort,
 	getErrorMessage,
@@ -31,9 +32,8 @@ import {
 	readBody,
 	streamToString,
 	jsonResponse,
-	isRecord,
 	estimateTokens,
-} from "./ServerHelpers";
+} from "@/handlers/ServerHelpers";
 
 export async function handleChatCompletions(
 	req: http.IncomingMessage,
@@ -74,9 +74,9 @@ export async function handleChatCompletions(
 	}
 
 	const modelAlias =
-		requestedModel !== resolvedModel
-			? `${requestedModel} → ${resolvedModel}`
-			: resolvedModel;
+		requestedModel !== resolvedModel ?
+			`${requestedModel} → ${resolvedModel}`
+		:	resolvedModel;
 	logWithPort(
 		state.port,
 		`[api] ⟶ completion ${streamMode} | model: ${modelAlias} | msgs: ${request.messages?.length || 0}`,
@@ -97,24 +97,88 @@ export async function handleChatCompletions(
 		return;
 	}
 
+	state.sessionManager.cleanupStale();
+
 	let sessionId: string | undefined;
 	try {
-		sessionId = await dsClient.createSession(token);
-		logWithPort(state.port, `[api]   session: ${sessionId.slice(0, 8)}...`);
+		// ── Step 1: Split messages into system instructions vs conversation ──
+		const {systemMessages, conversationMessages} =
+			extractSystemAndUserMessages(request.messages);
+		const tools = (request.tools as unknown[] | undefined) || [];
+
+		// ── Step 2: Build conversation-only prompt (no system/tool inlined) ──
+		const prompt = buildUserOnlyPromptText(conversationMessages);
+		const promptTokens = estimateTokens(prompt);
+
+		// ── Step 3: Get or reuse session via SessionManager ──
+		const sessionResult = await state.sessionManager.getSession(
+			token,
+			promptTokens,
+		);
+		sessionId = sessionResult.sessionId;
+
+		const parentMessageId = state.sessionManager.getParentMessageId(token);
+
+		const sessionInfo = state.sessionManager.getSessionInfo(token);
+		const sessionTag =
+			sessionResult.isNew ? "new" : `reuse #${sessionInfo.requestCount}`;
+		logWithPort(
+			state.port,
+			`[api]   session: ${sessionId.slice(0, 8)}... (${sessionTag}, ~${sessionInfo.totalTokens} tokens, parent: ${parentMessageId || "none"})`,
+		);
+
+		// ── Step 4: Upload rule files (system prompt + tools as ref_file_ids) ──
+		let refFileIds: string[] = [];
+		let finalPrompt = prompt;
+
+		try {
+			const ruleFiles = await uploadRuleFiles(
+				token,
+				systemMessages,
+				tools,
+			);
+			refFileIds = ruleFiles.refFileIds;
+
+			const contextSummary =
+				state.sessionManager.getContextSummary(token);
+			const userPrompt =
+				contextSummary ?
+					`[Compressed context from previous conversation]\n${contextSummary}\n\n---\n\n${prompt}`
+				:	prompt;
+
+			finalPrompt = buildLivePrompt(
+				userPrompt,
+				ruleFiles.toolsFileId !== null,
+			);
+			logWithPort(
+				state.port,
+				`[api]   rule-files: rules=${ruleFiles.rulesFileId.slice(0, 8)}... tools=${ruleFiles.toolsFileId ? ruleFiles.toolsFileId.slice(0, 8) + "..." : "none"}`,
+			);
+		} catch (ruleErr: unknown) {
+			const message =
+				ruleErr instanceof Error ? ruleErr.message : String(ruleErr);
+			logWithPort(
+				state.port,
+				`[api]   rule-file upload failed, falling back to inline: ${message}`,
+			);
+			finalPrompt = buildPromptText(request.messages, tools);
+			const contextSummary =
+				state.sessionManager.getContextSummary(token);
+			if (contextSummary) {
+				finalPrompt = `[Compressed context from previous conversation]\n${contextSummary}\n\n---\n\n${finalPrompt}`;
+			}
+		}
 
 		const powResponse = await dsClient.getPow(token);
 		logWithPort(state.port, `[api]   pow: solved`);
 
-		const prompt = buildPromptText(
-			request.messages,
-			request.tools as unknown[] | undefined,
-		);
 		const payload: DeepSeekCompletionPayload = {
 			chat_session_id: sessionId,
-			prompt: prompt,
-			ref_file_ids: [],
+			prompt: finalPrompt,
+			ref_file_ids: refFileIds,
 			thinking_enabled: thinking,
 			search_enabled: search,
+			parent_message_id: parentMessageId,
 		};
 		if (modelType) {
 			payload.model_class = modelType;
@@ -132,6 +196,15 @@ export async function handleChatCompletions(
 				state.port,
 				`[api] ✗ DeepSeek error ${dsResponse.status}: ${errData.slice(0, 200)}`,
 			);
+
+			if (dsResponse.status === 422 || dsResponse.status === 400) {
+				logWithPort(
+					state.port,
+					`[api]   resetting session due to error...`,
+				);
+				await state.sessionManager.resetSession(token);
+			}
+
 			jsonResponse(res, dsResponse.status, {
 				error: {
 					message: `DeepSeek API error: ${dsResponse.status}`,
@@ -143,22 +216,30 @@ export async function handleChatCompletions(
 
 		logWithPort(state.port, `[api]   streaming response...`);
 
+		let lastMessageId: number | null = null;
 		if (request.stream) {
-			await handleStreamResponse(
+			lastMessageId = await handleStreamResponse(
 				res,
 				dsResponse.data,
 				resolvedModel,
 				thinking,
 			);
 		} else {
-			await handleNonStreamResponse(
+			lastMessageId = await handleNonStreamResponse(
 				res,
 				dsResponse.data,
 				resolvedModel,
-				prompt,
+				finalPrompt,
 				thinking,
 			);
 		}
+
+		state.sessionManager.recordExchange(
+			token,
+			prompt,
+			"(response recorded)",
+			lastMessageId,
+		);
 
 		const elapsed = ((Date.now() - reqStart) / 1000).toFixed(1);
 		logWithPort(
@@ -172,16 +253,17 @@ export async function handleChatCompletions(
 			state.port,
 			`[api] ✗ completion error (${elapsed}s): ${message}`,
 		);
+
+		if (message.includes("create session failed")) {
+			await state.sessionManager.resetSession(token);
+		}
+
 		jsonResponse(res, 500, {
 			error: {
 				message: message || "Completion failed",
 				type: "api_error",
 			},
 		});
-	} finally {
-		if (sessionId && token && state.config.autoDeleteMode === "single") {
-			dsClient.deleteSession(token, sessionId).catch(() => {});
-		}
 	}
 }
 
@@ -190,7 +272,8 @@ async function handleStreamResponse(
 	stream: Readable,
 	model: string,
 	thinkingEnabled: boolean,
-) {
+): Promise<number | null> {
+	let lastMessageId: number | null = null;
 	res.writeHead(200, {
 		"Content-Type": "text/event-stream",
 		"Cache-Control": "no-cache, no-transform",
@@ -203,110 +286,26 @@ async function handleStreamResponse(
 	let currentType = thinkingEnabled ? "thinking" : "text";
 	let buffer = "";
 	let thinkingStartSent = false;
+	let hasToolCalls = false;
 	const sieve = new StreamToolSieve();
 
-	const sendSSE = (data: Record<string, unknown>) => {
-		res.write(`data: ${JSON.stringify(data)}\n\n`);
-	};
+	return new Promise((resolve, reject) => {
+		const sendSSE = (data: Record<string, unknown>) => {
+			res.write(`data: ${JSON.stringify(data)}\n\n`);
+		};
 
-	stream.on("data", (chunk: Buffer) => {
-		buffer += chunk.toString("utf-8");
-		const lines = buffer.split("\n");
-		buffer = lines.pop() || "";
+		stream.on("data", (chunk: Buffer) => {
+			buffer += chunk.toString("utf-8");
+			const lines = buffer.split("\n");
+			buffer = lines.pop() || "";
 
-		for (const line of lines) {
-			const trimmed = line.trim();
-			if (!trimmed) continue;
+			for (const line of lines) {
+				const trimmed = line.trim();
+				if (!trimmed) continue;
 
-			const [parsed, isDone, isValid] = parseDeepSeekSSELine(trimmed);
-			if (!isValid) continue;
-			if (isDone) {
-				sendSSE({
-					id: completionId,
-					object: "chat.completion.chunk",
-					created,
-					model,
-					choices: [
-						{
-							index: 0,
-							delta: {},
-							finish_reason: "stop",
-						},
-					],
-				});
-				res.write("data: [DONE]\n\n");
-				res.end();
-				return;
-			}
-
-			if (!parsed) continue;
-
-			if (hasContentFilterStatus(parsed)) {
-				sendSSE({
-					id: completionId,
-					object: "chat.completion.chunk",
-					created,
-					model,
-					choices: [
-						{
-							index: 0,
-							delta: {},
-							finish_reason: "content_filter",
-						},
-					],
-				});
-				res.write("data: [DONE]\n\n");
-				res.end();
-				return;
-			}
-
-			const {parts, finished, nextType} = parseSSEChunkForContent(
-				parsed,
-				thinkingEnabled,
-				currentType,
-			);
-			currentType = nextType;
-
-			if (finished) {
-				sendSSE({
-					id: completionId,
-					object: "chat.completion.chunk",
-					created,
-					model,
-					choices: [
-						{
-							index: 0,
-							delta: {},
-							finish_reason: "stop",
-						},
-					],
-				});
-				res.write("data: [DONE]\n\n");
-				res.end();
-				return;
-			}
-
-			for (const part of parts) {
-				if (part.type === "thinking") {
-					if (!thinkingStartSent) {
-						sendSSE({
-							id: completionId,
-							object: "chat.completion.chunk",
-							created,
-							model,
-							choices: [
-								{
-									index: 0,
-									delta: {
-										role: "assistant",
-										reasoning_content: "",
-									},
-									finish_reason: null,
-								},
-							],
-						});
-						thinkingStartSent = true;
-					}
+				const [parsed, isDone, isValid] = parseDeepSeekSSELine(trimmed);
+				if (!isValid) continue;
+				if (isDone) {
 					sendSSE({
 						id: completionId,
 						object: "chat.completion.chunk",
@@ -315,52 +314,174 @@ async function handleStreamResponse(
 						choices: [
 							{
 								index: 0,
-								delta: {reasoning_content: part.text},
+								delta: {},
+								finish_reason: "stop",
+							},
+						],
+					});
+					res.write("data: [DONE]\n\n");
+					res.end();
+					return;
+				}
+
+				if (!parsed) continue;
+
+				if (hasContentFilterStatus(parsed)) {
+					sendSSE({
+						id: completionId,
+						object: "chat.completion.chunk",
+						created,
+						model,
+						choices: [
+							{
+								index: 0,
+								delta: {},
+								finish_reason: "content_filter",
+							},
+						],
+					});
+					res.write("data: [DONE]\n\n");
+					res.end();
+					return;
+				}
+
+				const {parts, finished, nextType, messageId} =
+					parseSSEChunkForContent(
+						parsed,
+						thinkingEnabled,
+						currentType,
+					);
+				if (messageId) {
+					lastMessageId = messageId;
+				}
+				currentType = nextType;
+
+				if (finished) {
+					sendSSE({
+						id: completionId,
+						object: "chat.completion.chunk",
+						created,
+						model,
+						choices: [
+							{
+								index: 0,
+								delta: {},
+								finish_reason: "stop",
+							},
+						],
+					});
+					res.write("data: [DONE]\n\n");
+					res.end();
+					return;
+				}
+
+				for (const part of parts) {
+					if (part.type === "thinking") {
+						if (!thinkingStartSent) {
+							sendSSE({
+								id: completionId,
+								object: "chat.completion.chunk",
+								created,
+								model,
+								choices: [
+									{
+										index: 0,
+										delta: {
+											role: "assistant",
+											reasoning_content: "",
+										},
+										finish_reason: null,
+									},
+								],
+							});
+							thinkingStartSent = true;
+						}
+						sendSSE({
+							id: completionId,
+							object: "chat.completion.chunk",
+							created,
+							model,
+							choices: [
+								{
+									index: 0,
+									delta: {reasoning_content: part.text},
+									finish_reason: null,
+								},
+							],
+						});
+					} else {
+						const result = sieve.processChunk(part.text);
+						if (result.outputText) {
+							sendSSE({
+								id: completionId,
+								object: "chat.completion.chunk",
+								created,
+								model,
+								choices: [
+									{
+										index: 0,
+										delta: {content: result.outputText},
+										finish_reason: null,
+									},
+								],
+							});
+						}
+						if (result.toolCalls) {
+							hasToolCalls = true;
+							sendSSE({
+								id: completionId,
+								object: "chat.completion.chunk",
+								created,
+								model,
+								choices: [
+									{
+										index: 0,
+										delta: {tool_calls: result.toolCalls},
+										finish_reason: null,
+									},
+								],
+							});
+						}
+					}
+				}
+			}
+		});
+
+		stream.on("end", () => {
+			if (!res.writableEnded) {
+				const finalResult = sieve.flush();
+				if (finalResult.outputText) {
+					sendSSE({
+						id: completionId,
+						object: "chat.completion.chunk",
+						created,
+						model,
+						choices: [
+							{
+								index: 0,
+								delta: {content: finalResult.outputText},
 								finish_reason: null,
 							},
 						],
 					});
-				} else {
-					const result = sieve.processChunk(part.text);
-					if (result.outputText) {
-						sendSSE({
-							id: completionId,
-							object: "chat.completion.chunk",
-							created,
-							model,
-							choices: [
-								{
-									index: 0,
-									delta: {content: result.outputText},
-									finish_reason: null,
-								},
-							],
-						});
-					}
-					if (result.toolCalls) {
-						sendSSE({
-							id: completionId,
-							object: "chat.completion.chunk",
-							created,
-							model,
-							choices: [
-								{
-									index: 0,
-									delta: {tool_calls: result.toolCalls},
-									finish_reason: null,
-								},
-							],
-						});
-					}
 				}
-			}
-		}
-	});
+				if (finalResult.toolCalls) {
+					hasToolCalls = true;
+					sendSSE({
+						id: completionId,
+						object: "chat.completion.chunk",
+						created,
+						model,
+						choices: [
+							{
+								index: 0,
+								delta: {tool_calls: finalResult.toolCalls},
+								finish_reason: null,
+							},
+						],
+					});
+				}
 
-	stream.on("end", () => {
-		if (!res.writableEnded) {
-			const finalResult = sieve.flush();
-			if (finalResult.outputText) {
 				sendSSE({
 					id: completionId,
 					object: "chat.completion.chunk",
@@ -369,50 +490,23 @@ async function handleStreamResponse(
 					choices: [
 						{
 							index: 0,
-							delta: {content: finalResult.outputText},
-							finish_reason: null,
+							delta: {},
+							finish_reason: hasToolCalls ? "tool_calls" : "stop",
 						},
 					],
 				});
+				res.write("data: [DONE]\n\n");
+				res.end();
+				resolve(lastMessageId);
 			}
-			if (finalResult.toolCalls) {
-				sendSSE({
-					id: completionId,
-					object: "chat.completion.chunk",
-					created,
-					model,
-					choices: [
-						{
-							index: 0,
-							delta: {tool_calls: finalResult.toolCalls},
-							finish_reason: null,
-						},
-					],
-				});
-			}
+		});
 
-			sendSSE({
-				id: completionId,
-				object: "chat.completion.chunk",
-				created,
-				model,
-				choices: [
-					{
-						index: 0,
-						delta: {},
-						finish_reason: "stop",
-					},
-				],
-			});
-			res.write("data: [DONE]\n\n");
-			res.end();
-		}
-	});
-
-	stream.on("error", (err) => {
-		const message = err instanceof Error ? err.message : String(err);
-		console.error("[shallowseek-api] Stream error:", message);
-		if (!res.writableEnded) res.end();
+		stream.on("error", (err) => {
+			const message = err instanceof Error ? err.message : String(err);
+			console.error("[shallowseek-api] Stream error:", message);
+			if (!res.writableEnded) res.end();
+			reject(err);
+		});
 	});
 }
 
@@ -422,7 +516,7 @@ async function handleNonStreamResponse(
 	model: string,
 	prompt: string,
 	thinkingEnabled: boolean,
-) {
+): Promise<number | null> {
 	const completionId = `chatcmpl-${crypto.randomUUID().replace(/-/g, "").slice(0, 24)}`;
 	const created = Math.floor(Date.now() / 1000);
 
@@ -430,6 +524,7 @@ async function handleNonStreamResponse(
 	let contentText = "";
 	let currentType = thinkingEnabled ? "thinking" : "text";
 	let finishReason = "stop";
+	let lastMessageId: number | null = null;
 
 	const raw = await streamToString(stream);
 	const lines = raw.split("\n");
@@ -447,11 +542,14 @@ async function handleNonStreamResponse(
 			break;
 		}
 
-		const {parts, finished, nextType} = parseSSEChunkForContent(
+		const {parts, finished, nextType, messageId} = parseSSEChunkForContent(
 			parsed,
 			thinkingEnabled,
 			currentType,
 		);
+		if (messageId) {
+			lastMessageId = messageId;
+		}
 		currentType = nextType;
 
 		if (finished) break;
@@ -479,6 +577,7 @@ async function handleNonStreamResponse(
 		if (parsedTools.length > 0) {
 			toolCalls = parsedTools;
 			finalContent = contentText.substring(0, toolStartIdx);
+			if (finishReason === "stop") finishReason = "tool_calls";
 		}
 	}
 
@@ -493,9 +592,9 @@ async function handleNonStreamResponse(
 				message: {
 					role: "assistant",
 					content: finalContent,
-					...(thinkingEnabled && thinkingText
-						? {reasoning_content: thinkingText}
-						: {}),
+					...(thinkingEnabled && thinkingText ?
+						{reasoning_content: thinkingText}
+					:	{}),
 					...(toolCalls ? {tool_calls: toolCalls} : {}),
 				},
 				finish_reason: finishReason,
@@ -509,78 +608,5 @@ async function handleNonStreamResponse(
 	};
 
 	jsonResponse(res, 200, responseBody);
-}
-
-export function buildPromptText(
-	messages: OpenAIChatMessageLike[],
-	tools?: unknown[],
-): string {
-	if (!Array.isArray(messages) || messages.length === 0) return "";
-
-	const parts: string[] = [];
-	const toolPrompt = buildToolPrompt(tools || []);
-
-	let systemInjected = false;
-
-	for (const msg of messages) {
-		const role = msg.role || "user";
-		let content =
-			typeof msg.content === "string"
-				? msg.content
-				: JSON.stringify(msg.content);
-
-		if (role === "system") {
-			if (toolPrompt && !systemInjected) {
-				content = content + "\n\n" + toolPrompt;
-				systemInjected = true;
-			}
-			parts.push(`[System]\n${content}`);
-		} else if (role === "user") {
-			parts.push(content);
-		} else if (role === "assistant") {
-			// Restore tool calls in history
-			if (msg.tool_calls && Array.isArray(msg.tool_calls)) {
-				let historyToolCalls = "<|DSML|tool_calls>\n";
-				for (const call of msg.tool_calls) {
-					if (!call.function) continue;
-					historyToolCalls += `  <|DSML|invoke name="${call.function.name}">\n`;
-					const argValue = (() => {
-						try {
-							return JSON.parse(
-								call.function.arguments,
-							) as unknown;
-						} catch {
-							return call.function.arguments as unknown;
-						}
-					})();
-					if (isRecord(argValue)) {
-						for (const [k, v] of Object.entries(argValue)) {
-							const valStr =
-								typeof v === "object"
-									? JSON.stringify(v)
-									: String(v);
-							historyToolCalls += `    <|DSML|parameter name="${k}"><![CDATA[${valStr}]]></|DSML|parameter>\n`;
-						}
-					} else {
-						historyToolCalls += `    <|DSML|parameter name="args"><![CDATA[${call.function.arguments}]]></|DSML|parameter>\n`;
-					}
-					historyToolCalls += `  </|DSML|invoke>\n`;
-				}
-				historyToolCalls += "</|DSML|tool_calls>";
-				content =
-					content
-						? `${content}\n${historyToolCalls}`
-						: historyToolCalls;
-			}
-			parts.push(`[Assistant]\n${content}`);
-		} else if (role === "tool") {
-			parts.push(`[Tool]\nResult: ${content}`);
-		}
-	}
-
-	if (toolPrompt && !systemInjected) {
-		parts.unshift(`[System]\n${toolPrompt}`);
-	}
-
-	return parts.join("\n\n");
+	return lastMessageId;
 }

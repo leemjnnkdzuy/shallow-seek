@@ -13,7 +13,7 @@ import AccountManagerPage from "@/windows/main/AccountManagerPage";
 import CreateAPIKeyPage from "@/windows/popup/CreateAPIKeyPage";
 import DeepseekBrowserPage from "@/windows/popup/DeepseekBrowserPage";
 
-import type { RouteConfig } from "../types";
+import type { RouteConfig } from "@/types";
 
 const routes: RouteConfig[] = [
 	{

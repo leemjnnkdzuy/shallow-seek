@@ -1,6 +1,6 @@
 import {ipcMain, BrowserWindow, app} from "electron";
 import path from "node:path";
-import {performLogin} from "../handlers/DeepseekLogin";
+import {performLogin} from "@/handlers/DeepseekLogin";
 import {
 	fetchHistory,
 	fetchSessionMessages,
@@ -11,8 +11,8 @@ import {
 	uploadFile,
 	fetchFiles,
 	saveTempFile,
-} from "../handlers/DeepseekApi";
-import {handleChatStream} from "../handlers/DeepseekChatStream";
+} from "@/handlers/DeepseekApi";
+import {handleChatStream} from "@/handlers/DeepseekChatStream";
 import type {
 	TokenPayload,
 	SessionPayload,
@@ -21,7 +21,7 @@ import type {
 	FetchFilesPayload,
 	EditApiKeysPayload,
 	SaveTempFilePayload,
-} from "../types";
+} from "@/types";
 
 export function registerAccountIpcs(
 	__dirname: string,

@@ -1,7 +1,7 @@
-import {registerWindowIpcs} from "./Window";
-import {registerAccountIpcs} from "./Account";
-import {registerDatabaseIpcs} from "./Database";
-import {registerServerIpcs} from "./Server";
+import {registerWindowIpcs} from "@/ipcs/Window";
+import {registerAccountIpcs} from "@/ipcs/Account";
+import {registerDatabaseIpcs} from "@/ipcs/Database";
+import {registerServerIpcs} from "@/ipcs/Server";
 
 export function registerIpcs(
 	__dirname: string,

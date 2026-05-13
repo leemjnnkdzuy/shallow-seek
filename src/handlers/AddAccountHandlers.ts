@@ -1,5 +1,5 @@
 import {getShumeiDeviceId} from "@/services/DeepseekDevice";
-import {DEEPSEEK_LOGIN_URL} from "@/constants/DeepseekURL";
+import {DEEPSEEK_LOGIN_URL} from "@/constants";
 import {maskIdentifier, previewValue} from "@/lib/utils";
 import type {DeepseekLoginResponse} from "@/types";
 

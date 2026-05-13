@@ -1,4 +1,4 @@
-import type { ApiKey } from "../types";
+import type { ApiKey } from "@/types";
 
 export async function renameApiKey(
 	key: ApiKey,

@@ -1,4 +1,4 @@
-import { WindowControlsAPI, DbAPI, DeepseekAPI, ServerAPI } from "./types";
+import { WindowControlsAPI, DbAPI, DeepseekAPI, ServerAPI } from "@/types";
 
 declare global {
 	interface Window {

@@ -1,11 +1,9 @@
 import {contextBridge, ipcRenderer} from "electron";
 
-// Mask navigator.webdriver to bypass Cloudflare/WAF checks in the login popup
 try {
 	Object.defineProperty(navigator, "webdriver", {
 		get: () => undefined,
 	});
-	// Mock chrome object
 	if (!(window as any).chrome) {
 		(window as any).chrome = {
 			runtime: {},

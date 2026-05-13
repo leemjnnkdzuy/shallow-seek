@@ -2,7 +2,7 @@ import Database from "better-sqlite3";
 import path from "node:path";
 import {app} from "electron";
 import fs from "node:fs";
-import type {Account} from "../types";
+import type {Account} from "@/types";
 
 const userDataPath = app.getPath("userData");
 const dbDir = path.join(userDataPath, "database");

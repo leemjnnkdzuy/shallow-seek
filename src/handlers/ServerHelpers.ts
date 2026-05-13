@@ -1,6 +1,6 @@
 import http from "node:http";
 import {Readable} from "node:stream";
-import type {ServerInstanceState} from "../types/ServerInternal";
+import type {ServerInstanceState} from "@/types/ServerInternal";
 
 let _logCallback: ((msg: string) => void) | null = null;
 

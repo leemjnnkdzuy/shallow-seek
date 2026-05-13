@@ -43,7 +43,7 @@ export const previewValue = (value: unknown, maxLen = 4000) => {
 	}
 };
 
-import type { DeepSeekMessage, FormattedMessage } from "../types";
+import type { DeepSeekMessage, FormattedMessage } from "@/types";
 
 export function formatDeepSeekMessages(msgs: DeepSeekMessage[]): FormattedMessage[] {
   if (!msgs || !Array.isArray(msgs)) return [];

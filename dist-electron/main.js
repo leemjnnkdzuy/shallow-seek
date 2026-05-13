@@ -18,10 +18,11 @@ import require$$1$2 from "tty";
 import require$$0$1 from "os";
 import zlib from "zlib";
 import { EventEmitter } from "events";
+import crypto$1 from "node:crypto";
 import fs$1 from "node:fs";
 import Database from "better-sqlite3";
 import http$2 from "node:http";
-import crypto$1 from "node:crypto";
+import { Readable as Readable$1 } from "node:stream";
 function registerWindowIpcs(__dirname, VITE_DEV_SERVER_URL2, RENDERER_DIST2) {
   ipcMain.on("window-minimize", (event) => {
     const webContents = event.sender;
@@ -12224,7 +12225,14 @@ var _eval = EvalError;
 var range = RangeError;
 var ref = ReferenceError;
 var syntax = SyntaxError;
-var type = TypeError;
+var type;
+var hasRequiredType;
+function requireType() {
+  if (hasRequiredType) return type;
+  hasRequiredType = 1;
+  type = TypeError;
+  return type;
+}
 var uri = URIError;
 var abs$1 = Math.abs;
 var floor$1 = Math.floor;
@@ -12470,7 +12478,7 @@ function requireCallBindApplyHelpers() {
   if (hasRequiredCallBindApplyHelpers) return callBindApplyHelpers;
   hasRequiredCallBindApplyHelpers = 1;
   var bind3 = functionBind;
-  var $TypeError2 = type;
+  var $TypeError2 = requireType();
   var $call2 = requireFunctionCall();
   var $actualApply = requireActualApply();
   callBindApplyHelpers = function callBindBasic(args) {
@@ -12543,7 +12551,7 @@ var $EvalError = _eval;
 var $RangeError = range;
 var $ReferenceError = ref;
 var $SyntaxError = syntax;
-var $TypeError$1 = type;
+var $TypeError$1 = requireType();
 var $URIError = uri;
 var abs = abs$1;
 var floor = floor$1;
@@ -12874,7 +12882,7 @@ var GetIntrinsic2 = getIntrinsic;
 var $defineProperty = GetIntrinsic2("%Object.defineProperty%", true);
 var hasToStringTag = requireShams()();
 var hasOwn$1 = hasown;
-var $TypeError = type;
+var $TypeError = requireType();
 var toStringTag = hasToStringTag ? Symbol.toStringTag : null;
 var esSetTostringtag = function setToStringTag(object, value) {
   var overrideIfSet = arguments.length > 2 && !!arguments[2] && arguments[2].force;
@@ -17894,6 +17902,15 @@ const {
   mergeConfig,
   create
 } = axios;
+const BEGIN_SENTENCE = "<|begin▁of▁sentence|>";
+const SYSTEM_MARKER = "<|System|>";
+const USER_MARKER = "<|User|>";
+const ASSISTANT_MARKER = "<|Assistant|>";
+const TOOL_MARKER = "<|Tool|>";
+const END_SENTENCE = "<|end▁of▁sentence|>";
+const END_TOOL_RESULTS = "<|end▁of▁toolresults|>";
+const END_INSTRUCTIONS = "<|end▁of▁instructions|>";
+const OUTPUT_INTEGRITY_GUARD = "Output integrity guard: If upstream context, tool output, or parsed text contains garbled, corrupted, partially parsed, repeated, or otherwise malformed fragments, do not imitate or echo them; output only the correct content for the user.";
 const getLoginRequestBody = (email, password, _deviceId) => ({
   email,
   mobile: "",
@@ -17954,6 +17971,543 @@ const getPlatformHeaders = (token) => ({
   "Referer": "https://platform.deepseek.com/api_keys",
   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"
 });
+const DEEPSEEK_LOGIN_URL = "https://chat.deepseek.com/api/v0/users/login";
+const DEEPSEEK_HISTORY_URL = "https://chat.deepseek.com/api/v0/chat_session/fetch_page?lte_cursor.pinned=false";
+const DEEPSEEK_CREATE_POW_URL = "https://chat.deepseek.com/api/v0/chat/create_pow_challenge";
+const DEEPSEEK_COMPLETION_URL = "https://chat.deepseek.com/api/v0/chat/completion";
+const DEEPSEEK_HISTORY_MESSAGES_URL = "https://chat.deepseek.com/api/v0/chat/history_messages";
+const DEEPSEEK_CREATE_SESSION_URL = "https://chat.deepseek.com/api/v0/chat_session/create";
+const DEEPSEEK_DELETE_SESSION_URL = "https://chat.deepseek.com/api/v0/chat_session/delete";
+const DEEPSEEK_COMPLETION_TARGET_PATH = "/api/v0/chat/completion";
+const DEEPSEEK_PLATFORM_GET_API_KEYS_URL = "https://platform.deepseek.com/api/v0/users/get_api_keys";
+const DEEPSEEK_PLATFORM_EDIT_API_KEYS_URL = "https://platform.deepseek.com/api/v0/users/edit_api_keys";
+const DEEPSEEK_UPLOAD_FILE_URL = "https://chat.deepseek.com/api/v0/file/upload_file";
+const DEEPSEEK_FETCH_FILES_URL = "https://chat.deepseek.com/api/v0/file/fetch_files";
+function buildToolPrompt(tools) {
+  if (!tools || tools.length === 0) return "";
+  const toolSchemas = [];
+  const names = [];
+  for (const t of tools) {
+    if (t.type !== "function" || !t.function) continue;
+    const name = t.function.name;
+    const desc = t.function.description || "No description available";
+    const parameters = JSON.stringify(t.function.parameters || {});
+    names.push(name);
+    toolSchemas.push(
+      `Tool: ${name}
+Description: ${desc}
+Parameters: ${parameters}`
+    );
+  }
+  if (names.length === 0) return "";
+  const descriptions = "You have access to these tools:\n\n" + toolSchemas.join("\n\n");
+  let fullPrompt = descriptions + "\n\n" + TOOL_CALL_INSTRUCTIONS;
+  const examples = buildCorrectToolExamples(names);
+  if (examples) {
+    fullPrompt += "\n\n" + examples;
+  }
+  if (hasReadLikeTool(names)) {
+    fullPrompt += "\n\n" + READ_TOOL_CACHE_GUARD;
+  }
+  return fullPrompt;
+}
+function parseDSMLToolCalls(xmlContent) {
+  const results = [];
+  const invokeRegex = /<\|DSML\|invoke\s+name="([^"]+)">([\s\S]*?)<\/\|DSML\|invoke>/g;
+  const paramRegex = /<\|DSML\|parameter\s+name="([^"]+)">([\s\S]*?)<\/\|DSML\|parameter>/g;
+  const cdataRegex = /^\s*<!\[CDATA\[([\s\S]*?)\]\]>\s*$/;
+  let match;
+  while ((match = invokeRegex.exec(xmlContent)) !== null) {
+    const name = match[1];
+    const paramsStr = match[2];
+    const args = {};
+    let paramMatch;
+    while ((paramMatch = paramRegex.exec(paramsStr)) !== null) {
+      const pName = paramMatch[1];
+      let pValue = paramMatch[2].trim();
+      const cdataMatch = pValue.match(cdataRegex);
+      if (cdataMatch) {
+        pValue = cdataMatch[1];
+      }
+      args[pName] = pValue;
+    }
+    results.push({
+      id: `call_${crypto$1.randomUUID().replace(/-/g, "")}`,
+      type: "function",
+      function: {
+        name,
+        arguments: JSON.stringify(args)
+      }
+    });
+  }
+  return results;
+}
+class StreamToolSieve {
+  constructor() {
+    __publicField(this, "buffer", "");
+    __publicField(this, "inTool", false);
+    __publicField(this, "finishedTool", false);
+  }
+  processChunk(text) {
+    if (this.finishedTool) return { outputText: text, toolCalls: null };
+    this.buffer += text;
+    const toolStartIdx = this.buffer.indexOf("<|DSML|tool_calls>");
+    if (toolStartIdx !== -1) {
+      this.inTool = true;
+      const toolEndIdx = this.buffer.indexOf("</|DSML|tool_calls>");
+      if (toolEndIdx !== -1) {
+        const fullXml = this.buffer.substring(
+          toolStartIdx,
+          toolEndIdx + "</|DSML|tool_calls>".length
+        );
+        this.finishedTool = true;
+        const preText = this.buffer.substring(0, toolStartIdx);
+        const postText = this.buffer.substring(
+          toolEndIdx + "</|DSML|tool_calls>".length
+        );
+        const toolCalls = parseDSMLToolCalls(fullXml);
+        this.buffer = postText;
+        return {
+          outputText: preText,
+          toolCalls: toolCalls.length > 0 ? toolCalls : null
+        };
+      }
+      if (toolStartIdx > 0) {
+        const preText = this.buffer.substring(0, toolStartIdx);
+        this.buffer = this.buffer.substring(toolStartIdx);
+        return { outputText: preText, toolCalls: null };
+      }
+      return { outputText: "", toolCalls: null };
+    }
+    const lastLt = this.buffer.lastIndexOf("<");
+    if (lastLt !== -1) {
+      const safeText2 = this.buffer.substring(0, lastLt);
+      this.buffer = this.buffer.substring(lastLt);
+      return { outputText: safeText2, toolCalls: null };
+    }
+    const safeText = this.buffer;
+    this.buffer = "";
+    return { outputText: safeText, toolCalls: null };
+  }
+  flush() {
+    if (this.inTool && this.buffer.includes("<|DSML|tool_calls>")) {
+      const fullXml = this.buffer + "</|DSML|invoke></|DSML|tool_calls>";
+      const toolCalls = parseDSMLToolCalls(fullXml);
+      const preText = this.buffer.substring(
+        0,
+        this.buffer.indexOf("<|DSML|tool_calls>")
+      );
+      return {
+        outputText: preText,
+        toolCalls: toolCalls.length > 0 ? toolCalls : null
+      };
+    }
+    const remainder = this.buffer;
+    this.buffer = "";
+    return { outputText: remainder, toolCalls: null };
+  }
+}
+function normalizeContent(v) {
+  if (v == null) return "";
+  if (typeof v === "string") return v;
+  if (Array.isArray(v)) {
+    const texts = [];
+    for (const item of v) {
+      if (typeof item !== "object" || item === null) continue;
+      const obj = item;
+      const typeStr = (typeof obj.type === "string" ? obj.type : "").toLowerCase().trim();
+      if (typeStr === "text" || typeStr === "output_text" || typeStr === "input_text") {
+        const txt = typeof obj.text === "string" ? obj.text : typeof obj.content === "string" ? obj.content : "";
+        if (txt) texts.push(txt);
+      }
+    }
+    if (texts.length > 0) return texts.join("\n");
+  }
+  try {
+    return JSON.stringify(v);
+  } catch {
+    return String(v);
+  }
+}
+function normalizeRole(role) {
+  const r = (role || "user").toLowerCase().trim();
+  if (r === "developer") return "system";
+  return r;
+}
+function renderPromptCDATA(text) {
+  if (!text) return "";
+  if (text.includes("]]>")) {
+    return "<![CDATA[" + text.replace(/]]>/g, "]]]><![CDATA[>") + "]]>";
+  }
+  return "<![CDATA[" + text + "]]>";
+}
+function formatToolCallsForPrompt(toolCalls) {
+  if (!Array.isArray(toolCalls) || toolCalls.length === 0) return "";
+  const blocks = [];
+  for (const item of toolCalls) {
+    if (typeof item !== "object" || item === null) continue;
+    const call2 = item;
+    let name = "";
+    let argsRaw = null;
+    const fn = call2.function;
+    if (fn && typeof fn === "object") {
+      name = typeof fn.name === "string" ? fn.name.trim() : "";
+      argsRaw = fn.arguments ?? fn.input ?? null;
+    }
+    if (!name) {
+      name = typeof call2.name === "string" ? call2.name.trim() : "";
+      if (!argsRaw) argsRaw = call2.arguments ?? call2.input ?? null;
+    }
+    if (!name) continue;
+    let args = null;
+    if (typeof argsRaw === "string") {
+      const trimmed = argsRaw.trim();
+      if (trimmed) {
+        try {
+          args = JSON.parse(trimmed);
+        } catch {
+        }
+      }
+    } else if (typeof argsRaw === "object" && argsRaw !== null) {
+      args = argsRaw;
+    }
+    let paramLines = "";
+    if (args && typeof args === "object" && !Array.isArray(args)) {
+      for (const [k, v] of Object.entries(args)) {
+        const valStr = typeof v === "object" && v !== null ? JSON.stringify(v) : String(v ?? "");
+        paramLines += `    <|DSML|parameter name="${k}">${renderPromptCDATA(valStr)}</|DSML|parameter>
+`;
+      }
+    } else if (typeof argsRaw === "string" && argsRaw.trim()) {
+      paramLines = `    <|DSML|parameter name="content">${renderPromptCDATA(argsRaw)}</|DSML|parameter>
+`;
+    }
+    if (paramLines) {
+      blocks.push(
+        `  <|DSML|invoke name="${name}">
+${paramLines}  </|DSML|invoke>`
+      );
+    } else {
+      blocks.push(`  <|DSML|invoke name="${name}"></|DSML|invoke>`);
+    }
+  }
+  if (blocks.length === 0) return "";
+  return "<|DSML|tool_calls>\n" + blocks.join("\n") + "\n</|DSML|tool_calls>";
+}
+function buildPromptText(messages, tools) {
+  if (!Array.isArray(messages) || messages.length === 0) return "";
+  const toolPrompt = buildToolPrompt(tools || []);
+  const normalized = [];
+  normalized.push({ role: "system", content: OUTPUT_INTEGRITY_GUARD });
+  let systemInjected = false;
+  for (const msg of messages) {
+    const role = normalizeRole(msg.role);
+    let content = normalizeContent(msg.content);
+    if (role === "assistant") {
+      const toolHistory = formatToolCallsForPrompt(msg.tool_calls);
+      if (toolHistory) {
+        content = content ? content + "\n\n" + toolHistory : toolHistory;
+      }
+    } else if (role === "system") {
+      if (toolPrompt && !systemInjected) {
+        content = content ? content + "\n\n" + toolPrompt : toolPrompt;
+        systemInjected = true;
+      }
+    } else if (role === "tool") {
+      if (!content.trim()) content = "null";
+    }
+    normalized.push({ role, content });
+  }
+  if (toolPrompt && !systemInjected) {
+    normalized.splice(1, 0, { role: "system", content: toolPrompt });
+  }
+  const merged = [];
+  for (const msg of normalized) {
+    if (merged.length > 0 && merged[merged.length - 1].role === msg.role) {
+      merged[merged.length - 1].content += "\n\n" + msg.content;
+    } else {
+      merged.push({ ...msg });
+    }
+  }
+  const parts = [BEGIN_SENTENCE];
+  let lastRole = "";
+  for (const msg of merged) {
+    lastRole = msg.role;
+    switch (msg.role) {
+      case "system": {
+        const text = msg.content.trim();
+        if (text) {
+          parts.push(SYSTEM_MARKER + text + END_INSTRUCTIONS);
+        }
+        break;
+      }
+      case "user":
+        parts.push(USER_MARKER + msg.content);
+        break;
+      case "assistant":
+        parts.push(ASSISTANT_MARKER + msg.content + END_SENTENCE);
+        break;
+      case "tool": {
+        const text = msg.content.trim();
+        if (text) {
+          parts.push(TOOL_MARKER + text + END_TOOL_RESULTS);
+        }
+        break;
+      }
+      default: {
+        const text = msg.content.trim();
+        if (text) parts.push(text);
+        break;
+      }
+    }
+  }
+  if (lastRole !== "assistant") {
+    parts.push(ASSISTANT_MARKER);
+  }
+  return parts.join("");
+}
+function extractSystemAndUserMessages(messages) {
+  const systemMessages = [];
+  const conversationMessages = [];
+  for (const msg of messages) {
+    const role = normalizeRole(msg.role);
+    const content = normalizeContent(msg.content);
+    if (role === "system" || role === "developer") {
+      if (content.trim()) {
+        systemMessages.push(content);
+      }
+    } else {
+      conversationMessages.push(msg);
+    }
+  }
+  return { systemMessages, conversationMessages };
+}
+function buildUserOnlyPromptText(messages) {
+  if (!Array.isArray(messages) || messages.length === 0) return "";
+  const normalized = [];
+  for (const msg of messages) {
+    const role = normalizeRole(msg.role);
+    let content = normalizeContent(msg.content);
+    if (role === "assistant") {
+      const toolHistory = formatToolCallsForPrompt(msg.tool_calls);
+      if (toolHistory) {
+        content = content ? content + "\n\n" + toolHistory : toolHistory;
+      }
+    } else if (role === "tool") {
+      if (!content.trim()) content = "null";
+    }
+    normalized.push({ role, content });
+  }
+  const merged = [];
+  for (const msg of normalized) {
+    if (merged.length > 0 && merged[merged.length - 1].role === msg.role) {
+      merged[merged.length - 1].content += "\n\n" + msg.content;
+    } else {
+      merged.push({ ...msg });
+    }
+  }
+  const parts = [BEGIN_SENTENCE];
+  let lastRole = "";
+  for (const msg of merged) {
+    lastRole = msg.role;
+    switch (msg.role) {
+      case "user":
+        parts.push(USER_MARKER + msg.content);
+        break;
+      case "assistant":
+        parts.push(ASSISTANT_MARKER + msg.content + END_SENTENCE);
+        break;
+      case "tool": {
+        const text = msg.content.trim();
+        if (text) {
+          parts.push(TOOL_MARKER + text + END_TOOL_RESULTS);
+        }
+        break;
+      }
+      default: {
+        const text = msg.content.trim();
+        if (text) parts.push(text);
+        break;
+      }
+    }
+  }
+  if (lastRole !== "assistant") {
+    parts.push(ASSISTANT_MARKER);
+  }
+  return parts.join("");
+}
+const RULES_FILENAME = "SHALLOW_SEEK_RULES.md";
+const TOOLS_FILENAME = "SHALLOW_SEEK_TOOLS.md";
+const CONTENT_TYPE = "text/plain; charset=utf-8";
+const FILE_READY_POLL_ATTEMPTS = 30;
+const FILE_READY_POLL_INTERVAL_MS = 1e3;
+function wrapParam(name, value) {
+  const cdata = value.includes("]]>") ? "<![CDATA[" + value.replace(/]]>/g, "]]]><![CDATA[>") + "]]>" : "<![CDATA[" + value + "]]>";
+  return `<|DSML|parameter name="${name}">${cdata}</|DSML|parameter>`;
+}
+function exampleBasicParams(name) {
+  switch (name.trim()) {
+    case "Read":
+      return wrapParam("file_path", "README.md");
+    case "Glob":
+      return wrapParam("pattern", "**/*.go") + "\n" + wrapParam("path", ".");
+    case "read_file":
+      return wrapParam("path", "src/main.go");
+    case "list_files":
+      return wrapParam("path", ".");
+    case "search_files":
+      return wrapParam("query", "tool call parser");
+    case "Bash":
+    case "execute_command":
+      return wrapParam("command", "pwd");
+    case "exec_command":
+      return wrapParam("cmd", "pwd");
+    case "Write":
+      return wrapParam("file_path", "notes.txt") + "\n" + wrapParam("content", "Hello world");
+    case "write_to_file":
+      return wrapParam("path", "notes.txt") + "\n" + wrapParam("content", "Hello world");
+    case "Edit":
+      return wrapParam("file_path", "README.md") + "\n" + wrapParam("old_string", "foo") + "\n" + wrapParam("new_string", "bar");
+    default:
+      return null;
+  }
+}
+function firstBasicExample(names) {
+  for (const name of names) {
+    const params = exampleBasicParams(name);
+    if (params) return { name, params };
+  }
+  return null;
+}
+function firstNBasicExamples(names, count) {
+  const out = [];
+  for (const name of names) {
+    const params = exampleBasicParams(name);
+    if (params) {
+      out.push({ name, params });
+      if (out.length >= count) return out;
+    }
+  }
+  return out;
+}
+function firstScriptExample(names) {
+  const scriptCmd = `cat > /tmp/test_escape.sh <<'EOF'
+#!/bin/bash
+echo 'single "double"'
+echo "literal dollar: \\$HOME"
+EOF
+bash /tmp/test_escape.sh`;
+  const scriptContent = `#!/bin/bash
+echo 'single "double"'
+echo "literal dollar: $HOME"`;
+  for (const name of names) {
+    switch (name.trim()) {
+      case "Bash":
+        return { name, params: wrapParam("command", scriptCmd) + "\n" + wrapParam("description", "Test shell escaping") };
+      case "execute_command":
+        return { name, params: wrapParam("command", scriptCmd) };
+      case "exec_command":
+        return { name, params: wrapParam("cmd", scriptCmd) };
+      case "Write":
+        return { name, params: wrapParam("file_path", "test_escape.sh") + "\n" + wrapParam("content", scriptContent) };
+      case "write_to_file":
+        return { name, params: wrapParam("path", "test_escape.sh") + "\n" + wrapParam("content", scriptContent) };
+    }
+  }
+  return null;
+}
+function renderExampleBlock(calls) {
+  let block = "<|DSML|tool_calls>\n";
+  for (const call2 of calls) {
+    block += `  <|DSML|invoke name="${call2.name}">
+`;
+    const lines = call2.params.split("\n");
+    for (const line of lines) {
+      block += "    " + line + "\n";
+    }
+    block += "  </|DSML|invoke>\n";
+  }
+  block += "</|DSML|tool_calls>";
+  return block;
+}
+function buildCorrectToolExamples(toolNames) {
+  const unique = [...new Set(toolNames.map((n) => n.trim()).filter(Boolean))];
+  if (unique.length === 0) return "";
+  const examples = [];
+  const single = firstBasicExample(unique);
+  if (single) {
+    examples.push("Example A — Single tool:\n" + renderExampleBlock([single]));
+  }
+  const parallel2 = firstNBasicExamples(unique, 2);
+  if (parallel2.length >= 2) {
+    examples.push("Example B — Two tools in parallel:\n" + renderExampleBlock(parallel2));
+  }
+  const script = firstScriptExample(unique);
+  if (script) {
+    examples.push("Example C — Tool with long script using CDATA (RELIABLE FOR CODE/SCRIPTS):\n" + renderExampleBlock([script]));
+  }
+  if (examples.length === 0) return "";
+  return "【CORRECT EXAMPLES】:\n\n" + examples.join("\n\n");
+}
+function hasReadLikeTool(names) {
+  for (const name of names) {
+    const normalized = name.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (normalized === "read" || normalized === "readfile") return true;
+  }
+  return false;
+}
+const TOOL_CALL_INSTRUCTIONS = `TOOL CALL FORMAT — FOLLOW EXACTLY:
+
+<|DSML|tool_calls>
+  <|DSML|invoke name="TOOL_NAME_HERE">
+    <|DSML|parameter name="PARAMETER_NAME"><![CDATA[PARAMETER_VALUE]]></|DSML|parameter>
+  </|DSML|invoke>
+</|DSML|tool_calls>
+
+RULES:
+1) Use the <|DSML|tool_calls> wrapper format.
+2) Put one or more <|DSML|invoke> entries under a single <|DSML|tool_calls> root.
+3) Put the tool name in the invoke name attribute: <|DSML|invoke name="TOOL_NAME">.
+3a) Tag punctuation alphabet: ASCII < > / = " plus the halfwidth pipe |.
+4) All string values must use <![CDATA[...]]>, even short ones. This includes code, scripts, file contents, prompts, paths, names, and queries.
+5) Every top-level argument must be a <|DSML|parameter name="ARG_NAME">...</|DSML|parameter> node.
+6) Objects use nested XML elements inside the parameter body. Arrays may repeat <item> children.
+7) Numbers, booleans, and null stay plain text.
+8) Use only the parameter names in the tool schema. Do not invent fields.
+9) Fill parameters with the actual values required for this call. Do not emit placeholder, blank, or whitespace-only parameters.
+10) If a required parameter value is unknown, ask the user or answer normally instead of outputting an empty tool call.
+11) For shell tools such as Bash / execute_command, the command/script must be inside the command parameter. Never call them with an empty command.
+12) Do NOT wrap XML in markdown fences. Do NOT output explanations, role markers, or internal monologue.
+13) If you call a tool, the first non-whitespace characters of that tool block must be exactly <|DSML|tool_calls>.
+14) Never omit the opening <|DSML|tool_calls> tag, even if you already plan to close with </|DSML|tool_calls>.
+15) Compatibility note: the runtime also accepts the legacy XML tags <tool_calls> / <invoke> / <parameter>, but prefer the DSML-prefixed form above.
+
+PARAMETER SHAPES:
+- string => <|DSML|parameter name="x"><![CDATA[value]]></|DSML|parameter>
+- object => <|DSML|parameter name="x"><field>...</field></|DSML|parameter>
+- array => <|DSML|parameter name="x"><item>...</item><item>...</item></|DSML|parameter>
+- number/bool/null => <|DSML|parameter name="x">plain_text</|DSML|parameter>
+
+【WRONG — Do NOT do these】:
+
+Wrong 1 — mixed text after XML:
+  <|DSML|tool_calls>...</|DSML|tool_calls> I hope this helps.
+Wrong 2 — Markdown code fences:
+  \`\`\`xml
+  <|DSML|tool_calls>...</|DSML|tool_calls>
+  \`\`\`
+Wrong 3 — missing opening wrapper:
+  <|DSML|invoke name="TOOL_NAME">...</|DSML|invoke>
+  </|DSML|tool_calls>
+Wrong 4 — empty parameters:
+  <|DSML|tool_calls>
+    <|DSML|invoke name="Bash">
+      <|DSML|parameter name="command"></|DSML|parameter>
+    </|DSML|invoke>
+  </|DSML|tool_calls>
+
+Remember: The ONLY valid way to use tools is the <|DSML|tool_calls>...</|DSML|tool_calls> block at the end of your response.`;
+const READ_TOOL_CACHE_GUARD = "Read-tool cache guard: If a Read/read_file-style tool result says the file is unchanged, already available in history, should be referenced from previous context, or otherwise provides no file body, treat that result as missing content. Do not repeatedly call the same read request for that missing body. Request a full-content read if the tool supports it, or tell the user that the file contents need to be provided again.";
 const credentialTrackerScript = `
 (function() {
 	if (window.__credentialTracker) return;
@@ -18326,18 +18880,6 @@ function performLogin(ctx) {
     await view.webContents.loadURL("https://platform.deepseek.com/sign_in");
   });
 }
-const DEEPSEEK_LOGIN_URL = "https://chat.deepseek.com/api/v0/users/login";
-const DEEPSEEK_HISTORY_URL = "https://chat.deepseek.com/api/v0/chat_session/fetch_page?lte_cursor.pinned=false";
-const DEEPSEEK_CREATE_POW_URL = "https://chat.deepseek.com/api/v0/chat/create_pow_challenge";
-const DEEPSEEK_COMPLETION_URL = "https://chat.deepseek.com/api/v0/chat/completion";
-const DEEPSEEK_HISTORY_MESSAGES_URL = "https://chat.deepseek.com/api/v0/chat/history_messages";
-const DEEPSEEK_CREATE_SESSION_URL = "https://chat.deepseek.com/api/v0/chat_session/create";
-const DEEPSEEK_DELETE_SESSION_URL = "https://chat.deepseek.com/api/v0/chat_session/delete";
-const DEEPSEEK_COMPLETION_TARGET_PATH = "/api/v0/chat/completion";
-const DEEPSEEK_PLATFORM_GET_API_KEYS_URL = "https://platform.deepseek.com/api/v0/users/get_api_keys";
-const DEEPSEEK_PLATFORM_EDIT_API_KEYS_URL = "https://platform.deepseek.com/api/v0/users/edit_api_keys";
-const DEEPSEEK_UPLOAD_FILE_URL = "https://chat.deepseek.com/api/v0/file/upload_file";
-const DEEPSEEK_FETCH_FILES_URL = "https://chat.deepseek.com/api/v0/file/fetch_files";
 const rc = [
   0x0000000000000001n,
   0x0000000000008082n,
@@ -19280,6 +19822,491 @@ async function deleteSession(token, sessionId) {
     console.warn("[shallowseek-api] delete_session error", err.message);
   }
 }
+const fileCache = /* @__PURE__ */ new Map();
+function buildRulesText(systemMessages) {
+  const parts = [
+    `# ${RULES_FILENAME}`,
+    "",
+    "## Output Integrity",
+    OUTPUT_INTEGRITY_GUARD
+  ];
+  if (systemMessages.length > 0) {
+    parts.push("");
+    parts.push("## System Instructions");
+    for (const msg of systemMessages) {
+      const trimmed = msg.trim();
+      if (trimmed) {
+        parts.push("");
+        parts.push(trimmed);
+      }
+    }
+  }
+  return parts.join("\n") + "\n";
+}
+function buildToolsText(tools) {
+  const toolPrompt = buildToolPrompt(tools);
+  if (!toolPrompt) return "";
+  return `# ${TOOLS_FILENAME}
+Available tool descriptions and parameter schemas for this request.
+
+${toolPrompt}
+`;
+}
+async function uploadRuleFiles(token, systemMessages, tools) {
+  const rulesText = buildRulesText(systemMessages);
+  const toolsText = buildToolsText(tools);
+  const rulesHash = simpleHash(rulesText);
+  const toolsHash = simpleHash(toolsText);
+  const cached = fileCache.get(token);
+  if (cached && cached.rulesHash === rulesHash && cached.toolsHash === toolsHash && Date.now() - cached.createdAt < 25 * 60 * 1e3) {
+    const refFileIds2 = [cached.rulesFileId];
+    if (cached.toolsFileId) refFileIds2.push(cached.toolsFileId);
+    return {
+      rulesFileId: cached.rulesFileId,
+      toolsFileId: cached.toolsFileId,
+      refFileIds: refFileIds2
+    };
+  }
+  const rulesFileId = await uploadTextFile(token, RULES_FILENAME, rulesText);
+  let toolsFileId = null;
+  if (toolsText.trim()) {
+    toolsFileId = await uploadTextFile(token, TOOLS_FILENAME, toolsText);
+  }
+  fileCache.set(token, {
+    rulesFileId,
+    toolsFileId,
+    toolsHash,
+    rulesHash,
+    createdAt: Date.now()
+  });
+  const refFileIds = [rulesFileId];
+  if (toolsFileId) refFileIds.push(toolsFileId);
+  return { rulesFileId, toolsFileId, refFileIds };
+}
+function clearRuleFileCache(token) {
+  fileCache.delete(token);
+}
+function clearAllRuleFileCache() {
+  fileCache.clear();
+}
+function buildLivePrompt(userMessage, hasToolsFile) {
+  let instruction = `Follow the instructions in the attached ${RULES_FILENAME}.`;
+  if (hasToolsFile) {
+    instruction += ` Available tool descriptions and parameter schemas are attached in ${TOOLS_FILENAME}; use only those tools and follow the tool-call format rules described there.`;
+  }
+  return `${instruction}
+
+${userMessage}`;
+}
+async function uploadTextFile(token, filename, content) {
+  var _a, _b, _c, _d, _e;
+  const powResponse = await axios.post(
+    DEEPSEEK_CREATE_POW_URL,
+    { target_path: "/api/v0/file/upload_file" },
+    {
+      headers: getHistoryHeaders(token),
+      validateStatus: () => true
+    }
+  );
+  if (powResponse.status !== 200 || ((_a = powResponse.data) == null ? void 0 : _a.code) !== 0) {
+    throw new Error(`[rule-uploader] PoW challenge failed for ${filename}`);
+  }
+  const challenge = (_d = (_c = (_b = powResponse.data) == null ? void 0 : _b.data) == null ? void 0 : _c.biz_data) == null ? void 0 : _d.challenge;
+  const powHeaderStr = solveAndBuildHeader(challenge);
+  const formData = new FormData$2();
+  const buffer = Buffer.from(content, "utf-8");
+  formData.append("file", Readable$1.from(buffer), {
+    filename,
+    contentType: CONTENT_TYPE,
+    knownLength: buffer.length
+  });
+  const headers = {
+    ...getHistoryHeaders(token),
+    "x-ds-pow-response": powHeaderStr,
+    "x-file-size": String(buffer.length),
+    ...formData.getHeaders()
+  };
+  const response = await axios.post(DEEPSEEK_UPLOAD_FILE_URL, formData, {
+    headers,
+    maxBodyLength: Infinity,
+    maxContentLength: Infinity,
+    validateStatus: () => true
+  });
+  if (response.status !== 200 || ((_e = response.data) == null ? void 0 : _e.code) !== 0) {
+    throw new Error(
+      `[rule-uploader] Upload failed for ${filename}: ${response.status} ${JSON.stringify(response.data).slice(0, 200)}`
+    );
+  }
+  const fileId = extractFileId(response.data);
+  if (!fileId) {
+    throw new Error(
+      `[rule-uploader] Upload succeeded but no file ID for ${filename}`
+    );
+  }
+  const initialStatus = extractFileStatus(response.data);
+  if (!isReadyFileStatus(initialStatus)) {
+    console.log(
+      `[rule-uploader] Uploaded ${filename} → ${fileId.slice(0, 12)}... (status: ${initialStatus}, waiting for ready...)`
+    );
+    await waitForFileReady(token, fileId, filename);
+  } else {
+    console.log(
+      `[rule-uploader] Uploaded ${filename} → ${fileId.slice(0, 12)}... (ready)`
+    );
+  }
+  return fileId;
+}
+async function waitForFileReady(token, fileId, filename) {
+  for (let attempt = 0; attempt < FILE_READY_POLL_ATTEMPTS; attempt++) {
+    await sleep(FILE_READY_POLL_INTERVAL_MS);
+    try {
+      const status = await fetchFileStatus(token, fileId);
+      if (isReadyFileStatus(status)) {
+        console.log(
+          `[rule-uploader] ${filename} ready after ${attempt + 1} poll(s)`
+        );
+        return;
+      }
+    } catch (err) {
+      console.warn(
+        `[rule-uploader] poll error for ${filename} (attempt ${attempt + 1}):`,
+        err instanceof Error ? err.message : err
+      );
+    }
+  }
+  console.warn(
+    `[rule-uploader] ${filename} (${fileId.slice(0, 12)}...) did not reach 'processed' after ${FILE_READY_POLL_ATTEMPTS} polls, proceeding anyway`
+  );
+}
+async function fetchFileStatus(token, fileId) {
+  var _a;
+  const url2 = `${DEEPSEEK_FETCH_FILES_URL}?file_ids=${encodeURIComponent(fileId)}`;
+  const response = await axios.get(url2, {
+    headers: getHistoryHeaders(token),
+    validateStatus: () => true
+  });
+  if (response.status !== 200 || ((_a = response.data) == null ? void 0 : _a.code) !== 0) {
+    throw new Error(`fetch_files failed: ${response.status}`);
+  }
+  return findFileStatusInResponse(response.data, fileId);
+}
+function findFileStatusInResponse(data, targetId) {
+  if (!data || typeof data !== "object") return "";
+  if (Array.isArray(data)) {
+    for (const item of data) {
+      const found = findFileStatusInResponse(item, targetId);
+      if (found) return found;
+    }
+    return "";
+  }
+  const id = data.id || data.file_id || "";
+  if (typeof id === "string" && id.trim() === targetId) {
+    return (data.status || data.file_status || "").toString().trim();
+  }
+  for (const key of Object.keys(data)) {
+    const val = data[key];
+    if (val && typeof val === "object") {
+      const found = findFileStatusInResponse(val, targetId);
+      if (found) return found;
+    }
+  }
+  return "";
+}
+function isReadyFileStatus(status) {
+  switch (status.toLowerCase().trim()) {
+    case "processed":
+    case "ready":
+    case "done":
+    case "available":
+    case "success":
+    case "completed":
+    case "finished":
+      return true;
+    default:
+      return false;
+  }
+}
+function extractFileId(data) {
+  var _a, _b, _c;
+  const bizData = (_a = data == null ? void 0 : data.data) == null ? void 0 : _a.biz_data;
+  if (typeof (bizData == null ? void 0 : bizData.id) === "string" && bizData.id.trim()) {
+    return bizData.id.trim();
+  }
+  if (typeof ((_b = bizData == null ? void 0 : bizData.file) == null ? void 0 : _b.id) === "string" && bizData.file.id.trim()) {
+    return bizData.file.id.trim();
+  }
+  if (typeof ((_c = data == null ? void 0 : data.data) == null ? void 0 : _c.id) === "string" && data.data.id.trim()) {
+    return data.data.id.trim();
+  }
+  return null;
+}
+function extractFileStatus(data) {
+  var _a, _b;
+  const bizData = (_a = data == null ? void 0 : data.data) == null ? void 0 : _a.biz_data;
+  if (typeof (bizData == null ? void 0 : bizData.status) === "string") return bizData.status.trim();
+  if (typeof (bizData == null ? void 0 : bizData.file_status) === "string")
+    return bizData.file_status.trim();
+  if (typeof ((_b = bizData == null ? void 0 : bizData.file) == null ? void 0 : _b.status) === "string")
+    return bizData.file.status.trim();
+  return "uploaded";
+}
+function simpleHash(text) {
+  let hash = 0;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text.charCodeAt(i);
+    hash = (hash << 5) - hash + ch | 0;
+  }
+  return hash.toString(36);
+}
+function sleep(ms2) {
+  return new Promise((resolve2) => setTimeout(resolve2, ms2));
+}
+const DEFAULT_CONTEXT_WINDOW = 1e6;
+const COMPRESS_THRESHOLD = 0.85;
+const RESPONSE_RESERVE = 128e3;
+const MAX_HISTORY_MESSAGES = 1e3;
+function estimateTokenCount(text) {
+  if (!text) return 0;
+  let cjk = 0;
+  for (let i = 0; i < text.length; i++) {
+    const c = text.charCodeAt(i);
+    if (c >= 19968 && c <= 40959 || c >= 13312 && c <= 19903) cjk++;
+  }
+  const ascii = text.length - cjk;
+  return Math.ceil(ascii / 4 + cjk / 1.5);
+}
+class SessionManager {
+  constructor(contextWindow = DEFAULT_CONTEXT_WINDOW) {
+    __publicField(this, "sessions", /* @__PURE__ */ new Map());
+    __publicField(this, "contextWindow");
+    this.contextWindow = contextWindow;
+  }
+  async getSession(token, incomingPromptTokens) {
+    const existing = this.sessions.get(token);
+    if (existing) {
+      const projectedTokens = existing.totalTokens + incomingPromptTokens + RESPONSE_RESERVE;
+      const threshold = this.contextWindow * COMPRESS_THRESHOLD;
+      if (projectedTokens < threshold && existing.history.length < MAX_HISTORY_MESSAGES) {
+        existing.lastUsedAt = Date.now();
+        existing.requestCount++;
+        return { sessionId: existing.sessionId, isNew: false };
+      }
+      console.log(
+        `[session-mgr] Context approaching limit (${existing.totalTokens}/${this.contextWindow} tokens, ${existing.history.length} messages). Compressing...`
+      );
+      await this.compressAndRotate(token, existing);
+      const rotated = this.sessions.get(token);
+      if (rotated) {
+        return { sessionId: rotated.sessionId, isNew: true };
+      }
+    }
+    const sessionId = await createSession(token);
+    this.sessions.set(token, {
+      sessionId,
+      token,
+      history: [],
+      totalTokens: 0,
+      createdAt: Date.now(),
+      lastUsedAt: Date.now(),
+      requestCount: 1,
+      contextSummary: "",
+      lastMessageId: null
+    });
+    return { sessionId, isNew: true };
+  }
+  recordExchange(token, userPrompt, assistantResponse, assistantMessageId) {
+    const session2 = this.sessions.get(token);
+    if (!session2) return;
+    const userTokens = estimateTokenCount(userPrompt);
+    const assistantTokens = estimateTokenCount(assistantResponse);
+    session2.history.push({
+      role: "user",
+      content: userPrompt,
+      tokenEstimate: userTokens,
+      timestamp: Date.now()
+    });
+    session2.history.push({
+      role: "assistant",
+      content: assistantResponse,
+      tokenEstimate: assistantTokens,
+      timestamp: Date.now()
+    });
+    session2.totalTokens += userTokens + assistantTokens;
+    session2.lastUsedAt = Date.now();
+    if (assistantMessageId) {
+      session2.lastMessageId = assistantMessageId;
+    }
+  }
+  /**
+   * Get the parent message ID for the next request.
+   */
+  getParentMessageId(token) {
+    var _a;
+    return ((_a = this.sessions.get(token)) == null ? void 0 : _a.lastMessageId) || null;
+  }
+  getContextSummary(token) {
+    var _a;
+    return ((_a = this.sessions.get(token)) == null ? void 0 : _a.contextSummary) || "";
+  }
+  getSessionInfo(token) {
+    const session2 = this.sessions.get(token);
+    if (!session2) {
+      return {
+        sessionId: null,
+        requestCount: 0,
+        totalTokens: 0,
+        historyMessages: 0,
+        hasCompressedContext: false
+      };
+    }
+    return {
+      sessionId: session2.sessionId,
+      requestCount: session2.requestCount,
+      totalTokens: session2.totalTokens,
+      historyMessages: session2.history.length,
+      hasCompressedContext: !!session2.contextSummary
+    };
+  }
+  async resetSession(token) {
+    const existing = this.sessions.get(token);
+    if (existing) {
+      deleteSession(token, existing.sessionId).catch(() => {
+      });
+      this.sessions.delete(token);
+    }
+    clearRuleFileCache(token);
+  }
+  async cleanup() {
+    for (const [token, session2] of this.sessions) {
+      deleteSession(token, session2.sessionId).catch(() => {
+      });
+    }
+    this.sessions.clear();
+    clearAllRuleFileCache();
+  }
+  cleanupStale(maxIdleMs = 30 * 60 * 1e3) {
+    const now = Date.now();
+    for (const [token, session2] of this.sessions) {
+      if (now - session2.lastUsedAt > maxIdleMs) {
+        console.log(
+          `[session-mgr] Cleaning stale session ${session2.sessionId.slice(0, 8)}... (idle ${Math.round((now - session2.lastUsedAt) / 6e4)}min)`
+        );
+        deleteSession(token, session2.sessionId).catch(() => {
+        });
+        this.sessions.delete(token);
+        clearRuleFileCache(token);
+      }
+    }
+  }
+  async compressAndRotate(token, existing) {
+    const summary = this.buildCompressedSummary(existing);
+    deleteSession(token, existing.sessionId).catch(() => {
+    });
+    const newSessionId = await createSession(token);
+    this.sessions.set(token, {
+      sessionId: newSessionId,
+      token,
+      history: [],
+      totalTokens: estimateTokenCount(summary),
+      createdAt: Date.now(),
+      lastUsedAt: Date.now(),
+      requestCount: 1,
+      contextSummary: summary,
+      lastMessageId: null
+      // Reset ID chain on compression rotation
+    });
+    console.log(
+      `[session-mgr] Compressed ${existing.history.length} messages (${existing.totalTokens} tokens) → summary (${estimateTokenCount(summary)} tokens). New session: ${newSessionId.slice(0, 8)}...`
+    );
+  }
+  buildCompressedSummary(session2) {
+    const parts = [];
+    if (session2.contextSummary) {
+      parts.push(
+        "[Previous context summary]\n" + this.truncateText(session2.contextSummary, 2e3)
+      );
+    }
+    if (session2.history.length === 0) return parts.join("\n\n");
+    const recentCount = Math.min(6, session2.history.length);
+    const older = session2.history.slice(0, -recentCount);
+    const recent = session2.history.slice(-recentCount);
+    if (older.length > 0) {
+      const olderSummary = this.summarizeMessages(older);
+      if (olderSummary) {
+        parts.push(
+          `[Conversation history summary — ${older.length} messages, ${session2.requestCount} exchanges]
+` + olderSummary
+        );
+      }
+    }
+    if (recent.length > 0) {
+      const recentText = recent.map((m) => {
+        const label = m.role.toUpperCase();
+        const content = this.truncateText(m.content, 4e3);
+        return `[${label}]
+${content}`;
+      }).join("\n\n");
+      parts.push("[Recent conversation — keep for context]\n" + recentText);
+    }
+    return parts.join("\n\n---\n\n");
+  }
+  summarizeMessages(messages) {
+    var _a, _b;
+    const topics = /* @__PURE__ */ new Set();
+    const toolCalls = [];
+    const keyDecisions = [];
+    for (const msg of messages) {
+      const toolMatches = msg.content.match(
+        /<\|DSML\|invoke name="([^"]+)"/g
+      );
+      if (toolMatches) {
+        for (const m of toolMatches) {
+          const name = (_a = m.match(/name="([^"]+)"/)) == null ? void 0 : _a[1];
+          if (name) toolCalls.push(name);
+        }
+      }
+      if (msg.role === "user") {
+        const firstLine = (_b = msg.content.split("\n")[0]) == null ? void 0 : _b.trim();
+        if (firstLine && firstLine.length < 200) {
+          topics.add(firstLine);
+        }
+      }
+      const fileMatches = msg.content.match(
+        /(?:\/[\w.-]+)+\.\w+|[\w.-]+\.(?:ts|js|go|py|tsx|jsx|css|html|json)/g
+      );
+      if (fileMatches) {
+        for (const f of fileMatches.slice(0, 10)) {
+          topics.add(`File: ${f}`);
+        }
+      }
+    }
+    const parts = [];
+    if (topics.size > 0) {
+      const topicList = [...topics].slice(0, 15).join("\n- ");
+      parts.push(`Topics discussed:
+- ${topicList}`);
+    }
+    if (toolCalls.length > 0) {
+      const uniqueTools = [...new Set(toolCalls)];
+      parts.push(`Tools used: ${uniqueTools.join(", ")}`);
+    }
+    if (keyDecisions.length > 0) {
+      parts.push(`Key decisions:
+- ${keyDecisions.join("\n- ")}`);
+    }
+    parts.push(
+      `Total exchanges: ${Math.ceil(messages.length / 2)}, Total tokens: ~${messages.reduce((s, m) => s + m.tokenEstimate, 0)}`
+    );
+    return parts.join("\n");
+  }
+  truncateText(text, maxLen) {
+    if (text.length <= maxLen) return text;
+    const truncated = text.slice(0, maxLen);
+    const lastNewline = truncated.lastIndexOf("\n");
+    const cutPoint = lastNewline > maxLen * 0.5 ? lastNewline : maxLen;
+    return truncated.slice(0, cutPoint) + "\n... [truncated]";
+  }
+}
 const NO_THINKING_SUFFIX = "-nothinking";
 const DEEPSEEK_BASE_MODELS = [
   { id: "deepseek-v4-flash", object: "model", created: 1677610602, owned_by: "deepseek" },
@@ -19513,17 +20540,17 @@ function parseDeepSeekSSELine(raw) {
 function parseSSEChunkForContent(chunk, thinkingEnabled, currentFragmentType) {
   const v = chunk["v"];
   if (v === void 0) {
-    return { parts: [], finished: false, nextType: currentFragmentType };
+    return { parts: [], finished: false, nextType: currentFragmentType, messageId: null };
   }
   const path2 = chunk["p"] ?? "";
   if (shouldSkipPath(path2)) {
-    return { parts: [], finished: false, nextType: currentFragmentType };
+    return { parts: [], finished: false, nextType: currentFragmentType, messageId: null };
   }
   if (isStatusPath(path2) && typeof v === "string") {
     if (v.trim().toUpperCase() === "FINISHED") {
-      return { parts: [], finished: true, nextType: currentFragmentType };
+      return { parts: [], finished: true, nextType: currentFragmentType, messageId: null };
     }
-    return { parts: [], finished: false, nextType: currentFragmentType };
+    return { parts: [], finished: false, nextType: currentFragmentType, messageId: null };
   }
   let newType = currentFragmentType;
   const parts = [];
@@ -19578,14 +20605,29 @@ function parseSSEChunkForContent(chunk, thinkingEnabled, currentFragmentType) {
   }
   const appendResult = appendChunkValueContent(v, partType, path2);
   if (appendResult.finished) {
-    return { parts: [], finished: true, nextType: newType };
+    return { parts: [], finished: true, nextType: newType, messageId: null };
   }
   parts.push(...appendResult.parts);
   if (appendResult.newType) newType = appendResult.newType;
   const { parts: splitParts, transitioned } = splitThinkingParts(parts);
   if (transitioned) newType = "text";
   const finalParts = thinkingEnabled ? splitParts : splitParts.filter((p) => p.type !== "thinking");
-  return { parts: finalParts, finished: false, nextType: newType };
+  return { parts: finalParts, finished: false, nextType: newType, messageId: extractMessageId(chunk) };
+}
+function extractMessageId(chunk) {
+  const id = chunk["response_message_id"] ?? chunk["message_id"];
+  if (typeof id === "number" && id > 0) return id;
+  const v = chunk["v"];
+  if (typeof v === "object" && v !== null) {
+    const msgId = v["message_id"] ?? v["id"];
+    if (typeof msgId === "number" && msgId > 0) return msgId;
+    const resp = v["response"];
+    if (typeof resp === "object" && resp !== null) {
+      const respId = resp["message_id"] ?? resp["id"];
+      if (typeof respId === "number" && respId > 0) return respId;
+    }
+  }
+  return null;
 }
 function parseFragmentTypeContent(m) {
   const typeName = (m.type || "").toUpperCase();
@@ -19746,133 +20788,6 @@ function hasContentFilterStatusValue(v) {
   }
   return false;
 }
-function buildToolPrompt(tools) {
-  if (!tools || tools.length === 0) return "";
-  const toolSchemas = [];
-  const names = [];
-  for (const t of tools) {
-    if (t.type !== "function" || !t.function) continue;
-    const name = t.function.name;
-    const desc = t.function.description || "No description available";
-    const parameters = JSON.stringify(t.function.parameters || {});
-    names.push(name);
-    toolSchemas.push(`Tool: ${name}
-Description: ${desc}
-Parameters: ${parameters}`);
-  }
-  if (names.length === 0) return "";
-  const descriptions = "You have access to these tools:\n\n" + toolSchemas.join("\n\n");
-  const instructions = `TOOL CALL FORMAT — FOLLOW EXACTLY:
-
-<|DSML|tool_calls>
-  <|DSML|invoke name="TOOL_NAME_HERE">
-    <|DSML|parameter name="PARAMETER_NAME"><![CDATA[PARAMETER_VALUE]]></|DSML|parameter>
-  </|DSML|invoke>
-</|DSML|tool_calls>
-
-RULES:
-1) Use the <|DSML|tool_calls> wrapper format.
-2) Put one or more <|DSML|invoke> entries under a single <|DSML|tool_calls> root.
-3) Put the tool name in the invoke name attribute: <|DSML|invoke name="TOOL_NAME">.
-4) All string values must use <![CDATA[...]]>, even short ones.
-5) Every top-level argument must be a <|DSML|parameter name="ARG_NAME">...</|DSML|parameter> node.
-6) Objects use nested XML elements inside the parameter body. Arrays may repeat <item> children.
-7) Numbers, booleans, and null stay plain text.
-8) Use only the parameter names in the tool schema. Do not invent fields.
-9) If you call a tool, the first non-whitespace characters of that tool block must be exactly <|DSML|tool_calls>.
-10) Do NOT wrap XML in markdown fences.
-
-PARAMETER SHAPES:
-- string => <|DSML|parameter name="x"><![CDATA[value]]></|DSML|parameter>
-- object => <|DSML|parameter name="x"><field>...</field></|DSML|parameter>
-- array => <|DSML|parameter name="x"><item>...</item><item>...</item></|DSML|parameter>
-- number/bool/null => <|DSML|parameter name="x">plain_text</|DSML|parameter>
-
-Remember: The ONLY valid way to use tools is the <|DSML|tool_calls>...</|DSML|tool_calls> block at the end of your response.`;
-  return descriptions + "\n\n" + instructions;
-}
-function parseDSMLToolCalls(xmlContent) {
-  const results = [];
-  const invokeRegex = /<\|DSML\|invoke\s+name="([^"]+)">([\s\S]*?)<\/\|DSML\|invoke>/g;
-  const paramRegex = /<\|DSML\|parameter\s+name="([^"]+)">([\s\S]*?)<\/\|DSML\|parameter>/g;
-  const cdataRegex = /^\s*<!\[CDATA\[([\s\S]*?)\]\]>\s*$/;
-  let match;
-  while ((match = invokeRegex.exec(xmlContent)) !== null) {
-    const name = match[1];
-    const paramsStr = match[2];
-    const args = {};
-    let paramMatch;
-    while ((paramMatch = paramRegex.exec(paramsStr)) !== null) {
-      const pName = paramMatch[1];
-      let pValue = paramMatch[2].trim();
-      const cdataMatch = pValue.match(cdataRegex);
-      if (cdataMatch) {
-        pValue = cdataMatch[1];
-      }
-      args[pName] = pValue;
-    }
-    results.push({
-      id: `call_${crypto$1.randomUUID().replace(/-/g, "")}`,
-      type: "function",
-      function: {
-        name,
-        arguments: JSON.stringify(args)
-      }
-    });
-  }
-  return results;
-}
-class StreamToolSieve {
-  constructor() {
-    __publicField(this, "buffer", "");
-    __publicField(this, "inTool", false);
-    __publicField(this, "finishedTool", false);
-  }
-  processChunk(text) {
-    if (this.finishedTool) return { outputText: text, toolCalls: null };
-    this.buffer += text;
-    const toolStartIdx = this.buffer.indexOf("<|DSML|tool_calls>");
-    if (toolStartIdx !== -1) {
-      this.inTool = true;
-      const toolEndIdx = this.buffer.indexOf("</|DSML|tool_calls>");
-      if (toolEndIdx !== -1) {
-        const fullXml = this.buffer.substring(toolStartIdx, toolEndIdx + "</|DSML|tool_calls>".length);
-        this.finishedTool = true;
-        const preText = this.buffer.substring(0, toolStartIdx);
-        const postText = this.buffer.substring(toolEndIdx + "</|DSML|tool_calls>".length);
-        const toolCalls = parseDSMLToolCalls(fullXml);
-        this.buffer = postText;
-        return { outputText: preText, toolCalls: toolCalls.length > 0 ? toolCalls : null };
-      }
-      if (toolStartIdx > 0) {
-        const preText = this.buffer.substring(0, toolStartIdx);
-        this.buffer = this.buffer.substring(toolStartIdx);
-        return { outputText: preText, toolCalls: null };
-      }
-      return { outputText: "", toolCalls: null };
-    }
-    const lastLt = this.buffer.lastIndexOf("<");
-    if (lastLt !== -1) {
-      const safeText2 = this.buffer.substring(0, lastLt);
-      this.buffer = this.buffer.substring(lastLt);
-      return { outputText: safeText2, toolCalls: null };
-    }
-    const safeText = this.buffer;
-    this.buffer = "";
-    return { outputText: safeText, toolCalls: null };
-  }
-  flush() {
-    if (this.inTool && this.buffer.includes("<|DSML|tool_calls>")) {
-      const fullXml = this.buffer + "</|DSML|invoke></|DSML|tool_calls>";
-      const toolCalls = parseDSMLToolCalls(fullXml);
-      const preText = this.buffer.substring(0, this.buffer.indexOf("<|DSML|tool_calls>"));
-      return { outputText: preText, toolCalls: toolCalls.length > 0 ? toolCalls : null };
-    }
-    const remainder = this.buffer;
-    this.buffer = "";
-    return { outputText: remainder, toolCalls: null };
-  }
-}
 async function handleChatCompletions(req, res, state2) {
   var _a;
   const reqStart = Date.now();
@@ -19923,22 +20838,75 @@ async function handleChatCompletions(req, res, state2) {
     });
     return;
   }
+  state2.sessionManager.cleanupStale();
   let sessionId;
   try {
-    sessionId = await createSession(token);
-    logWithPort(state2.port, `[api]   session: ${sessionId.slice(0, 8)}...`);
+    const { systemMessages, conversationMessages } = extractSystemAndUserMessages(request.messages);
+    const tools = request.tools || [];
+    const prompt = buildUserOnlyPromptText(conversationMessages);
+    const promptTokens = estimateTokens(prompt);
+    const sessionResult = await state2.sessionManager.getSession(
+      token,
+      promptTokens
+    );
+    sessionId = sessionResult.sessionId;
+    const parentMessageId = state2.sessionManager.getParentMessageId(token);
+    const sessionInfo = state2.sessionManager.getSessionInfo(token);
+    const sessionTag = sessionResult.isNew ? "new" : `reuse #${sessionInfo.requestCount}`;
+    logWithPort(
+      state2.port,
+      `[api]   session: ${sessionId.slice(0, 8)}... (${sessionTag}, ~${sessionInfo.totalTokens} tokens, parent: ${parentMessageId || "none"})`
+    );
+    let refFileIds = [];
+    let finalPrompt = prompt;
+    try {
+      const ruleFiles = await uploadRuleFiles(
+        token,
+        systemMessages,
+        tools
+      );
+      refFileIds = ruleFiles.refFileIds;
+      const contextSummary = state2.sessionManager.getContextSummary(token);
+      const userPrompt = contextSummary ? `[Compressed context from previous conversation]
+${contextSummary}
+
+---
+
+${prompt}` : prompt;
+      finalPrompt = buildLivePrompt(
+        userPrompt,
+        ruleFiles.toolsFileId !== null
+      );
+      logWithPort(
+        state2.port,
+        `[api]   rule-files: rules=${ruleFiles.rulesFileId.slice(0, 8)}... tools=${ruleFiles.toolsFileId ? ruleFiles.toolsFileId.slice(0, 8) + "..." : "none"}`
+      );
+    } catch (ruleErr) {
+      const message = ruleErr instanceof Error ? ruleErr.message : String(ruleErr);
+      logWithPort(
+        state2.port,
+        `[api]   rule-file upload failed, falling back to inline: ${message}`
+      );
+      finalPrompt = buildPromptText(request.messages, tools);
+      const contextSummary = state2.sessionManager.getContextSummary(token);
+      if (contextSummary) {
+        finalPrompt = `[Compressed context from previous conversation]
+${contextSummary}
+
+---
+
+${finalPrompt}`;
+      }
+    }
     const powResponse = await getPow(token);
     logWithPort(state2.port, `[api]   pow: solved`);
-    const prompt = buildPromptText(
-      request.messages,
-      request.tools
-    );
     const payload = {
       chat_session_id: sessionId,
-      prompt,
-      ref_file_ids: [],
+      prompt: finalPrompt,
+      ref_file_ids: refFileIds,
       thinking_enabled: thinking,
-      search_enabled: search
+      search_enabled: search,
+      parent_message_id: parentMessageId
     };
     if (modelType) {
       payload.model_class = modelType;
@@ -19954,6 +20922,13 @@ async function handleChatCompletions(req, res, state2) {
         state2.port,
         `[api] ✗ DeepSeek error ${dsResponse.status}: ${errData.slice(0, 200)}`
       );
+      if (dsResponse.status === 422 || dsResponse.status === 400) {
+        logWithPort(
+          state2.port,
+          `[api]   resetting session due to error...`
+        );
+        await state2.sessionManager.resetSession(token);
+      }
       jsonResponse(res, dsResponse.status, {
         error: {
           message: `DeepSeek API error: ${dsResponse.status}`,
@@ -19963,22 +20938,29 @@ async function handleChatCompletions(req, res, state2) {
       return;
     }
     logWithPort(state2.port, `[api]   streaming response...`);
+    let lastMessageId = null;
     if (request.stream) {
-      await handleStreamResponse(
+      lastMessageId = await handleStreamResponse(
         res,
         dsResponse.data,
         resolvedModel,
         thinking
       );
     } else {
-      await handleNonStreamResponse(
+      lastMessageId = await handleNonStreamResponse(
         res,
         dsResponse.data,
         resolvedModel,
-        prompt,
+        finalPrompt,
         thinking
       );
     }
+    state2.sessionManager.recordExchange(
+      token,
+      prompt,
+      "(response recorded)",
+      lastMessageId
+    );
     const elapsed = ((Date.now() - reqStart) / 1e3).toFixed(1);
     logWithPort(
       state2.port,
@@ -19991,20 +20973,19 @@ async function handleChatCompletions(req, res, state2) {
       state2.port,
       `[api] ✗ completion error (${elapsed}s): ${message}`
     );
+    if (message.includes("create session failed")) {
+      await state2.sessionManager.resetSession(token);
+    }
     jsonResponse(res, 500, {
       error: {
         message: message || "Completion failed",
         type: "api_error"
       }
     });
-  } finally {
-    if (sessionId && token && state2.config.autoDeleteMode === "single") {
-      deleteSession(token, sessionId).catch(() => {
-      });
-    }
   }
 }
 async function handleStreamResponse(res, stream2, model, thinkingEnabled) {
+  let lastMessageId = null;
   res.writeHead(200, {
     "Content-Type": "text/event-stream",
     "Cache-Control": "no-cache, no-transform",
@@ -20016,103 +20997,24 @@ async function handleStreamResponse(res, stream2, model, thinkingEnabled) {
   let currentType = thinkingEnabled ? "thinking" : "text";
   let buffer = "";
   let thinkingStartSent = false;
+  let hasToolCalls = false;
   const sieve = new StreamToolSieve();
-  const sendSSE = (data) => {
-    res.write(`data: ${JSON.stringify(data)}
+  return new Promise((resolve2, reject) => {
+    const sendSSE = (data) => {
+      res.write(`data: ${JSON.stringify(data)}
 
 `);
-  };
-  stream2.on("data", (chunk) => {
-    buffer += chunk.toString("utf-8");
-    const lines = buffer.split("\n");
-    buffer = lines.pop() || "";
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed) continue;
-      const [parsed, isDone, isValid] = parseDeepSeekSSELine(trimmed);
-      if (!isValid) continue;
-      if (isDone) {
-        sendSSE({
-          id: completionId,
-          object: "chat.completion.chunk",
-          created,
-          model,
-          choices: [
-            {
-              index: 0,
-              delta: {},
-              finish_reason: "stop"
-            }
-          ]
-        });
-        res.write("data: [DONE]\n\n");
-        res.end();
-        return;
-      }
-      if (!parsed) continue;
-      if (hasContentFilterStatus(parsed)) {
-        sendSSE({
-          id: completionId,
-          object: "chat.completion.chunk",
-          created,
-          model,
-          choices: [
-            {
-              index: 0,
-              delta: {},
-              finish_reason: "content_filter"
-            }
-          ]
-        });
-        res.write("data: [DONE]\n\n");
-        res.end();
-        return;
-      }
-      const { parts, finished, nextType } = parseSSEChunkForContent(
-        parsed,
-        thinkingEnabled,
-        currentType
-      );
-      currentType = nextType;
-      if (finished) {
-        sendSSE({
-          id: completionId,
-          object: "chat.completion.chunk",
-          created,
-          model,
-          choices: [
-            {
-              index: 0,
-              delta: {},
-              finish_reason: "stop"
-            }
-          ]
-        });
-        res.write("data: [DONE]\n\n");
-        res.end();
-        return;
-      }
-      for (const part of parts) {
-        if (part.type === "thinking") {
-          if (!thinkingStartSent) {
-            sendSSE({
-              id: completionId,
-              object: "chat.completion.chunk",
-              created,
-              model,
-              choices: [
-                {
-                  index: 0,
-                  delta: {
-                    role: "assistant",
-                    reasoning_content: ""
-                  },
-                  finish_reason: null
-                }
-              ]
-            });
-            thinkingStartSent = true;
-          }
+    };
+    stream2.on("data", (chunk) => {
+      buffer += chunk.toString("utf-8");
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        const [parsed, isDone, isValid] = parseDeepSeekSSELine(trimmed);
+        if (!isValid) continue;
+        if (isDone) {
           sendSSE({
             id: completionId,
             object: "chat.completion.chunk",
@@ -20121,51 +21023,166 @@ async function handleStreamResponse(res, stream2, model, thinkingEnabled) {
             choices: [
               {
                 index: 0,
-                delta: { reasoning_content: part.text },
+                delta: {},
+                finish_reason: "stop"
+              }
+            ]
+          });
+          res.write("data: [DONE]\n\n");
+          res.end();
+          return;
+        }
+        if (!parsed) continue;
+        if (hasContentFilterStatus(parsed)) {
+          sendSSE({
+            id: completionId,
+            object: "chat.completion.chunk",
+            created,
+            model,
+            choices: [
+              {
+                index: 0,
+                delta: {},
+                finish_reason: "content_filter"
+              }
+            ]
+          });
+          res.write("data: [DONE]\n\n");
+          res.end();
+          return;
+        }
+        const { parts, finished, nextType, messageId } = parseSSEChunkForContent(
+          parsed,
+          thinkingEnabled,
+          currentType
+        );
+        if (messageId) {
+          lastMessageId = messageId;
+        }
+        currentType = nextType;
+        if (finished) {
+          sendSSE({
+            id: completionId,
+            object: "chat.completion.chunk",
+            created,
+            model,
+            choices: [
+              {
+                index: 0,
+                delta: {},
+                finish_reason: "stop"
+              }
+            ]
+          });
+          res.write("data: [DONE]\n\n");
+          res.end();
+          return;
+        }
+        for (const part of parts) {
+          if (part.type === "thinking") {
+            if (!thinkingStartSent) {
+              sendSSE({
+                id: completionId,
+                object: "chat.completion.chunk",
+                created,
+                model,
+                choices: [
+                  {
+                    index: 0,
+                    delta: {
+                      role: "assistant",
+                      reasoning_content: ""
+                    },
+                    finish_reason: null
+                  }
+                ]
+              });
+              thinkingStartSent = true;
+            }
+            sendSSE({
+              id: completionId,
+              object: "chat.completion.chunk",
+              created,
+              model,
+              choices: [
+                {
+                  index: 0,
+                  delta: { reasoning_content: part.text },
+                  finish_reason: null
+                }
+              ]
+            });
+          } else {
+            const result = sieve.processChunk(part.text);
+            if (result.outputText) {
+              sendSSE({
+                id: completionId,
+                object: "chat.completion.chunk",
+                created,
+                model,
+                choices: [
+                  {
+                    index: 0,
+                    delta: { content: result.outputText },
+                    finish_reason: null
+                  }
+                ]
+              });
+            }
+            if (result.toolCalls) {
+              hasToolCalls = true;
+              sendSSE({
+                id: completionId,
+                object: "chat.completion.chunk",
+                created,
+                model,
+                choices: [
+                  {
+                    index: 0,
+                    delta: { tool_calls: result.toolCalls },
+                    finish_reason: null
+                  }
+                ]
+              });
+            }
+          }
+        }
+      }
+    });
+    stream2.on("end", () => {
+      if (!res.writableEnded) {
+        const finalResult = sieve.flush();
+        if (finalResult.outputText) {
+          sendSSE({
+            id: completionId,
+            object: "chat.completion.chunk",
+            created,
+            model,
+            choices: [
+              {
+                index: 0,
+                delta: { content: finalResult.outputText },
                 finish_reason: null
               }
             ]
           });
-        } else {
-          const result = sieve.processChunk(part.text);
-          if (result.outputText) {
-            sendSSE({
-              id: completionId,
-              object: "chat.completion.chunk",
-              created,
-              model,
-              choices: [
-                {
-                  index: 0,
-                  delta: { content: result.outputText },
-                  finish_reason: null
-                }
-              ]
-            });
-          }
-          if (result.toolCalls) {
-            sendSSE({
-              id: completionId,
-              object: "chat.completion.chunk",
-              created,
-              model,
-              choices: [
-                {
-                  index: 0,
-                  delta: { tool_calls: result.toolCalls },
-                  finish_reason: null
-                }
-              ]
-            });
-          }
         }
-      }
-    }
-  });
-  stream2.on("end", () => {
-    if (!res.writableEnded) {
-      const finalResult = sieve.flush();
-      if (finalResult.outputText) {
+        if (finalResult.toolCalls) {
+          hasToolCalls = true;
+          sendSSE({
+            id: completionId,
+            object: "chat.completion.chunk",
+            created,
+            model,
+            choices: [
+              {
+                index: 0,
+                delta: { tool_calls: finalResult.toolCalls },
+                finish_reason: null
+              }
+            ]
+          });
+        }
         sendSSE({
           id: completionId,
           object: "chat.completion.chunk",
@@ -20174,48 +21191,22 @@ async function handleStreamResponse(res, stream2, model, thinkingEnabled) {
           choices: [
             {
               index: 0,
-              delta: { content: finalResult.outputText },
-              finish_reason: null
+              delta: {},
+              finish_reason: hasToolCalls ? "tool_calls" : "stop"
             }
           ]
         });
+        res.write("data: [DONE]\n\n");
+        res.end();
+        resolve2(lastMessageId);
       }
-      if (finalResult.toolCalls) {
-        sendSSE({
-          id: completionId,
-          object: "chat.completion.chunk",
-          created,
-          model,
-          choices: [
-            {
-              index: 0,
-              delta: { tool_calls: finalResult.toolCalls },
-              finish_reason: null
-            }
-          ]
-        });
-      }
-      sendSSE({
-        id: completionId,
-        object: "chat.completion.chunk",
-        created,
-        model,
-        choices: [
-          {
-            index: 0,
-            delta: {},
-            finish_reason: "stop"
-          }
-        ]
-      });
-      res.write("data: [DONE]\n\n");
-      res.end();
-    }
-  });
-  stream2.on("error", (err) => {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error("[shallowseek-api] Stream error:", message);
-    if (!res.writableEnded) res.end();
+    });
+    stream2.on("error", (err) => {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error("[shallowseek-api] Stream error:", message);
+      if (!res.writableEnded) res.end();
+      reject(err);
+    });
   });
 }
 async function handleNonStreamResponse(res, stream2, model, prompt, thinkingEnabled) {
@@ -20225,6 +21216,7 @@ async function handleNonStreamResponse(res, stream2, model, prompt, thinkingEnab
   let contentText = "";
   let currentType = thinkingEnabled ? "thinking" : "text";
   let finishReason = "stop";
+  let lastMessageId = null;
   const raw = await streamToString(stream2);
   const lines = raw.split("\n");
   for (const line of lines) {
@@ -20237,11 +21229,14 @@ async function handleNonStreamResponse(res, stream2, model, prompt, thinkingEnab
       finishReason = "content_filter";
       break;
     }
-    const { parts, finished, nextType } = parseSSEChunkForContent(
+    const { parts, finished, nextType, messageId } = parseSSEChunkForContent(
       parsed,
       thinkingEnabled,
       currentType
     );
+    if (messageId) {
+      lastMessageId = messageId;
+    }
     currentType = nextType;
     if (finished) break;
     for (const part of parts) {
@@ -20265,6 +21260,7 @@ async function handleNonStreamResponse(res, stream2, model, prompt, thinkingEnab
     if (parsedTools.length > 0) {
       toolCalls = parsedTools;
       finalContent = contentText.substring(0, toolStartIdx);
+      if (finishReason === "stop") finishReason = "tool_calls";
     }
   }
   const responseBody = {
@@ -20291,69 +21287,7 @@ async function handleNonStreamResponse(res, stream2, model, prompt, thinkingEnab
     }
   };
   jsonResponse(res, 200, responseBody);
-}
-function buildPromptText(messages, tools) {
-  if (!Array.isArray(messages) || messages.length === 0) return "";
-  const parts = [];
-  const toolPrompt = buildToolPrompt(tools || []);
-  let systemInjected = false;
-  for (const msg of messages) {
-    const role = msg.role || "user";
-    let content = typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content);
-    if (role === "system") {
-      if (toolPrompt && !systemInjected) {
-        content = content + "\n\n" + toolPrompt;
-        systemInjected = true;
-      }
-      parts.push(`[System]
-${content}`);
-    } else if (role === "user") {
-      parts.push(content);
-    } else if (role === "assistant") {
-      if (msg.tool_calls && Array.isArray(msg.tool_calls)) {
-        let historyToolCalls = "<|DSML|tool_calls>\n";
-        for (const call2 of msg.tool_calls) {
-          if (!call2.function) continue;
-          historyToolCalls += `  <|DSML|invoke name="${call2.function.name}">
-`;
-          const argValue = (() => {
-            try {
-              return JSON.parse(
-                call2.function.arguments
-              );
-            } catch {
-              return call2.function.arguments;
-            }
-          })();
-          if (isRecord(argValue)) {
-            for (const [k, v] of Object.entries(argValue)) {
-              const valStr = typeof v === "object" ? JSON.stringify(v) : String(v);
-              historyToolCalls += `    <|DSML|parameter name="${k}"><![CDATA[${valStr}]]></|DSML|parameter>
-`;
-            }
-          } else {
-            historyToolCalls += `    <|DSML|parameter name="args"><![CDATA[${call2.function.arguments}]]></|DSML|parameter>
-`;
-          }
-          historyToolCalls += `  </|DSML|invoke>
-`;
-        }
-        historyToolCalls += "</|DSML|tool_calls>";
-        content = content ? `${content}
-${historyToolCalls}` : historyToolCalls;
-      }
-      parts.push(`[Assistant]
-${content}`);
-    } else if (role === "tool") {
-      parts.push(`[Tool]
-Result: ${content}`);
-    }
-  }
-  if (toolPrompt && !systemInjected) {
-    parts.unshift(`[System]
-${toolPrompt}`);
-  }
-  return parts.join("\n\n");
+  return lastMessageId;
 }
 async function handleRequest(req, res, state2) {
   const startTime = Date.now();
@@ -20408,6 +21342,22 @@ async function handleRequest(req, res, state2) {
     if ((path2 === "/v1/chat/completions" || path2 === "/chat/completions") && method === "POST") {
       if (!validateAuth(req, res, state2)) return;
       await handleChatCompletions(req, res, state2);
+      return;
+    }
+    if ((path2 === "/v1/sessions/reset" || path2 === "/sessions/reset") && method === "POST") {
+      if (!validateAuth(req, res, state2)) return;
+      await state2.sessionManager.cleanup();
+      logWithPort(state2.port, `[api] ✓ All sessions reset (new section)`);
+      jsonResponse(res, 200, { status: "ok", message: "All sessions reset" });
+      return;
+    }
+    if ((path2 === "/v1/sessions/info" || path2 === "/sessions/info") && method === "GET") {
+      if (!validateAuth(req, res, state2)) return;
+      const info = [];
+      for (const [, token] of state2.accountTokens) {
+        info.push(state2.sessionManager.getSessionInfo(token));
+      }
+      jsonResponse(res, 200, { sessions: info });
       return;
     }
     jsonResponse(res, 404, {
@@ -20496,7 +21446,8 @@ async function startServerInstance(config) {
     config,
     accountTokens: /* @__PURE__ */ new Map(),
     accountIndex: 0,
-    port: config.port
+    port: config.port,
+    sessionManager: new SessionManager()
   };
   for (const acc of config.accounts) {
     if (acc.token) {
@@ -20537,6 +21488,7 @@ async function startServerInstance(config) {
   return { server, state: state2 };
 }
 async function stopServerInstance(instance) {
+  await instance.state.sessionManager.cleanup();
   return new Promise((resolve2) => {
     instance.server.close(() => {
       logWithPort(

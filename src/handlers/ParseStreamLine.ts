@@ -1,4 +1,4 @@
-import type { StreamParserCallbacks } from "../types";
+import type { StreamParserCallbacks } from "@/types";
 
 export function parseStreamLine(
 	line: string,

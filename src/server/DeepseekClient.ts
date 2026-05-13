@@ -6,15 +6,13 @@ import {
 	DEEPSEEK_COMPLETION_URL,
 	DEEPSEEK_COMPLETION_TARGET_PATH,
 	DEEPSEEK_DELETE_SESSION_URL,
-} from "../constants/DeepseekURL";
-import {
 	getLoginHeaders,
 	getLoginRequestBody,
 	getHistoryHeaders,
 	getChatHeaders,
-} from "../constants/DeepseekApi";
-import {solveAndBuildHeader} from "../ipcs/Pow";
-import type {AccountConfig, DeepSeekPowChallenge} from "../types";
+} from "@/constants";
+import {solveAndBuildHeader} from "@/ipcs/Pow";
+import type {AccountConfig, DeepSeekPowChallenge} from "@/types";
 
 function intFrom(v: any): number {
 	if (typeof v === "number") return Math.floor(v);

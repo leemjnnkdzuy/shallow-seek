@@ -26,7 +26,7 @@ import {
 
 import {AnimatePresence, motion} from "framer-motion";
 
-import {DEEPSEEK_LOGIN_URL} from "@/constants/DeepseekURL";
+import {DEEPSEEK_LOGIN_URL} from "@/constants";
 import {maskIdentifier, previewValue} from "@/lib/utils";
 
 type DeepseekLoginResponse = {

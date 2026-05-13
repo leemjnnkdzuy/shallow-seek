@@ -1,14 +1,15 @@
 import http from "node:http";
 
-import * as dsClient from "./DeepseekClient";
-import type {ServerConfig} from "../types";
-import type {ServerInstanceState, ServerInstance} from "../types/ServerInternal";
-import {handleRequest} from "../handlers/ServerRequest";
+import * as dsClient from "@/server/DeepseekClient";
+import {SessionManager} from "@/server/SessionManager";
+import type {ServerConfig} from "@/types";
+import type {ServerInstanceState, ServerInstance} from "@/types/ServerInternal";
+import {handleRequest} from "@/handlers/ServerRequest";
 import {
 	setLogCallback as _setLogCallback,
 	logWithPort,
 	getErrorMessage,
-} from "../handlers/ServerHelpers";
+} from "@/handlers/ServerHelpers";
 
 /** Map of accountId → running ServerInstance */
 const runningServers = new Map<string, ServerInstance>();
@@ -88,6 +89,7 @@ async function startServerInstance(
 		accountTokens: new Map(),
 		accountIndex: 0,
 		port: config.port,
+		sessionManager: new SessionManager(),
 	};
 
 	for (const acc of config.accounts) {
@@ -133,6 +135,9 @@ async function startServerInstance(
 }
 
 async function stopServerInstance(instance: ServerInstance): Promise<void> {
+	// Clean up session manager
+	await instance.state.sessionManager.cleanup();
+
 	return new Promise((resolve) => {
 		instance.server.close(() => {
 			logWithPort(

@@ -1,4 +1,4 @@
-import type { FetchKeysCallbacks } from "../types";
+import type { FetchKeysCallbacks } from "@/types";
 
 export async function fetchApiKeys(
 	platformToken: string | null,

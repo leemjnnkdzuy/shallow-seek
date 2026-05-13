@@ -3,13 +3,11 @@ import {
 	DEEPSEEK_COMPLETION_TARGET_PATH,
 	DEEPSEEK_CREATE_POW_URL,
 	DEEPSEEK_COMPLETION_URL,
-} from "../constants/DeepseekURL";
-import {
 	getHistoryHeaders,
 	getChatHeaders,
-} from "../constants/DeepseekApi";
-import {solveAndBuildHeader} from "../ipcs/Pow";
-import type {ChatStreamPayload} from "../types";
+} from "@/constants";
+import {solveAndBuildHeader} from "@/ipcs/Pow";
+import type {ChatStreamPayload} from "@/types";
 
 export interface ChatStreamSender {
 	send: (channel: string, ...args: any[]) => void;

@@ -50,7 +50,7 @@ function createWindow() {
 	}
 }
 
-import {registerIpcs} from "./ipcs";
+import {registerIpcs} from "@/ipcs";
 
 registerIpcs(__dirname, VITE_DEV_SERVER_URL, RENDERER_DIST);
 

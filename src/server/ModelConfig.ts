@@ -1,8 +1,4 @@
-/**
- * Model definitions, aliases, and resolution logic.
- * Ported from ds2api/internal/config/models.go
- */
-import type { ModelInfo } from "../types";
+import type { ModelInfo } from "@/types";
 
 const NO_THINKING_SUFFIX = "-nothinking";
 
@@ -25,7 +21,6 @@ function appendNoThinkingVariants(models: ModelInfo[]): ModelInfo[] {
 
 export const ALL_MODELS = appendNoThinkingVariants(DEEPSEEK_BASE_MODELS);
 
-/** Returns [thinking, search, ok] for a given model id. */
 export function getModelConfig(model: string): { thinking: boolean; search: boolean; ok: boolean } {
 	const { base, noThinking } = splitNoThinking(model);
 	switch (base) {
@@ -41,7 +36,6 @@ export function getModelConfig(model: string): { thinking: boolean; search: bool
 	}
 }
 
-/** Returns the DeepSeek model_type for completion payload. */
 export function getModelType(model: string): string | null {
 	const { base } = splitNoThinking(model);
 	switch (base) {
@@ -98,7 +92,6 @@ export const DEFAULT_MODEL_ALIASES: Record<string, string> = {
 	"gemini-3-flash": "deepseek-v4-flash",
 };
 
-/** Resolve a requested model name to a canonical DeepSeek model. */
 export function resolveModel(
 	requested: string,
 	customAliases?: Record<string, string>,
@@ -106,7 +99,6 @@ export function resolveModel(
 	const model = requested.trim().toLowerCase();
 	if (!model) return null;
 
-	// Merge aliases
 	const aliases = { ...DEFAULT_MODEL_ALIASES, ...(customAliases || {}) };
 
 	if (isSupportedModel(model)) return model;
@@ -114,7 +106,6 @@ export function resolveModel(
 	const mapped = aliases[model];
 	if (mapped && isSupportedModel(mapped)) return mapped;
 
-	// Try stripping -nothinking and re-resolving
 	const { base, noThinking } = splitNoThinking(model);
 	const baseMapped = aliases[base];
 	if (baseMapped && isSupportedModel(baseMapped)) {
@@ -132,7 +123,6 @@ function splitNoThinking(model: string): { base: string; noThinking: boolean } {
 	return { base: m, noThinking: false };
 }
 
-/** Build the OpenAI-compatible /v1/models response. */
 export function openAIModelsResponse(): Record<string, any> {
 	return { object: "list", data: ALL_MODELS };
 }

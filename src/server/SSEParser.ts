@@ -1,8 +1,4 @@
-/**
- * SSE Parser for DeepSeek's JSON-patch streaming format.
- * Ported from ds2api/internal/sse/parser.go
- */
-import type { ContentPart } from "../types";
+import type { ContentPart } from "@/types";
 
 const SKIP_CONTAINS_PATTERNS = [
 	"quasi_status",
@@ -44,10 +40,6 @@ function stripThinkTags(s: string): string {
 	return s.replace(THINK_CLOSE, "").replace(THINK_OPEN, "");
 }
 
-/**
- * Parse a single SSE data line.
- * Returns [chunk, isDone, isValid].
- */
 export function parseDeepSeekSSELine(raw: string): [Record<string, any> | null, boolean, boolean] {
 	const line = raw.trim();
 	if (!line || !line.startsWith("data:")) return [null, false, false];
@@ -61,42 +53,36 @@ export function parseDeepSeekSSELine(raw: string): [Record<string, any> | null, 
 	}
 }
 
-/**
- * Parse a DeepSeek SSE chunk for content, returning extracted content parts.
- */
 export function parseSSEChunkForContent(
 	chunk: Record<string, any>,
 	thinkingEnabled: boolean,
 	currentFragmentType: string,
-): { parts: ContentPart[]; finished: boolean; nextType: string } {
+): { parts: ContentPart[]; finished: boolean; nextType: string; messageId: number | null } {
 	const v = chunk["v"];
 	if (v === undefined) {
-		return { parts: [], finished: false, nextType: currentFragmentType };
+		return { parts: [], finished: false, nextType: currentFragmentType, messageId: null };
 	}
 
 	const path: string = chunk["p"] ?? "";
 	if (shouldSkipPath(path)) {
-		return { parts: [], finished: false, nextType: currentFragmentType };
+		return { parts: [], finished: false, nextType: currentFragmentType, messageId: null };
 	}
 
-	// Status check
 	if (isStatusPath(path) && typeof v === "string") {
 		if (v.trim().toUpperCase() === "FINISHED") {
-			return { parts: [], finished: true, nextType: currentFragmentType };
+			return { parts: [], finished: true, nextType: currentFragmentType, messageId: null };
 		}
-		return { parts: [], finished: false, nextType: currentFragmentType };
+		return { parts: [], finished: false, nextType: currentFragmentType, messageId: null };
 	}
 
 	let newType = currentFragmentType;
 	const parts: ContentPart[] = [];
 
-	// Update type from explicit path
 	if (path === "response/content") newType = "text";
 	else if (path === "response/thinking_content") {
 		if (!thinkingEnabled || newType !== "text") newType = "thinking";
 	}
 
-	// Collect direct fragments
 	if (path === "response/fragments" && (chunk["o"] ?? "").toString().toUpperCase() === "APPEND") {
 		const frags = Array.isArray(v) ? v : [];
 		for (const frag of frags) {
@@ -117,7 +103,6 @@ export function parseSSEChunkForContent(
 		}
 	}
 
-	// Update type from nested response
 	if (path === "response" && Array.isArray(v)) {
 		for (const it of v) {
 			if (typeof it !== "object" || !it) continue;
@@ -132,7 +117,6 @@ export function parseSSEChunkForContent(
 		}
 	}
 
-	// Resolve part type
 	let partType: string;
 	if (path === "response/thinking_content") {
 		partType = (!thinkingEnabled || newType !== "text") ? "thinking" : "text";
@@ -146,24 +130,39 @@ export function parseSSEChunkForContent(
 		partType = "text";
 	}
 
-	// Append chunk value content
 	const appendResult = appendChunkValueContent(v, partType, path);
 	if (appendResult.finished) {
-		return { parts: [], finished: true, nextType: newType };
+		return { parts: [], finished: true, nextType: newType, messageId: null };
 	}
 	parts.push(...appendResult.parts);
 	if (appendResult.newType) newType = appendResult.newType;
 
-	// Split thinking parts (handle </think> tag)
 	const { parts: splitParts, transitioned } = splitThinkingParts(parts);
 	if (transitioned) newType = "text";
 
-	// Drop thinking parts if not enabled
 	const finalParts = thinkingEnabled
 		? splitParts
 		: splitParts.filter(p => p.type !== "thinking");
 
-	return { parts: finalParts, finished: false, nextType: newType };
+	return { parts: finalParts, finished: false, nextType: newType, messageId: extractMessageId(chunk) };
+}
+
+function extractMessageId(chunk: Record<string, any>): number | null {
+	const id = chunk["response_message_id"] ?? chunk["message_id"];
+	if (typeof id === "number" && id > 0) return id;
+
+	const v = chunk["v"];
+	if (typeof v === "object" && v !== null) {
+		const msgId = v["message_id"] ?? v["id"];
+		if (typeof msgId === "number" && msgId > 0) return msgId;
+
+		const resp = v["response"];
+		if (typeof resp === "object" && resp !== null) {
+			const respId = resp["message_id"] ?? resp["id"];
+			if (typeof respId === "number" && respId > 0) return respId;
+		}
+	}
+	return null;
 }
 
 function parseFragmentTypeContent(m: Record<string, any>): { typeName: string; content: string } {
@@ -195,7 +194,6 @@ function appendChunkValueContent(
 	}
 
 	if (typeof v === "object" && v !== null) {
-		// Try extracting text/content from the object
 		if (path === "response/content" || path === "response/thinking_content" || path === "") {
 			const text = v.text || v.content || "";
 			if (text) {
@@ -203,7 +201,6 @@ function appendChunkValueContent(
 				return { parts, finished: false };
 			}
 		}
-		// Wrapped fragments
 		const resp = v.response || v;
 		const frags = resp?.fragments;
 		if (Array.isArray(frags)) {
@@ -250,7 +247,6 @@ function extractContentRecursive(
 		}
 		if (shouldSkipPath(itemPath)) continue;
 
-		// Direct content field
 		if (typeof it.content === "string" && it.content) {
 			const typeName = ((it.type || "") as string).toUpperCase();
 			switch (typeName) {
@@ -314,7 +310,7 @@ function splitThinkingParts(parts: ContentPart[]): { parts: ContentPart[]; trans
 			continue;
 		}
 		const match = THINK_CLOSE.exec(p.text);
-		THINK_CLOSE.lastIndex = 0; // reset regex
+		THINK_CLOSE.lastIndex = 0;
 		if (!match) {
 			out.push(p);
 			continue;
@@ -329,7 +325,6 @@ function splitThinkingParts(parts: ContentPart[]): { parts: ContentPart[]; trans
 	return { parts: out, transitioned: thinkingDone };
 }
 
-/** Check if chunk indicates content filter. */
 export function hasContentFilterStatus(chunk: Record<string, any>): boolean {
 	const code = chunk.code;
 	if (typeof code === "string" && code.trim().toLowerCase() === "content_filter") return true;

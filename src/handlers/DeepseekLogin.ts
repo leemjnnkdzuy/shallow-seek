@@ -1,14 +1,14 @@
 import {BrowserWindow, BrowserView, session} from "electron";
 import path from "node:path";
 import axios from "axios";
-import {getHistoryHeaders} from "../constants/DeepseekApi";
+import {getHistoryHeaders} from "@/constants";
 import {
 	credentialTrackerScript,
 	loginPollerScript,
 	getAutoLoginScript,
 	chatPollerScript,
-} from "../scripts";
-import type {LoginResult} from "../types";
+} from "@/scripts";
+import type {LoginResult} from "@/types";
 
 export interface LoginContext {
 	__dirname: string;

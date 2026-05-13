@@ -1,4 +1,4 @@
-import logo from "./logo.png";
-import deepseek from "./deepseek.png";
+import logo from "@/assets/logo.png";
+import deepseek from "@/assets/deepseek.png";
 
 export {logo, deepseek};
