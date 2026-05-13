@@ -15,3 +15,4 @@ export * from "@/types/DeepseekInternal";
 export * from "@/types/Session";
 export * from "@/types/RuleUploader";
 export * from "@/types/ToolCall";
+export * from "@/types/Thinking";

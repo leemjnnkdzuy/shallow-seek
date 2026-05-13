@@ -11,17 +11,12 @@ import {
 	getErrorMessage,
 } from "@/handlers/ServerHelpers";
 
-/** Map of accountId → running ServerInstance */
 const runningServers = new Map<string, ServerInstance>();
 
 export function setLogCallback(cb: (msg: string) => void) {
 	_setLogCallback(cb);
 }
 
-/**
- * Start a server for a single account.
- * Returns the port the server is listening on.
- */
 export async function startServerForAccount(
 	accountId: string,
 	config: ServerConfig,
@@ -43,9 +38,6 @@ export async function startServerForAccount(
 	return port;
 }
 
-/**
- * Stop a specific account's server.
- */
 export async function stopServerForAccount(accountId: string): Promise<void> {
 	const instance = runningServers.get(accountId);
 	if (!instance) {
@@ -55,24 +47,15 @@ export async function stopServerForAccount(accountId: string): Promise<void> {
 	await stopServerInstance(instance);
 }
 
-/**
- * Check if a specific account's server is running.
- */
 export function isAccountRunning(accountId: string): boolean {
 	return runningServers.has(accountId);
 }
 
-/**
- * Get the port of a running account's server.
- */
 export function getAccountPort(accountId: string): number | null {
 	const instance = runningServers.get(accountId);
 	return instance ? instance.state.port : null;
 }
 
-/**
- * Get all running account IDs and their ports.
- */
 export function getAllRunningAccounts(): Record<string, number> {
 	const result: Record<string, number> = {};
 	for (const [id, instance] of runningServers) {
@@ -135,7 +118,6 @@ async function startServerInstance(
 }
 
 async function stopServerInstance(instance: ServerInstance): Promise<void> {
-	// Clean up session manager
 	await instance.state.sessionManager.cleanup();
 
 	return new Promise((resolve) => {

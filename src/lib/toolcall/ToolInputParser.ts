@@ -26,9 +26,7 @@ export function parseToolCallInput(v: any): Record<string, any> {
 				repairPathLikeControlChars(parsed);
 				return parsed;
 			}
-		} catch (e) {
-			// ignore and try repairs
-		}
+		} catch (e) {}
 
 		const repaired = repairInvalidJSONBackslashes(raw);
 		if (repaired !== raw) {
@@ -42,9 +40,7 @@ export function parseToolCallInput(v: any): Record<string, any> {
 					repairPathLikeControlChars(parsed);
 					return parsed;
 				}
-			} catch (e) {
-				// ignore
-			}
+			} catch (e) {}
 		}
 
 		const repairedLoose = repairLooseJSON(raw);
@@ -59,9 +55,7 @@ export function parseToolCallInput(v: any): Record<string, any> {
 					repairPathLikeControlChars(parsed);
 					return parsed;
 				}
-			} catch (e) {
-				// ignore
-			}
+			} catch (e) {}
 		}
 
 		return {_raw: raw};
@@ -73,9 +67,7 @@ export function parseToolCallInput(v: any): Record<string, any> {
 		if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
 			return parsed;
 		}
-	} catch (e) {
-		// ignore
-	}
+	} catch (e) {}
 
 	return {};
 }

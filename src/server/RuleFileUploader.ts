@@ -82,11 +82,21 @@ export async function uploadRuleFiles(
 		};
 	}
 
-	const rulesFileId = await uploadTextFile(token, RULES_FILENAME, rulesText, port);
+	const rulesFileId = await uploadTextFile(
+		token,
+		RULES_FILENAME,
+		rulesText,
+		port,
+	);
 
 	let toolsFileId: string | null = null;
 	if (toolsText.trim()) {
-		toolsFileId = await uploadTextFile(token, TOOLS_FILENAME, toolsText, port);
+		toolsFileId = await uploadTextFile(
+			token,
+			TOOLS_FILENAME,
+			toolsText,
+			port,
+		);
 	}
 
 	fileCache.set(token, {

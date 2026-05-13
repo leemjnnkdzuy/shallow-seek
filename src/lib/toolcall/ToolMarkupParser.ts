@@ -1,5 +1,6 @@
 import {decode} from "html-entities";
-import {ParsedToolCall, ToolMarkupTag} from "@/types/ToolCall";
+import {ParsedToolCall, ToolMarkupTag, XMLElementBlock} from "@/types/ToolCall";
+import {XML_ATTR_PATTERN, CDATA_BR_SEPARATOR_PATTERN} from "@/constants";
 import {
 	findToolMarkupTagOutsideIgnored,
 	findMatchingToolMarkupClose,
@@ -8,16 +9,6 @@ import {xmlTagEndDelimiterLenAt} from "./ToolCandidateDetector";
 import {parseMarkupValue, extractStandaloneCDATA} from "./ToolMarkup";
 import {parseStructuredToolCallInput, parseXMLFragmentValue} from "./ToolXml";
 import {parseLooseJSONArrayValue, coerceArrayValue} from "./ToolArrayParser";
-
-export interface XMLElementBlock {
-	Attrs: string;
-	Body: string;
-	Start: number;
-	End: number;
-}
-
-const xmlAttrPattern = /\b([a-z0-9_:-]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/gis;
-const cdataBRSeparatorPattern = /<br\s*\/?>/gi;
 
 export function parseXMLToolCalls(text: string): ParsedToolCall[] | null {
 	let wrappers = findToolCallElementBlocksOutsideIgnored(text);
@@ -220,9 +211,9 @@ export function parseXMLTagAttributes(raw: string): Record<string, string> {
 	if (!trimmed) return {};
 
 	const out: Record<string, string> = {};
-	xmlAttrPattern.lastIndex = 0;
+	XML_ATTR_PATTERN.lastIndex = 0;
 	let match;
-	while ((match = xmlAttrPattern.exec(trimmed)) !== null) {
+	while ((match = XML_ATTR_PATTERN.exec(trimmed)) !== null) {
 		const key = match[1].toLowerCase();
 		const val = match[2] !== undefined ? match[2] : match[3];
 		out[key] = val;
@@ -348,7 +339,7 @@ function parseStructuredCDATAParameterValue(
 
 function normalizeCDATAForStructuredParse(raw: string): string {
 	if (!raw) return "";
-	const normalized = raw.replace(cdataBRSeparatorPattern, "\n");
+	const normalized = raw.replace(CDATA_BR_SEPARATOR_PATTERN, "\n");
 	return decode(normalized.trim());
 }
 

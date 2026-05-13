@@ -1,4 +1,4 @@
-const citationMarkerPattern = /\[(citation|reference):\s*(\d+)\]/gi;
+import {CITATION_MARKER_PATTERN} from "@/constants";
 
 export function replaceCitationMarkersWithLinks(
 	text: string,
@@ -15,7 +15,7 @@ export function replaceCitationMarkersWithLinks(
 
 	const zeroBasedReference = hasZeroBasedReferenceMarker(text);
 
-	return text.replace(citationMarkerPattern, (match, type, numStr) => {
+	return text.replace(CITATION_MARKER_PATTERN, (match, type, numStr) => {
 		const idx = Number.parseInt(numStr, 10);
 		if (Number.isNaN(idx) || idx < 0) return match;
 
@@ -32,7 +32,7 @@ export function replaceCitationMarkersWithLinks(
 }
 
 function hasZeroBasedReferenceMarker(text: string): boolean {
-	const pattern = /\[(citation|reference):\s*(\d+)\]/gi;
+	const pattern = new RegExp(CITATION_MARKER_PATTERN.source, CITATION_MARKER_PATTERN.flags);
 	let m: RegExpExecArray | null;
 	while ((m = pattern.exec(text)) !== null) {
 		if (m[1].toLowerCase() !== "reference") continue;

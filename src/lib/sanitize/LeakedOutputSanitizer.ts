@@ -3,49 +3,33 @@ import {
 	findMatchingToolMarkupClose,
 } from "@/lib/toolcall/ToolScanner";
 
-const emptyJSONFencePattern = /```json\s*```/gis;
-const leakedToolCallArrayPattern =
-	/\[\{\s*"function"\s*:\s*\{[\s\S]*?\}\s*,\s*"id"\s*:\s*"call[^"]*"\s*,\s*"type"\s*:\s*"function"\s*\}\]/gis;
-const leakedToolResultBlobPattern =
-	/<\s*\|\s*tool\s*\|\s*>\s*\{[\s\S]*?"tool_call_id"\s*:\s*"call[^"]*"\s*\}/gis;
-
-const leakedThinkTagPattern = /<\/?\s*think\s*>/gis;
-
-const leakedBOSMarkerPattern =
-	/<[|\uFF5C]\s*begin[_\u2581]of[_\u2581]sentence\s*[|\uFF5C]>/gi;
-
-const leakedThoughtMarkerPattern =
-	/<[|\uFF5C]\s*(?:begin[_\u2581])?[_\u2581]*of[_\u2581]thought\s*[|\uFF5C]>/gi;
-
-const leakedMetaMarkerPattern =
-	/<[|\uFF5C]\s*(?:assistant|tool|end[_\u2581]of[_\u2581]sentence|end[_\u2581]of[_\u2581]thinking|end[_\u2581]of[_\u2581]thought|end[_\u2581]of[_\u2581]toolresults|end[_\u2581]of[_\u2581]instructions)\s*[|\uFF5C]>/gi;
-
-const leakedAgentXMLBlockPatterns = [
-	/(<attempt_completion\b[^>]*>)([\s\S]*?)(<\/attempt_completion>)/gis,
-	/(<ask_followup_question\b[^>]*>)([\s\S]*?)(<\/ask_followup_question>)/gis,
-	/(<new_task\b[^>]*>)([\s\S]*?)(<\/new_task>)/gis,
-];
-
-const leakedAgentWrapperTagPattern =
-	/<\/?(?:attempt_completion|ask_followup_question|new_task)\b[^>]*>/gis;
-const leakedAgentWrapperPlusResultOpenPattern =
-	/<(?:attempt_completion|ask_followup_question|new_task)\b[^>]*>\s*<result>/gis;
-const leakedAgentResultPlusWrapperClosePattern =
-	/<\/result>\s*<\/(?:attempt_completion|ask_followup_question|new_task)\b[^>]*>/gis;
-const leakedAgentResultTagPattern = /<\/?result>/gis;
+import {
+	EMPTY_JSON_FENCE_PATTERN,
+	LEAKED_TOOL_CALL_ARRAY_PATTERN,
+	LEAKED_TOOL_RESULT_BLOB_PATTERN,
+	LEAKED_THINK_TAG_PATTERN,
+	LEAKED_BOS_MARKER_PATTERN,
+	LEAKED_THOUGHT_MARKER_PATTERN,
+	LEAKED_META_MARKER_PATTERN,
+	LEAKED_AGENT_XML_BLOCK_PATTERNS,
+	LEAKED_AGENT_WRAPPER_TAG_PATTERN,
+	LEAKED_AGENT_WRAPPER_PLUS_RESULT_OPEN_PATTERN,
+	LEAKED_AGENT_RESULT_PLUS_WRAPPER_CLOSE_PATTERN,
+	LEAKED_AGENT_RESULT_TAG_PATTERN,
+} from "@/constants";
 
 export function sanitizeLeakedOutput(text: string): string {
 	if (!text) return text;
 
 	let out = text;
-	out = out.replace(emptyJSONFencePattern, "");
-	out = out.replace(leakedToolCallArrayPattern, "");
-	out = out.replace(leakedToolResultBlobPattern, "");
+	out = out.replace(EMPTY_JSON_FENCE_PATTERN, "");
+	out = out.replace(LEAKED_TOOL_CALL_ARRAY_PATTERN, "");
+	out = out.replace(LEAKED_TOOL_RESULT_BLOB_PATTERN, "");
 	out = stripDanglingThinkSuffix(out);
-	out = out.replace(leakedThinkTagPattern, "");
-	out = out.replace(leakedBOSMarkerPattern, "");
-	out = out.replace(leakedThoughtMarkerPattern, "");
-	out = out.replace(leakedMetaMarkerPattern, "");
+	out = out.replace(LEAKED_THINK_TAG_PATTERN, "");
+	out = out.replace(LEAKED_BOS_MARKER_PATTERN, "");
+	out = out.replace(LEAKED_THOUGHT_MARKER_PATTERN, "");
+	out = out.replace(LEAKED_META_MARKER_PATTERN, "");
 	out = stripLeakedToolCallWrapperBlocks(out);
 	out = sanitizeLeakedAgentXMLBlocks(out);
 	return out;
@@ -116,29 +100,35 @@ function stripLeakedToolCallWrapperBlocks(text: string): string {
 function sanitizeLeakedAgentXMLBlocks(text: string): string {
 	let out = text;
 
-	for (const pattern of leakedAgentXMLBlockPatterns) {
+	for (const pattern of LEAKED_AGENT_XML_BLOCK_PATTERNS) {
 		pattern.lastIndex = 0;
 		out = out.replace(pattern, (_match, _open, inner, _close) => {
-			return inner.replace(leakedAgentResultTagPattern, "");
+			return inner.replace(LEAKED_AGENT_RESULT_TAG_PATTERN, "");
 		});
 	}
 
-	leakedAgentWrapperTagPattern.lastIndex = 0;
-	if (leakedAgentWrapperTagPattern.test(out)) {
-		leakedAgentWrapperPlusResultOpenPattern.lastIndex = 0;
-		out = out.replace(leakedAgentWrapperPlusResultOpenPattern, (match) => {
-			leakedAgentResultTagPattern.lastIndex = 0;
-			return match.replace(leakedAgentResultTagPattern, "");
-		});
+	LEAKED_AGENT_WRAPPER_TAG_PATTERN.lastIndex = 0;
+	if (LEAKED_AGENT_WRAPPER_TAG_PATTERN.test(out)) {
+		LEAKED_AGENT_WRAPPER_PLUS_RESULT_OPEN_PATTERN.lastIndex = 0;
+		out = out.replace(
+			LEAKED_AGENT_WRAPPER_PLUS_RESULT_OPEN_PATTERN,
+			(match) => {
+				LEAKED_AGENT_RESULT_TAG_PATTERN.lastIndex = 0;
+				return match.replace(LEAKED_AGENT_RESULT_TAG_PATTERN, "");
+			},
+		);
 
-		leakedAgentResultPlusWrapperClosePattern.lastIndex = 0;
-		out = out.replace(leakedAgentResultPlusWrapperClosePattern, (match) => {
-			leakedAgentResultTagPattern.lastIndex = 0;
-			return match.replace(leakedAgentResultTagPattern, "");
-		});
+		LEAKED_AGENT_RESULT_PLUS_WRAPPER_CLOSE_PATTERN.lastIndex = 0;
+		out = out.replace(
+			LEAKED_AGENT_RESULT_PLUS_WRAPPER_CLOSE_PATTERN,
+			(match) => {
+				LEAKED_AGENT_RESULT_TAG_PATTERN.lastIndex = 0;
+				return match.replace(LEAKED_AGENT_RESULT_TAG_PATTERN, "");
+			},
+		);
 
-		leakedAgentWrapperTagPattern.lastIndex = 0;
-		out = out.replace(leakedAgentWrapperTagPattern, "");
+		LEAKED_AGENT_WRAPPER_TAG_PATTERN.lastIndex = 0;
+		out = out.replace(LEAKED_AGENT_WRAPPER_TAG_PATTERN, "");
 	}
 
 	return out;

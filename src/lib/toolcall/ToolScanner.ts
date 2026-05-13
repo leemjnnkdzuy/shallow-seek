@@ -8,13 +8,7 @@ import {
 import {ToolMarkupTag} from "@/types/ToolCall";
 import {skipXMLIgnoredSection} from "./ToolCandidateDetector";
 
-export const toolMarkupNames = [
-	{raw: "tool_calls", canonical: "tool_calls"},
-	{raw: "tool-calls", canonical: "tool_calls", dsmlOnly: true},
-	{raw: "toolcalls", canonical: "tool_calls", dsmlOnly: true},
-	{raw: "invoke", canonical: "invoke"},
-	{raw: "parameter", canonical: "parameter"},
-];
+import {TOOL_MARKUP_NAMES} from "@/constants";
 
 export function containsToolMarkupSyntaxOutsideIgnored(text: string): {
 	hasDSML: boolean;
@@ -187,8 +181,8 @@ function matchToolMarkupName(
 	start: number,
 	dsmlLike: boolean,
 ): {name: string; nameLen: number} {
-	for (const entry of toolMarkupNames) {
-		if (entry.dsmlOnly && !dsmlLike) continue;
+	for (const entry of TOOL_MARKUP_NAMES) {
+		if ((entry as any).dsmlOnly && !dsmlLike) continue;
 		const {next, ok} = consumeToolKeyword(text, start, entry.raw);
 		if (ok) return {name: entry.canonical, nameLen: next - start};
 	}
@@ -201,7 +195,7 @@ function matchToolMarkupNameAfterArbitraryPrefix(
 ): {name: string; start: number; len: number} | null {
 	for (let idx = start; idx < text.length; idx++) {
 		if (isToolMarkupTagTerminator(text[idx])) break;
-		for (const entry of toolMarkupNames) {
+		for (const entry of TOOL_MARKUP_NAMES) {
 			const {next, ok} = consumeToolKeyword(text, idx, entry.raw);
 			if (ok) return {name: entry.canonical, start: idx, len: next - idx};
 		}

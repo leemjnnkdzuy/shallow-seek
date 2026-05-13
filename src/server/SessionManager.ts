@@ -2,10 +2,13 @@ import * as dsClient from "@/server/DeepseekClient";
 import type {ActiveSession, HistoryMessage} from "@/types/Session";
 import {clearRuleFileCache, clearAllRuleFileCache} from "@/server/RuleFileUploader";
 
-const DEFAULT_CONTEXT_WINDOW = 1_000_000;
-const COMPRESS_THRESHOLD = 0.85;
-const RESPONSE_RESERVE = 128_000;
-const MAX_HISTORY_MESSAGES = 1000;
+import {
+	DEFAULT_CONTEXT_WINDOW,
+	COMPRESS_THRESHOLD,
+	RESPONSE_RESERVE,
+	MAX_HISTORY_MESSAGES,
+	CJK_RANGES,
+} from "@/constants";
 
 
 function estimateTokenCount(text: string): number {
@@ -13,7 +16,7 @@ function estimateTokenCount(text: string): number {
 	let cjk = 0;
 	for (let i = 0; i < text.length; i++) {
 		const c = text.charCodeAt(i);
-		if ((c >= 0x4e00 && c <= 0x9fff) || (c >= 0x3400 && c <= 0x4dbf)) cjk++;
+		if (CJK_RANGES.some((r) => c >= r.start && c <= r.end)) cjk++;
 	}
 	const ascii = text.length - cjk;
 	return Math.ceil(ascii / 4 + cjk / 1.5);

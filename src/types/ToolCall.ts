@@ -35,3 +35,10 @@ export interface ToolCallParseResult {
 	RejectedByPolicy: boolean;
 	RejectedToolNames: string[];
 }
+
+export interface XMLElementBlock {
+	Attrs: string;
+	Body: string;
+	Start: number;
+	End: number;
+}

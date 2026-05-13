@@ -1,15 +1,21 @@
 import {ToolMarkupTag} from "@/types/ToolCall";
+import {
+	TOOL_MARKUP_NAMES,
+	TOOL_KEYWORD_FOLD_MAP,
+	TOOL_MARKUP_EQUALS_CHARS,
+	XML_TAG_START_CHARS,
+	XML_TAG_END_CHARS,
+	TOOL_MARKUP_SLASH_CHARS,
+	TOOL_MARKUP_PIPE_CHARS,
+	TOOL_MARKUP_DASH_CHARS,
+	XML_QUOTE_PAIRS,
+} from "@/constants";
 
 export interface CanonicalToolMarkupAttr {
 	Key: string;
 	Value: string;
 }
 
-const toolMarkupNames = [
-	{canonical: "tool_calls", raw: "tool_calls"},
-	{canonical: "invoke", raw: "invoke"},
-	{canonical: "parameter", raw: "parameter"},
-];
 
 export function canonicalizeToolCallCandidateSpans(text: string): string {
 	if (!text) return "";
@@ -99,7 +105,7 @@ function scanToolMarkupTagAt(text: string, idx: number): ToolMarkupTag | null {
 		pos += 6;
 	}
 
-	for (const entry of toolMarkupNames) {
+	for (const entry of TOOL_MARKUP_NAMES) {
 		const {next: afterName, ok: nameMatch} = consumeToolKeyword(
 			text,
 			pos,
@@ -179,7 +185,7 @@ function canonicalizeRecognizedToolMarkupTag(
 
 function rawNameForTag(tag: ToolMarkupTag): string {
 	return (
-		toolMarkupNames.find((n) => n.canonical === tag.Name)?.raw || tag.Name
+		TOOL_MARKUP_NAMES.find((n) => n.canonical === tag.Name)?.raw || tag.Name
 	);
 }
 
@@ -287,19 +293,19 @@ export function toolMarkupWhitespaceLikeLenAt(
 
 export function toolMarkupEqualsLenAt(text: string, idx: number): number {
 	const ch = text[idx];
-	if (["=", "＝", "﹦", "꞊"].includes(ch)) return ch.length;
+	if (TOOL_MARKUP_EQUALS_CHARS.includes(ch)) return ch.length;
 	return 0;
 }
 
 export function xmlTagStartDelimiterLenAt(text: string, idx: number): number {
 	const ch = text[idx];
-	if (["<", "＜", "﹤", "〈"].includes(ch)) return ch.length;
+	if (XML_TAG_START_CHARS.includes(ch)) return ch.length;
 	return 0;
 }
 
 export function xmlTagEndDelimiterLenAt(text: string, idx: number): number {
 	const ch = text[idx];
-	if ([">", "＞", "﹥", "〉"].includes(ch)) return ch.length;
+	if (XML_TAG_END_CHARS.includes(ch)) return ch.length;
 	return 0;
 }
 
@@ -308,7 +314,7 @@ export function consumeToolMarkupClosingSlash(
 	idx: number,
 ): {next: number; ok: boolean} {
 	const ch = text[idx];
-	if (["/", "／", "∕", "⁄", "⧸"].includes(ch))
+	if (TOOL_MARKUP_SLASH_CHARS.includes(ch))
 		return {next: idx + ch.length, ok: true};
 	return {next: idx, ok: false};
 }
@@ -318,7 +324,7 @@ export function consumeToolMarkupPipe(
 	idx: number,
 ): {next: number; ok: boolean} {
 	const ch = text[idx];
-	if (["|", "│", "∣", "❘", "ǀ", "￨"].includes(ch))
+	if (TOOL_MARKUP_PIPE_CHARS.includes(ch))
 		return {next: idx + ch.length, ok: true};
 	return {next: idx, ok: false};
 }
@@ -328,17 +334,7 @@ export function xmlQuotePairAt(
 	idx: number,
 ): {quote: string; quoteLen: number} {
 	const ch = text[idx];
-	const pairs: Record<string, string> = {
-		'"': '"',
-		"'": "'",
-		"“": "”",
-		"‘": "’",
-		"＂": "＂",
-		"＇": "＇",
-		"„": "”",
-		"‟": "”",
-	};
-	if (pairs[ch]) return {quote: pairs[ch], quoteLen: ch.length};
+	if (XML_QUOTE_PAIRS[ch]) return {quote: XML_QUOTE_PAIRS[ch], quoteLen: ch.length};
 	return {quote: "", quoteLen: 0};
 }
 
@@ -350,54 +346,10 @@ export function foldToolKeywordRune(r: string): string | null {
 	else if (code >= 0xff41 && code <= 0xff5a)
 		normalized = String.fromCharCode(code - 0xfee0);
 
-	const map: Record<string, string> = {
-		а: "a",
-		α: "a",
-		с: "c",
-		С: "c",
-		ϲ: "c",
-		Ϲ: "c",
-		ԁ: "d",
-		ⅾ: "d",
-		е: "e",
-		Е: "e",
-		Ε: "e",
-		ε: "e",
-		і: "i",
-		І: "i",
-		Ι: "i",
-		ι: "i",
-		ı: "i",
-		к: "k",
-		К: "k",
-		Κ: "k",
-		κ: "k",
-		ⅼ: "l",
-		м: "m",
-		М: "m",
-		Μ: "m",
-		μ: "m",
-		ո: "n",
-		о: "o",
-		О: "o",
-		Ο: "o",
-		ο: "o",
-		р: "p",
-		Р: "p",
-		Ρ: "p",
-		ρ: "p",
-		ѕ: "s",
-		Ѕ: "s",
-		т: "t",
-		Т: "t",
-		Τ: "t",
-		τ: "t",
-		ν: "v",
-		Ν: "v",
-		ѵ: "v",
-		ⅴ: "v",
-	};
-	return map[normalized] || (/[a-z0-9]/.test(normalized) ? normalized : null);
+	return (
+		TOOL_KEYWORD_FOLD_MAP[normalized] ||
+		(/[a-z0-9]/.test(normalized) ? normalized : null)
+	);
 }
 
 export function consumeToolKeyword(
@@ -412,25 +364,7 @@ export function consumeToolKeyword(
 		const target = keyword[i].toLowerCase();
 		const ch = text[next];
 		if (target === "_" || target === "-") {
-			if (
-				[
-					"_",
-					"＿",
-					"﹍",
-					"﹎",
-					"﹏",
-					"-",
-					"‐",
-					"‑",
-					"‒",
-					"–",
-					"—",
-					"―",
-					"−",
-					"﹣",
-					"－",
-				].includes(ch)
-			) {
+			if (TOOL_MARKUP_DASH_CHARS.includes(ch)) {
 				next++;
 				continue;
 			}

@@ -1,6 +1,6 @@
-const citationReferenceMarkerPattern = /\[(citation|reference):\s*\d+\]/gi;
+import {CITATION_MARKER_PATTERN} from "@/constants";
 
 export function stripReferenceMarkers(text: string): string {
 	if (!text) return text;
-	return text.replace(citationReferenceMarkerPattern, "");
+	return text.replace(CITATION_MARKER_PATTERN, "");
 }

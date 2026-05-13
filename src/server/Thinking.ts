@@ -1,16 +1,13 @@
-
-export interface ThinkingConfig {
-	thinking: boolean;
-	search: boolean;
-}
+import type {ThinkingConfig} from "@/types/Thinking";
 
 export function resolveThinkingAndSearch(
 	request: Record<string, any>,
-	modelDefaults: ThinkingConfig
+	modelDefaults: ThinkingConfig,
 ): ThinkingConfig {
-	const resolved: ThinkingConfig = { ...modelDefaults };
+	const resolved: ThinkingConfig = {...modelDefaults};
 
-	const [thinkingOverride, hasThinkingOverride] = resolveThinkingOverride(request);
+	const [thinkingOverride, hasThinkingOverride] =
+		resolveThinkingOverride(request);
 	if (hasThinkingOverride) {
 		resolved.thinking = thinkingOverride;
 	}
@@ -37,7 +34,7 @@ function resolveThinkingOverride(req: Record<string, any>): [boolean, boolean] {
 
 	if (req.extra_body && typeof req.extra_body === "object") {
 		const eb = req.extra_body as Record<string, any>;
-		
+
 		const [et1, eok1] = parseThinkingSetting(eb.thinking);
 		if (eok1) return [et1, true];
 
@@ -68,11 +65,13 @@ function resolveSearchOverride(req: Record<string, any>): [boolean, boolean] {
 
 function parseThinkingSetting(raw: any): [boolean, boolean] {
 	if (typeof raw === "boolean") return [raw, true];
-	
+
 	if (typeof raw === "string") {
 		const s = raw.toLowerCase().trim();
-		if (["enabled", "enable", "on", "true"].includes(s)) return [true, true];
-		if (["disabled", "disable", "off", "false", "none"].includes(s)) return [false, true];
+		if (["enabled", "enable", "on", "true"].includes(s))
+			return [true, true];
+		if (["disabled", "disable", "off", "false", "none"].includes(s))
+			return [false, true];
 		return [false, false];
 	}
 
@@ -87,7 +86,7 @@ function parseThinkingSetting(raw: any): [boolean, boolean] {
 
 function parseReasoningSetting(raw: any): [boolean, boolean] {
 	if (typeof raw === "boolean") return [raw, true];
-	
+
 	if (typeof raw === "string") {
 		return parseReasoningEffort(raw);
 	}
@@ -103,8 +102,12 @@ function parseReasoningSetting(raw: any): [boolean, boolean] {
 }
 
 function parseReasoningEffort(raw: any): [boolean, boolean] {
-	const s = String(raw ?? "").toLowerCase().trim();
-	if (["minimal", "low", "medium", "high", "xhigh"].includes(s)) return [true, true];
-	if (["none", "disabled", "disable", "off", "false"].includes(s)) return [false, true];
+	const s = String(raw ?? "")
+		.toLowerCase()
+		.trim();
+	if (["minimal", "low", "medium", "high", "xhigh"].includes(s))
+		return [true, true];
+	if (["none", "disabled", "disable", "off", "false"].includes(s))
+		return [false, true];
 	return [false, false];
 }

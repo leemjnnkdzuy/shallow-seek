@@ -41,8 +41,8 @@ import {StreamTextAccumulator} from "@/lib/sanitize/StreamDedup";
 import {
 	shouldRetryEmptyOutput,
 	clonePayloadForEmptyOutputRetry,
-	EMPTY_OUTPUT_RETRY_MAX_ATTEMPTS,
 } from "@/server/EmptyRetry";
+import {EMPTY_OUTPUT_RETRY_MAX_ATTEMPTS} from "@/constants";
 import {parseToolCallsDetailed} from "@/lib/toolcall/ToolParser";
 import {normalizeParsedToolCallsForSchemas} from "@/lib/toolcall/ToolSchema";
 

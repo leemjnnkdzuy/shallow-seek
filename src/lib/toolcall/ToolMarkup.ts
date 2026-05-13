@@ -97,7 +97,10 @@ function extractRawTagValue(inner: string): string {
 	return decode(inner);
 }
 
-export function extractStandaloneCDATA(inner: string): {value: string; ok: boolean} {
+export function extractStandaloneCDATA(inner: string): {
+	value: string;
+	ok: boolean;
+} {
 	const trimmed = inner.trim();
 	const openLen = toolCDATAOpenLenAt(trimmed, 0);
 	if (openLen > 0) {

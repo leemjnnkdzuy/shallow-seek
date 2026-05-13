@@ -1,43 +1,38 @@
-import type { ModelInfo } from "@/types";
-
-const NO_THINKING_SUFFIX = "-nothinking";
-
-export const DEEPSEEK_BASE_MODELS: ModelInfo[] = [
-	{ id: "deepseek-v4-flash", object: "model", created: 1677610602, owned_by: "deepseek" },
-	{ id: "deepseek-v4-pro", object: "model", created: 1677610602, owned_by: "deepseek" },
-	{ id: "deepseek-v4-flash-search", object: "model", created: 1677610602, owned_by: "deepseek" },
-	{ id: "deepseek-v4-pro-search", object: "model", created: 1677610602, owned_by: "deepseek" },
-	{ id: "deepseek-v4-vision", object: "model", created: 1677610602, owned_by: "deepseek" },
-];
+import type {ModelInfo} from "@/types";
+import {NO_THINKING_SUFFIX, DEEPSEEK_BASE_MODELS} from "@/constants";
 
 function appendNoThinkingVariants(models: ModelInfo[]): ModelInfo[] {
 	const out: ModelInfo[] = [];
 	for (const model of models) {
 		out.push(model);
-		out.push({ ...model, id: model.id + NO_THINKING_SUFFIX });
+		out.push({...model, id: model.id + NO_THINKING_SUFFIX});
 	}
 	return out;
 }
 
 export const ALL_MODELS = appendNoThinkingVariants(DEEPSEEK_BASE_MODELS);
 
-export function getModelConfig(model: string): { thinking: boolean; search: boolean; ok: boolean } {
-	const { base, noThinking } = splitNoThinking(model);
+export function getModelConfig(model: string): {
+	thinking: boolean;
+	search: boolean;
+	ok: boolean;
+} {
+	const {base, noThinking} = splitNoThinking(model);
 	switch (base) {
 		case "deepseek-v4-flash":
 		case "deepseek-v4-pro":
 		case "deepseek-v4-vision":
-			return { thinking: !noThinking, search: false, ok: true };
+			return {thinking: !noThinking, search: false, ok: true};
 		case "deepseek-v4-flash-search":
 		case "deepseek-v4-pro-search":
-			return { thinking: !noThinking, search: true, ok: true };
+			return {thinking: !noThinking, search: true, ok: true};
 		default:
-			return { thinking: false, search: false, ok: false };
+			return {thinking: false, search: false, ok: false};
 	}
 }
 
 export function getModelType(model: string): string | null {
-	const { base } = splitNoThinking(model);
+	const {base} = splitNoThinking(model);
 	switch (base) {
 		case "deepseek-v4-flash":
 		case "deepseek-v4-flash-search":
@@ -71,9 +66,9 @@ export const DEFAULT_MODEL_ALIASES: Record<string, string> = {
 	"gpt-5-codex": "deepseek-v4-pro",
 	"codex-mini-latest": "deepseek-v4-pro",
 	// Reasoning
-	"o1": "deepseek-v4-pro",
+	o1: "deepseek-v4-pro",
 	"o1-mini": "deepseek-v4-pro",
-	"o3": "deepseek-v4-pro",
+	o3: "deepseek-v4-pro",
 	"o3-mini": "deepseek-v4-pro",
 	"o4-mini": "deepseek-v4-pro",
 	// Claude
@@ -99,14 +94,14 @@ export function resolveModel(
 	const model = requested.trim().toLowerCase();
 	if (!model) return null;
 
-	const aliases = { ...DEFAULT_MODEL_ALIASES, ...(customAliases || {}) };
+	const aliases = {...DEFAULT_MODEL_ALIASES, ...(customAliases || {})};
 
 	if (isSupportedModel(model)) return model;
 
 	const mapped = aliases[model];
 	if (mapped && isSupportedModel(mapped)) return mapped;
 
-	const { base, noThinking } = splitNoThinking(model);
+	const {base, noThinking} = splitNoThinking(model);
 	const baseMapped = aliases[base];
 	if (baseMapped && isSupportedModel(baseMapped)) {
 		return noThinking ? baseMapped + NO_THINKING_SUFFIX : baseMapped;
@@ -115,14 +110,14 @@ export function resolveModel(
 	return null;
 }
 
-function splitNoThinking(model: string): { base: string; noThinking: boolean } {
+function splitNoThinking(model: string): {base: string; noThinking: boolean} {
 	const m = model.trim().toLowerCase();
 	if (m.endsWith(NO_THINKING_SUFFIX)) {
-		return { base: m.slice(0, -NO_THINKING_SUFFIX.length), noThinking: true };
+		return {base: m.slice(0, -NO_THINKING_SUFFIX.length), noThinking: true};
 	}
-	return { base: m, noThinking: false };
+	return {base: m, noThinking: false};
 }
 
 export function openAIModelsResponse(): Record<string, any> {
-	return { object: "list", data: ALL_MODELS };
+	return {object: "list", data: ALL_MODELS};
 }
