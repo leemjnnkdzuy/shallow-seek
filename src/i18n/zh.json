@@ -7,6 +7,7 @@
     "settings": "设置",
     "back": "返回",
     "use": "使用",
+    "manage": "管理",
     "confirm_delete_account": "您确定要删除此帐户吗？此操作无法撤消。"
   },
   "sidebar": {

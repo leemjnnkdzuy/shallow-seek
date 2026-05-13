@@ -9,6 +9,9 @@ import {
 	ShieldAlert,
 	Copy,
 	Check,
+	Play,
+	Square,
+	RotateCw,
 } from "lucide-react";
 import {
 	Card,
@@ -22,7 +25,13 @@ import {useLanguage} from "@/hooks/useLanguage";
 import {useTitleBar} from "@/hooks/useTitleBar";
 
 import {Account} from "@/types";
-import {addAccount, deleteAccount, copyEndpoint} from "@/handlers";
+import {
+	addAccount,
+	deleteAccount,
+	copyEndpoint,
+	toggleServer,
+	restartServer,
+} from "@/handlers";
 
 const HomePage: React.FC = () => {
 	const {t} = useLanguage();
@@ -33,6 +42,7 @@ const HomePage: React.FC = () => {
 	const [accountPorts, setAccountPorts] = useState<Record<string, number>>(
 		{},
 	);
+	const [basePort, setBasePort] = useState(11434);
 	const [copiedId, setCopiedId] = useState<string | null>(null);
 
 	const handleCopyEndpoint = (id: string, port: number) => {
@@ -53,6 +63,17 @@ const HomePage: React.FC = () => {
 		}
 	};
 
+	const fetchSettings = async () => {
+		try {
+			const res = await window.electron?.db.getAllSettings();
+			if (res?.success && res.data?.port) {
+				setBasePort(Number(res.data.port));
+			}
+		} catch (error) {
+			console.error("Failed to fetch settings:", error);
+		}
+	};
+
 	const handleDeleteAccount = (id: string) => {
 		deleteAccount(id, t, {fetchAccounts});
 	};
@@ -67,8 +88,15 @@ const HomePage: React.FC = () => {
 			showBack: false,
 		});
 		fetchAccounts();
-		window.addEventListener("focus", fetchAccounts);
-		return () => window.removeEventListener("focus", fetchAccounts);
+		fetchSettings();
+
+		const handleFocus = () => {
+			fetchAccounts();
+			fetchSettings();
+		};
+
+		window.addEventListener("focus", handleFocus);
+		return () => window.removeEventListener("focus", handleFocus);
 	}, [t]);
 
 	useEffect(() => {
@@ -173,9 +201,9 @@ const HomePage: React.FC = () => {
 							</div>
 						</div>
 						<div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
-							{accounts.map((account) => {
+							{accounts.map((account, index) => {
 								const isAccountRunning = account.id in accountPorts;
-								const accountPort = accountPorts[account.id] ?? 11434;
+								const accountPortDisplay = isAccountRunning ? accountPorts[account.id] : "xxxxx";
 								return (
 									<Card
 										key={account.id}
@@ -219,7 +247,7 @@ const HomePage: React.FC = () => {
 												>
 													<span className='truncate opacity-80'>
 														http://localhost:
-														{accountPort}/v1
+														{accountPortDisplay}/v1
 													</span>
 													<Button
 														variant='ghost'
@@ -229,7 +257,7 @@ const HomePage: React.FC = () => {
 															e.stopPropagation();
 															handleCopyEndpoint(
 																account.id,
-																accountPort,
+																isAccountRunning ? (accountPorts[account.id] || basePort + index) : (basePort + index),
 															);
 														}}
 														title='Copy API Endpoint'
@@ -244,36 +272,83 @@ const HomePage: React.FC = () => {
 											</div>
 										</CardHeader>
 										<CardContent className='pt-0'>
-											<div className='flex flex-col gap-2 w-full mt-2 border-t pt-2.5 border-dashed border-border'>
+											<div className='flex flex-col gap-3 w-full mt-2 border-t pt-2.5 border-dashed border-border'>
 												<div className='flex items-center justify-between'>
-													<div className='flex items-center gap-1.5'>
-														<span className='relative flex h-2 w-2'>
-															{isAccountRunning ?
-																<>
-																	<span className='animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75'></span>
-																	<span className='relative inline-flex rounded-full h-2 w-2 bg-emerald-500'></span>
-																</>
-															:	<span className='relative inline-flex rounded-full h-2 w-2 bg-muted-foreground'></span>
-															}
-														</span>
-														<span
-															className={`text-[11px] font-bold ${isAccountRunning ? "text-emerald-500" : "text-muted-foreground"}`}
-														>
-															{isAccountRunning ?
-																"Running"
-															:	"Stopped"}
-														</span>
+													<div className='flex items-center gap-2'>
+														<div className='flex items-center gap-1.5 min-w-[75px]'>
+															<span className='relative flex h-2 w-2'>
+																{isAccountRunning ?
+																	<>
+																		<span className='animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75'></span>
+																		<span className='relative inline-flex rounded-full h-2 w-2 bg-emerald-500'></span>
+																	</>
+																:	<span className='relative inline-flex rounded-full h-2 w-2 bg-muted-foreground'></span>
+																}
+															</span>
+															<span
+																className={`text-[11px] font-bold ${isAccountRunning ? "text-emerald-500" : "text-muted-foreground"}`}
+															>
+																{isAccountRunning ?
+																	"Running"
+																:	"Stopped"}
+															</span>
+														</div>
+
+														{/* Server Controls */}
+														<div className='flex items-center gap-1'>
+															<Button
+																variant='ghost'
+																size='icon'
+																className={`h-7 w-7 rounded-md transition-all ${isAccountRunning ? "text-destructive hover:bg-destructive/10" : "text-emerald-500 hover:bg-emerald-500/10"}`}
+																onClick={(e) => {
+																	e.stopPropagation();
+																	toggleServer(
+																		account.id,
+																		isAccountRunning,
+																	);
+																}}
+																title={
+																	isAccountRunning ?
+																		"Stop Server"
+																	:	"Start Server"
+																}
+															>
+																{isAccountRunning ?
+																	<Square className='w-3.5 h-3.5 fill-current' />
+																:	<Play className='w-3.5 h-3.5 fill-current' />
+																}
+															</Button>
+															<Button
+																variant='ghost'
+																size='icon'
+																className='h-7 w-7 rounded-md text-muted-foreground hover:text-foreground transition-all disabled:opacity-30'
+																onClick={(e) => {
+																	e.stopPropagation();
+																	restartServer(
+																		account.id,
+																		isAccountRunning,
+																	);
+																}}
+																disabled={
+																	!isAccountRunning
+																}
+																title='Restart Server'
+															>
+																<RotateCw className='w-3.5 h-3.5' />
+															</Button>
+														</div>
 													</div>
+
 													<Button
 														variant='link'
-														className='h-auto p-0 text-primary text-xs font-bold flex items-center gap-1 group/btn'
+														className='h-auto p-0 text-primary text-xs font-bold flex items-center gap-1 group/btn hover:no-underline'
 														onClick={() =>
 															(window.location.hash = `/account/${account.id}`)
 														}
 													>
-														{t("common.use", {
+														{t("common.manage", {
 															defaultValue:
-																"Sử dụng",
+																"Quản lý",
 														})}{" "}
 														<ChevronRight className='w-3 h-3 transition-transform group-hover/btn:translate-x-1' />
 													</Button>
