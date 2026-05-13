@@ -43,9 +43,6 @@ export function buildRulesText(systemMessages: string[]): string {
 	return parts.join("\n") + "\n";
 }
 
-/**
- * Build the tools text that will be uploaded as SHALLOW_SEEK_TOOLS.md.
- */
 export function buildToolsText(tools: unknown[]): string {
 	const toolPrompt = buildToolPrompt(tools as any[]);
 	if (!toolPrompt) return "";
@@ -53,10 +50,6 @@ export function buildToolsText(tools: unknown[]): string {
 	return `# ${TOOLS_FILENAME}\nAvailable tool descriptions and parameter schemas for this request.\n\n${toolPrompt}\n`;
 }
 
-/**
- * Upload rules and tools as reference files, returning their file IDs.
- * Results are cached per-token; re-uploads only when content changes.
- */
 export async function uploadRuleFiles(
 	token: string,
 	systemMessages: string[],
@@ -73,13 +66,12 @@ export async function uploadRuleFiles(
 	const rulesHash = simpleHash(rulesText);
 	const toolsHash = simpleHash(toolsText);
 
-	// Check cache
 	const cached = fileCache.get(token);
 	if (
 		cached &&
 		cached.rulesHash === rulesHash &&
 		cached.toolsHash === toolsHash &&
-		Date.now() - cached.createdAt < 25 * 60 * 1000 // 25 min TTL
+		Date.now() - cached.createdAt < 25 * 60 * 1000
 	) {
 		const refFileIds = [cached.rulesFileId];
 		if (cached.toolsFileId) refFileIds.push(cached.toolsFileId);
@@ -90,16 +82,13 @@ export async function uploadRuleFiles(
 		};
 	}
 
-	// Upload rules file and wait for it to be processed
 	const rulesFileId = await uploadTextFile(token, RULES_FILENAME, rulesText, port);
 
-	// Upload tools file (if any) and wait for it to be processed
 	let toolsFileId: string | null = null;
 	if (toolsText.trim()) {
 		toolsFileId = await uploadTextFile(token, TOOLS_FILENAME, toolsText, port);
 	}
 
-	// Cache the results
 	fileCache.set(token, {
 		rulesFileId,
 		toolsFileId,
@@ -113,24 +102,14 @@ export async function uploadRuleFiles(
 	return {rulesFileId, toolsFileId, refFileIds};
 }
 
-/**
- * Clear cached rule files for a token (e.g. on session reset).
- */
 export function clearRuleFileCache(token: string): void {
 	fileCache.delete(token);
 }
 
-/**
- * Clear all cached rule files.
- */
 export function clearAllRuleFileCache(): void {
 	fileCache.clear();
 }
 
-/**
- * Build the live prompt that tells the model to read the attached files.
- * This replaces the old inlined system instructions.
- */
 export function buildLivePrompt(
 	userMessage: string,
 	hasToolsFile: boolean,
@@ -143,8 +122,6 @@ export function buildLivePrompt(
 
 	return `${instruction}\n\n${userMessage}`;
 }
-
-// ── Internal helpers ──
 
 async function uploadTextFile(
 	token: string,
@@ -224,10 +201,6 @@ async function uploadTextFile(
 	return fileId;
 }
 
-/**
- * Poll DeepSeek's fetch_files endpoint until file status becomes "processed".
- * Mirrors ds2api's waitForUploadedFile in client_file_status.go.
- */
 async function waitForFileReady(
 	token: string,
 	fileId: string,
@@ -246,9 +219,7 @@ async function waitForFileReady(
 				);
 				return;
 			}
-			// Still processing, continue polling
 		} catch (err) {
-			// Polling error, continue trying
 			logWithPort(
 				port,
 				`[rule-uploader] poll error for ${filename} (attempt ${attempt + 1}): ${err instanceof Error ? err.message : String(err)}`,
@@ -256,17 +227,12 @@ async function waitForFileReady(
 		}
 	}
 
-	// If we exhausted all attempts, warn but don't fail —
-	// the file might still become ready by the time DeepSeek processes the completion
 	logWithPort(
 		port,
 		`[rule-uploader] ${filename} (${fileId.slice(0, 12)}...) did not reach 'processed' after ${FILE_READY_POLL_ATTEMPTS} polls, proceeding anyway`,
 	);
 }
 
-/**
- * Fetch the current status of an uploaded file from DeepSeek.
- */
 async function fetchFileStatus(token: string, fileId: string): Promise<string> {
 	const url = `${DEEPSEEK_FETCH_FILES_URL}?file_ids=${encodeURIComponent(fileId)}`;
 	const response = await axios.get(url, {
@@ -278,13 +244,9 @@ async function fetchFileStatus(token: string, fileId: string): Promise<string> {
 		throw new Error(`fetch_files failed: ${response.status}`);
 	}
 
-	// Walk the response to find matching file and its status
 	return findFileStatusInResponse(response.data, fileId);
 }
 
-/**
- * Recursively walk the response to find the file's status.
- */
 function findFileStatusInResponse(data: any, targetId: string): string {
 	if (!data || typeof data !== "object") return "";
 
@@ -296,13 +258,11 @@ function findFileStatusInResponse(data: any, targetId: string): string {
 		return "";
 	}
 
-	// Check if this is the target file object
 	const id = data.id || data.file_id || "";
 	if (typeof id === "string" && id.trim() === targetId) {
 		return (data.status || data.file_status || "").toString().trim();
 	}
 
-	// Recurse into nested objects
 	for (const key of Object.keys(data)) {
 		const val = data[key];
 		if (val && typeof val === "object") {
