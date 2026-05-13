@@ -85,7 +85,19 @@ function findAvailablePort(basePort: number): number {
 export function registerServerIpcs() {
 	// Wire server logs to a global log handler (for general server library messages)
 	setLogCallback((msg) => {
-		// Broadcast to all windows as a general log
+		// Try to extract port like [13111]
+		const portMatch = msg.match(/\[(\d+)\]/);
+		if (portMatch) {
+			const port = parseInt(portMatch[1], 10);
+			const running = apiServer.getAllRunningAccounts();
+			const accountId = Object.keys(running).find((id) => running[id] === port);
+			if (accountId) {
+				captureLog(accountId, msg);
+				return;
+			}
+		}
+
+		// Fallback to general broadcast if no port or no matching account
 		for (const win of BrowserWindow.getAllWindows()) {
 			try {
 				win.webContents.send("server-log", msg);

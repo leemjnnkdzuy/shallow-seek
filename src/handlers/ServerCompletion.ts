@@ -136,6 +136,7 @@ export async function handleChatCompletions(
 				token,
 				systemMessages,
 				tools,
+				state.port,
 			);
 			refFileIds = ruleFiles.refFileIds;
 

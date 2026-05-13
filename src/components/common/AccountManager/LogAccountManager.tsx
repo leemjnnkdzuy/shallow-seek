@@ -103,6 +103,39 @@ export default function LogAccountManager({ logs, onClear }: LogAccountManagerPr
 					})}
 				</span>
 			);
+		} else if (line.includes("[rule-uploader]")) {
+			const parts = line.split("[rule-uploader]");
+			element = (
+				<span>
+					{parts[0]}
+					<span className="text-blue-600 dark:text-blue-400 font-bold">
+						[rule-uploader]
+					</span>
+					{parts.slice(1).map((part, idx) => {
+						if (
+							part.includes("ready") ||
+							part.includes("success")
+						) {
+							const readyParts = part.split("ready");
+							return (
+								<span key={idx}>
+									{readyParts.map((s, i) => (
+										<span key={i}>
+											{s}
+											{i < readyParts.length - 1 && (
+												<span className="text-emerald-500 font-bold">
+													ready
+												</span>
+											)}
+										</span>
+									))}
+								</span>
+							);
+						}
+						return part;
+					})}
+				</span>
+			);
 		}
 
 		return element;

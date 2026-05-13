@@ -19462,6 +19462,83 @@ async function deleteSession(token, sessionId) {
     console.warn("[shallowseek-api] delete_session error", err.message);
   }
 }
+let _logCallback = null;
+function setLogCallback$1(cb) {
+  _logCallback = cb;
+}
+function serverLog(msg) {
+  console.log(msg);
+  if (_logCallback) _logCallback(msg);
+}
+function isRecord(value) {
+  return typeof value === "object" && value !== null;
+}
+function getErrorMessage(err) {
+  if (err instanceof Error) return err.message;
+  if (typeof err === "string") return err;
+  if (isRecord(err) && typeof err.message === "string") return err.message;
+  return "Unknown error";
+}
+function logWithPort(port, msg) {
+  if (msg.includes("[shallowseek-api]")) {
+    serverLog(
+      msg.replace("[shallowseek-api]", `[shallowseek-api] [${port}]`)
+    );
+    return;
+  }
+  if (msg.includes("[api]")) {
+    serverLog(msg.replace("[api]", `[api] [${port}]`));
+    return;
+  }
+  serverLog(`[${port}] ${msg}`);
+}
+function getNextToken(state2) {
+  if (state2.accountTokens.size === 0) return null;
+  const entries = Array.from(state2.accountTokens.entries());
+  const [, token] = entries[state2.accountIndex % entries.length];
+  state2.accountIndex = (state2.accountIndex + 1) % entries.length;
+  return token;
+}
+function readBody(req) {
+  return new Promise((resolve2, reject) => {
+    let body = "";
+    req.on("data", (chunk) => {
+      body += chunk.toString();
+    });
+    req.on("end", () => resolve2(body));
+    req.on("error", reject);
+  });
+}
+function streamToString(stream2) {
+  return new Promise((resolve2, reject) => {
+    let data = "";
+    stream2.on("data", (chunk) => {
+      data += chunk.toString();
+    });
+    stream2.on("end", () => resolve2(data));
+    stream2.on("error", reject);
+  });
+}
+function jsonResponse(res, status, data) {
+  res.writeHead(status, { "Content-Type": "application/json" });
+  res.end(JSON.stringify(data));
+}
+function setCORS(res, req) {
+  const origin2 = req.headers["origin"] || "*";
+  res.setHeader("Access-Control-Allow-Origin", origin2);
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "GET, POST, OPTIONS, PUT, DELETE"
+  );
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization, X-API-Key"
+  );
+  res.setHeader("Access-Control-Max-Age", "600");
+}
+function estimateTokens(text) {
+  return Math.ceil(text.length / 4);
+}
 function buildToolPrompt(tools) {
   if (!tools || tools.length === 0) return "";
   const toolSchemas = [];
@@ -19616,7 +19693,7 @@ Available tool descriptions and parameter schemas for this request.
 ${toolPrompt}
 `;
 }
-async function uploadRuleFiles(token, systemMessages, tools) {
+async function uploadRuleFiles(token, systemMessages, tools, port) {
   const rulesText = buildRulesText(systemMessages);
   const toolsText = buildToolsText(tools);
   const rulesHash = simpleHash(rulesText);
@@ -19631,10 +19708,10 @@ async function uploadRuleFiles(token, systemMessages, tools) {
       refFileIds: refFileIds2
     };
   }
-  const rulesFileId = await uploadTextFile(token, RULES_FILENAME, rulesText);
+  const rulesFileId = await uploadTextFile(token, RULES_FILENAME, rulesText, port);
   let toolsFileId = null;
   if (toolsText.trim()) {
-    toolsFileId = await uploadTextFile(token, TOOLS_FILENAME, toolsText);
+    toolsFileId = await uploadTextFile(token, TOOLS_FILENAME, toolsText, port);
   }
   fileCache.set(token, {
     rulesFileId,
@@ -19662,7 +19739,7 @@ function buildLivePrompt(userMessage, hasToolsFile) {
 
 ${userMessage}`;
 }
-async function uploadTextFile(token, filename, content) {
+async function uploadTextFile(token, filename, content, port) {
   var _a, _b, _c, _d, _e;
   const powResponse = await axios.post(
     DEEPSEEK_CREATE_POW_URL,
@@ -19709,36 +19786,40 @@ async function uploadTextFile(token, filename, content) {
   }
   const initialStatus = extractFileStatus(response.data);
   if (!isReadyFileStatus(initialStatus)) {
-    console.log(
+    logWithPort(
+      port,
       `[rule-uploader] Uploaded ${filename} → ${fileId.slice(0, 12)}... (status: ${initialStatus}, waiting for ready...)`
     );
-    await waitForFileReady(token, fileId, filename);
+    await waitForFileReady(token, fileId, filename, port);
   } else {
-    console.log(
+    logWithPort(
+      port,
       `[rule-uploader] Uploaded ${filename} → ${fileId.slice(0, 12)}... (ready)`
     );
   }
   return fileId;
 }
-async function waitForFileReady(token, fileId, filename) {
+async function waitForFileReady(token, fileId, filename, port) {
   for (let attempt = 0; attempt < FILE_READY_POLL_ATTEMPTS; attempt++) {
     await sleep(FILE_READY_POLL_INTERVAL_MS);
     try {
       const status = await fetchFileStatus(token, fileId);
       if (isReadyFileStatus(status)) {
-        console.log(
+        logWithPort(
+          port,
           `[rule-uploader] ${filename} ready after ${attempt + 1} poll(s)`
         );
         return;
       }
     } catch (err) {
-      console.warn(
-        `[rule-uploader] poll error for ${filename} (attempt ${attempt + 1}):`,
-        err instanceof Error ? err.message : err
+      logWithPort(
+        port,
+        `[rule-uploader] poll error for ${filename} (attempt ${attempt + 1}): ${err instanceof Error ? err.message : String(err)}`
       );
     }
   }
-  console.warn(
+  logWithPort(
+    port,
     `[rule-uploader] ${filename} (${fileId.slice(0, 12)}...) did not reach 'processed' after ${FILE_READY_POLL_ATTEMPTS} polls, proceeding anyway`
   );
 }
@@ -20178,83 +20259,6 @@ function splitNoThinking(model) {
 }
 function openAIModelsResponse() {
   return { object: "list", data: ALL_MODELS };
-}
-let _logCallback = null;
-function setLogCallback$1(cb) {
-  _logCallback = cb;
-}
-function serverLog(msg) {
-  console.log(msg);
-  if (_logCallback) _logCallback(msg);
-}
-function isRecord(value) {
-  return typeof value === "object" && value !== null;
-}
-function getErrorMessage(err) {
-  if (err instanceof Error) return err.message;
-  if (typeof err === "string") return err;
-  if (isRecord(err) && typeof err.message === "string") return err.message;
-  return "Unknown error";
-}
-function logWithPort(port, msg) {
-  if (msg.includes("[shallowseek-api]")) {
-    serverLog(
-      msg.replace("[shallowseek-api]", `[shallowseek-api] [${port}]`)
-    );
-    return;
-  }
-  if (msg.includes("[api]")) {
-    serverLog(msg.replace("[api]", `[api] [${port}]`));
-    return;
-  }
-  serverLog(`[${port}] ${msg}`);
-}
-function getNextToken(state2) {
-  if (state2.accountTokens.size === 0) return null;
-  const entries = Array.from(state2.accountTokens.entries());
-  const [, token] = entries[state2.accountIndex % entries.length];
-  state2.accountIndex = (state2.accountIndex + 1) % entries.length;
-  return token;
-}
-function readBody(req) {
-  return new Promise((resolve2, reject) => {
-    let body = "";
-    req.on("data", (chunk) => {
-      body += chunk.toString();
-    });
-    req.on("end", () => resolve2(body));
-    req.on("error", reject);
-  });
-}
-function streamToString(stream2) {
-  return new Promise((resolve2, reject) => {
-    let data = "";
-    stream2.on("data", (chunk) => {
-      data += chunk.toString();
-    });
-    stream2.on("end", () => resolve2(data));
-    stream2.on("error", reject);
-  });
-}
-function jsonResponse(res, status, data) {
-  res.writeHead(status, { "Content-Type": "application/json" });
-  res.end(JSON.stringify(data));
-}
-function setCORS(res, req) {
-  const origin2 = req.headers["origin"] || "*";
-  res.setHeader("Access-Control-Allow-Origin", origin2);
-  res.setHeader(
-    "Access-Control-Allow-Methods",
-    "GET, POST, OPTIONS, PUT, DELETE"
-  );
-  res.setHeader(
-    "Access-Control-Allow-Headers",
-    "Content-Type, Authorization, X-API-Key"
-  );
-  res.setHeader("Access-Control-Max-Age", "600");
-}
-function estimateTokens(text) {
-  return Math.ceil(text.length / 4);
 }
 const SKIP_CONTAINS_PATTERNS = [
   "quasi_status",
@@ -20856,7 +20860,8 @@ async function handleChatCompletions(req, res, state2) {
       const ruleFiles = await uploadRuleFiles(
         token,
         systemMessages,
-        tools
+        tools,
+        state2.port
       );
       refFileIds = ruleFiles.refFileIds;
       const contextSummary = state2.sessionManager.getContextSummary(token);
@@ -21557,6 +21562,16 @@ function findAvailablePort(basePort) {
 }
 function registerServerIpcs() {
   setLogCallback((msg) => {
+    const portMatch = msg.match(/\[(\d+)\]/);
+    if (portMatch) {
+      const port = parseInt(portMatch[1], 10);
+      const running = getAllRunningAccounts();
+      const accountId = Object.keys(running).find((id) => running[id] === port);
+      if (accountId) {
+        captureLog(accountId, msg);
+        return;
+      }
+    }
     for (const win2 of BrowserWindow.getAllWindows()) {
       try {
         win2.webContents.send("server-log", msg);

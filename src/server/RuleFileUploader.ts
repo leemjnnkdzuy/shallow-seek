@@ -13,6 +13,7 @@ import {
 	FILE_READY_POLL_ATTEMPTS,
 	FILE_READY_POLL_INTERVAL_MS,
 } from "@/constants";
+import {logWithPort} from "@/handlers/ServerHelpers";
 import {solveAndBuildHeader} from "@/ipcs/Pow";
 import {buildToolPrompt} from "@/server/ToolSieve";
 import type {CachedRuleFiles} from "@/types/RuleUploader";
@@ -60,6 +61,7 @@ export async function uploadRuleFiles(
 	token: string,
 	systemMessages: string[],
 	tools: unknown[],
+	port: number,
 ): Promise<{
 	rulesFileId: string;
 	toolsFileId: string | null;
@@ -89,12 +91,12 @@ export async function uploadRuleFiles(
 	}
 
 	// Upload rules file and wait for it to be processed
-	const rulesFileId = await uploadTextFile(token, RULES_FILENAME, rulesText);
+	const rulesFileId = await uploadTextFile(token, RULES_FILENAME, rulesText, port);
 
 	// Upload tools file (if any) and wait for it to be processed
 	let toolsFileId: string | null = null;
 	if (toolsText.trim()) {
-		toolsFileId = await uploadTextFile(token, TOOLS_FILENAME, toolsText);
+		toolsFileId = await uploadTextFile(token, TOOLS_FILENAME, toolsText, port);
 	}
 
 	// Cache the results
@@ -148,6 +150,7 @@ async function uploadTextFile(
 	token: string,
 	filename: string,
 	content: string,
+	port: number,
 ): Promise<string> {
 	// 1. Get PoW challenge for upload endpoint
 	const powResponse = await axios.post(
@@ -206,12 +209,14 @@ async function uploadTextFile(
 	// 4. Extract initial status and wait for "processed" if needed
 	const initialStatus = extractFileStatus(response.data);
 	if (!isReadyFileStatus(initialStatus)) {
-		console.log(
+		logWithPort(
+			port,
 			`[rule-uploader] Uploaded ${filename} → ${fileId.slice(0, 12)}... (status: ${initialStatus}, waiting for ready...)`,
 		);
-		await waitForFileReady(token, fileId, filename);
+		await waitForFileReady(token, fileId, filename, port);
 	} else {
-		console.log(
+		logWithPort(
+			port,
 			`[rule-uploader] Uploaded ${filename} → ${fileId.slice(0, 12)}... (ready)`,
 		);
 	}
@@ -227,6 +232,7 @@ async function waitForFileReady(
 	token: string,
 	fileId: string,
 	filename: string,
+	port: number,
 ): Promise<void> {
 	for (let attempt = 0; attempt < FILE_READY_POLL_ATTEMPTS; attempt++) {
 		await sleep(FILE_READY_POLL_INTERVAL_MS);
@@ -234,7 +240,8 @@ async function waitForFileReady(
 		try {
 			const status = await fetchFileStatus(token, fileId);
 			if (isReadyFileStatus(status)) {
-				console.log(
+				logWithPort(
+					port,
 					`[rule-uploader] ${filename} ready after ${attempt + 1} poll(s)`,
 				);
 				return;
@@ -242,16 +249,17 @@ async function waitForFileReady(
 			// Still processing, continue polling
 		} catch (err) {
 			// Polling error, continue trying
-			console.warn(
-				`[rule-uploader] poll error for ${filename} (attempt ${attempt + 1}):`,
-				err instanceof Error ? err.message : err,
+			logWithPort(
+				port,
+				`[rule-uploader] poll error for ${filename} (attempt ${attempt + 1}): ${err instanceof Error ? err.message : String(err)}`,
 			);
 		}
 	}
 
 	// If we exhausted all attempts, warn but don't fail —
 	// the file might still become ready by the time DeepSeek processes the completion
-	console.warn(
+	logWithPort(
+		port,
 		`[rule-uploader] ${filename} (${fileId.slice(0, 12)}...) did not reach 'processed' after ${FILE_READY_POLL_ATTEMPTS} polls, proceeding anyway`,
 	);
 }
