@@ -46,6 +46,17 @@ export function getNextToken(state: ServerInstanceState): string | null {
 	return token;
 }
 
+export function getAlternateToken(
+	state: ServerInstanceState,
+	currentToken: string,
+): string | null {
+	if (state.accountTokens.size <= 1) return null;
+	for (const [, token] of state.accountTokens) {
+		if (token !== currentToken) return token;
+	}
+	return null;
+}
+
 export function readBody(req: http.IncomingMessage): Promise<string> {
 	return new Promise((resolve, reject) => {
 		let body = "";
@@ -68,7 +79,11 @@ export function streamToString(stream: Readable): Promise<string> {
 	});
 }
 
-export function jsonResponse(res: http.ServerResponse, status: number, data: unknown) {
+export function jsonResponse(
+	res: http.ServerResponse,
+	status: number,
+	data: unknown,
+) {
 	res.writeHead(status, {"Content-Type": "application/json"});
 	res.end(JSON.stringify(data));
 }
@@ -88,5 +103,18 @@ export function setCORS(res: http.ServerResponse, req: http.IncomingMessage) {
 }
 
 export function estimateTokens(text: string): number {
-	return Math.ceil(text.length / 4);
+	if (!text) return 0;
+	let asciiChars = 0;
+	let nonASCIIChars = 0;
+
+	for (let i = 0; i < text.length; i++) {
+		if (text.charCodeAt(i) < 128) {
+			asciiChars++;
+		} else {
+			nonASCIIChars++;
+		}
+	}
+
+	const n = Math.floor(asciiChars / 4) + Math.floor((nonASCIIChars * 10 + 7) / 13);
+	return Math.max(1, n);
 }

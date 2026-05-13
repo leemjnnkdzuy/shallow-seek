@@ -1,14 +1,15 @@
 import crypto from "node:crypto";
 import {
-	TOOL_CALL_INSTRUCTIONS,
-	READ_TOOL_CACHE_GUARD,
-	buildCorrectToolExamples,
+	buildToolCallInstructions,
 	hasReadLikeTool,
-} from "@/constants";
+} from "@/lib/toolcall/ToolPrompt";
+import {normalizeParsedToolCallsForSchemas} from "@/lib/toolcall/ToolSchema";
+import {READ_TOOL_CACHE_GUARD} from "@/constants";
 import {
 	StreamToolSieve as NewSieve,
 	parseToolCalls as newParseToolCalls,
 } from "@/lib/toolsieve";
+import {ParsedToolCall} from "@/types/ToolCall";
 
 export function buildToolPrompt(tools: any[]): string {
 	if (!tools || tools.length === 0) return "";
@@ -32,12 +33,7 @@ export function buildToolPrompt(tools: any[]): string {
 	const descriptions =
 		"You have access to these tools:\n\n" + toolSchemas.join("\n\n");
 
-	let fullPrompt = descriptions + "\n\n" + TOOL_CALL_INSTRUCTIONS;
-
-	const examples = buildCorrectToolExamples(names);
-	if (examples) {
-		fullPrompt += "\n\n" + examples;
-	}
+	let fullPrompt = descriptions + "\n\n" + buildToolCallInstructions(names);
 
 	if (hasReadLikeTool(names)) {
 		fullPrompt += "\n\n" + READ_TOOL_CACHE_GUARD;
@@ -46,23 +42,34 @@ export function buildToolPrompt(tools: any[]): string {
 	return fullPrompt;
 }
 
-export function parseDSMLToolCalls(xmlContent: string): any[] {
+export function parseDSMLToolCalls(xmlContent: string, tools?: any[]): any[] {
 	const result = newParseToolCalls(xmlContent);
-	return result.calls.map((c) => ({
+	let calls = result.calls.map((c) => ({
+		Name: c.name,
+		Input: c.input,
+	}));
+
+	if (tools && tools.length > 0) {
+		calls = normalizeParsedToolCallsForSchemas(calls, tools);
+	}
+
+	return calls.map((c) => ({
 		id: `call_${crypto.randomUUID().replace(/-/g, "")}`,
 		type: "function",
 		function: {
-			name: c.name,
-			arguments: JSON.stringify(c.input),
+			name: c.Name,
+			arguments: JSON.stringify(c.Input),
 		},
 	}));
 }
 
 export class StreamToolSieve {
 	private sieve: NewSieve;
+	private tools?: any[];
 
-	constructor() {
+	constructor(tools?: any[]) {
 		this.sieve = new NewSieve();
+		this.tools = tools;
 	}
 
 	public processChunk(text: string): {
@@ -77,12 +84,24 @@ export class StreamToolSieve {
 			if (ev.type === "text" && ev.text) {
 				outputText += ev.text;
 			} else if (ev.type === "tool_calls" && ev.calls) {
-				const formatted = ev.calls.map((c) => ({
+				let callsToNormalize: ParsedToolCall[] = ev.calls.map((c) => ({
+					Name: c.name,
+					Input: c.input,
+				}));
+
+				if (this.tools && this.tools.length > 0) {
+					callsToNormalize = normalizeParsedToolCallsForSchemas(
+						callsToNormalize,
+						this.tools,
+					);
+				}
+
+				const formatted = callsToNormalize.map((c) => ({
 					id: `call_${crypto.randomUUID().replace(/-/g, "")}`,
 					type: "function",
 					function: {
-						name: c.name,
-						arguments: JSON.stringify(c.input),
+						name: c.Name,
+						arguments: JSON.stringify(c.Input),
 					},
 				}));
 				toolCalls = [...(toolCalls || []), ...formatted];
@@ -101,12 +120,24 @@ export class StreamToolSieve {
 			if (ev.type === "text" && ev.text) {
 				outputText += ev.text;
 			} else if (ev.type === "tool_calls" && ev.calls) {
-				const formatted = ev.calls.map((c) => ({
+				let callsToNormalize: ParsedToolCall[] = ev.calls.map((c) => ({
+					Name: c.name,
+					Input: c.input,
+				}));
+
+				if (this.tools && this.tools.length > 0) {
+					callsToNormalize = normalizeParsedToolCallsForSchemas(
+						callsToNormalize,
+						this.tools,
+					);
+				}
+
+				const formatted = callsToNormalize.map((c) => ({
 					id: `call_${crypto.randomUUID().replace(/-/g, "")}`,
 					type: "function",
 					function: {
-						name: c.name,
-						arguments: JSON.stringify(c.input),
+						name: c.Name,
+						arguments: JSON.stringify(c.Input),
 					},
 				}));
 				toolCalls = [...(toolCalls || []), ...formatted];

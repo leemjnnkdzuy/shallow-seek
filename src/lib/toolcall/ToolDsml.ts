@@ -9,9 +9,6 @@ import {
 	containsToolMarkupSyntaxOutsideIgnored,
 } from "./ToolScanner";
 
-/**
- * Port of toolcalls_dsml.go
- */
 export function normalizeDSMLToolCallMarkup(text: string): {
 	text: string;
 	ok: boolean;
@@ -28,9 +25,6 @@ export function normalizeDSMLToolCallMarkup(text: string): {
 	return { text: rewriteDSMLToolMarkupOutsideIgnored(canonicalized), ok: true };
 }
 
-/**
- * rewriteDSMLToolMarkupOutsideIgnored rewrites DSML-style markup to canonical XML.
- */
 function rewriteDSMLToolMarkupOutsideIgnored(text: string): string {
 	if (!text) return "";
 	let out = "";
@@ -47,7 +41,6 @@ function rewriteDSMLToolMarkupOutsideIgnored(text: string): string {
 			continue;
 		}
 
-		// markdownCodeSpanEnd check
 		const codeEnd = markdownCodeSpanEndAt(text, i);
 		if (codeEnd !== -1) {
 			out += text.slice(i, codeEnd);

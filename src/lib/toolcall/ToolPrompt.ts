@@ -320,3 +320,11 @@ function promptCDATA(text: string): string {
 	}
 	return "<![CDATA[" + text + "]]>";
 }
+
+export function hasReadLikeTool(names: string[]): boolean {
+	for (const name of names) {
+		const normalized = name.toLowerCase().replace(/[^a-z0-9]/g, "");
+		if (normalized === "read" || normalized === "readfile") return true;
+	}
+	return false;
+}
