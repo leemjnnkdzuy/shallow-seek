@@ -182,38 +182,65 @@ const HomePage: React.FC = () => {
 										className='group hover:border-primary transition-all duration-300 shadow-sm hover:shadow-xl hover:shadow-primary/5 rounded-2xl overflow-hidden'
 									>
 										<CardHeader className='pb-3'>
-											<div className='flex items-start justify-between gap-2 w-full min-w-0'>
-												<div className='flex items-center gap-4 min-w-0 flex-1'>
+											<div className='flex flex-col gap-3 w-full'>
+												{/* Top row: Email and Delete button */}
+												<div className='flex items-start justify-between gap-2 w-full'>
 													<div className='flex flex-col min-w-0 flex-1'>
 														<CardTitle
 															className='text-base font-bold truncate'
-															title={
-																account.email
-															}
+															title={account.email}
 														>
 															{account.email}
 														</CardTitle>
 														<CardDescription className='text-[10px] uppercase font-bold tracking-wider mt-1 opacity-60'>
-															ID:{" "}
-															{account.id.slice(
-																0,
-																8,
-															)}
+															ID: {account.id.slice(0, 8)}
 														</CardDescription>
 													</div>
+													<Button
+														variant='ghost'
+														size='icon'
+														className='h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all duration-200 rounded-lg shrink-0'
+														onClick={() =>
+															handleDeleteAccount(
+																account.id,
+															)
+														}
+													>
+														<Trash2 className='w-4 h-4' />
+													</Button>
 												</div>
-												<Button
-													variant='ghost'
-													size='icon'
-													className='h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-all duration-200 rounded-lg'
-													onClick={() =>
-														handleDeleteAccount(
-															account.id,
-														)
+
+												{/* Bottom row: URL spanning full width */}
+												<div
+													className='flex items-center justify-between bg-muted/40 rounded-lg px-2.5 py-1.5 text-[10px] font-mono text-muted-foreground border border-border/30 w-full group/url hover:border-primary/30 transition-all cursor-text'
+													onClick={(e) =>
+														e.stopPropagation()
 													}
 												>
-													<Trash2 className='w-4 h-4' />
-												</Button>
+													<span className='truncate opacity-80'>
+														http://localhost:
+														{accountPort}/v1
+													</span>
+													<Button
+														variant='ghost'
+														size='icon'
+														className='h-4 w-4 ml-2 text-muted-foreground hover:text-foreground rounded-md transition-all shrink-0'
+														onClick={(e) => {
+															e.stopPropagation();
+															handleCopyEndpoint(
+																account.id,
+																accountPort,
+															);
+														}}
+														title='Copy API Endpoint'
+													>
+														{copiedId ===
+														account.id ?
+															<Check className='w-2.5 h-2.5 text-emerald-500' />
+														:	<Copy className='w-2.5 h-2.5' />
+														}
+													</Button>
+												</div>
 											</div>
 										</CardHeader>
 										<CardContent className='pt-0'>
@@ -251,34 +278,6 @@ const HomePage: React.FC = () => {
 														<ChevronRight className='w-3 h-3 transition-transform group-hover/btn:translate-x-1' />
 													</Button>
 												</div>
-												{isAccountRunning && (
-													<div className='flex items-center justify-between bg-muted/50 rounded-lg px-2.5 py-1.5 text-[11px] font-mono text-muted-foreground border border-border/40 mt-1 shadow-inner'>
-														<span className='truncate max-w-[180px]'>
-															http://localhost:
-															{accountPort}/v1
-														</span>
-														<Button
-															variant='ghost'
-															size='icon'
-															className='h-5 w-5 text-muted-foreground hover:text-foreground rounded-md hover:bg-background transition-all p-0 flex items-center justify-center shrink-0'
-															onClick={() =>
-																handleCopyEndpoint(
-																	account.id,
-																	accountPort,
-																)
-															}
-															title='Copy API Endpoint'
-														>
-															{(
-																copiedId ===
-																account.id
-															) ?
-																<Check className='w-3 h-3 text-emerald-500' />
-															:	<Copy className='w-3 h-3' />
-															}
-														</Button>
-													</div>
-												)}
 											</div>
 										</CardContent>
 									</Card>
