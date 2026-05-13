@@ -111,7 +111,7 @@ const HomePage: React.FC = () => {
 
 	useEffect(() => {
 		setConfig({ 
-			title: t('sidebar.home'),
+			title: "ShallowSeek",
 			showBack: false 
 		});
 		fetchAccounts();

@@ -1,4 +1,4 @@
-import {ipcMain, BrowserWindow, session, app} from "electron";
+import {ipcMain, BrowserWindow, BrowserView, session, app} from "electron";
 import path from "node:path";
 import axios from "axios";
 import fs from "node:fs";
@@ -116,6 +116,24 @@ export function registerAccountIpcs(
 					width: 800,
 					height: 600,
 					show: true,
+					frame: false,
+					icon: path.join(process.env.VITE_PUBLIC || "", "logo.png"),
+					webPreferences: {
+						nodeIntegration: false,
+						contextIsolation: true,
+						preload: path.join(__dirname, "preload.mjs"),
+					},
+				});
+
+				if (VITE_DEV_SERVER_URL) {
+					win.loadURL(`${VITE_DEV_SERVER_URL}#/deepseek-browser`);
+				} else {
+					win.loadFile(path.join(RENDERER_DIST, "index.html"), {
+						hash: "/deepseek-browser",
+					});
+				}
+
+				const view = new BrowserView({
 					webPreferences: {
 						session: ses,
 						nodeIntegration: false,
@@ -124,11 +142,21 @@ export function registerAccountIpcs(
 						preload: path.join(__dirname, "preload.mjs"),
 					},
 				});
+				win.setBrowserView(view);
+
+				const [width, height] = win.getContentSize();
+				view.setBounds({ x: 0, y: 40, width, height: height - 40 });
+				view.setAutoResize({ width: true, height: true });
+
+				win.on("resize", () => {
+					const [w, h] = win.getContentSize();
+					view.setBounds({ x: 0, y: 40, width: w, height: h - 40 });
+				});
 
 				const standardUA =
 					"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
 				ses.setUserAgent(standardUA);
-				win.webContents.setUserAgent(standardUA);
+				view.webContents.setUserAgent(standardUA);
 
 				let platformToken: string | null = null;
 				let chatToken: string | null = null;
@@ -238,16 +266,16 @@ export function registerAccountIpcs(
 					},
 				);
 
-				win.webContents.on("did-finish-load", async () => {
-					const url = win.webContents.getURL();
+				view.webContents.on("did-finish-load", async () => {
+					const url = view.webContents.getURL();
 					if (url.includes("platform.deepseek.com")) {
 						// 1. Inject credential tracker
-						await win.webContents
+						await view.webContents
 							.executeJavaScript(credentialTrackerScript)
 							.catch(() => {});
 
 						// 2. Inject login poller
-						await win.webContents
+						await view.webContents
 							.executeJavaScript(loginPollerScript)
 							.catch(() => {});
 					} else if (url.includes("chat.deepseek.com")) {
@@ -257,7 +285,7 @@ export function registerAccountIpcs(
 								"[deepseek-login] Injecting auto-login credentials into Chat page...",
 								{capturedEmail},
 							);
-							await win.webContents
+							await view.webContents
 								.executeJavaScript(
 									getAutoLoginScript(
 										capturedEmail,
@@ -268,13 +296,13 @@ export function registerAccountIpcs(
 						}
 
 						// 2. Inject chat poller
-						await win.webContents
+						await view.webContents
 							.executeJavaScript(chatPollerScript)
 							.catch(() => {});
 					}
 				});
 
-				win.webContents.on(
+				view.webContents.on(
 					"console-message",
 					async (_event, level, message) => {
 						console.log(
@@ -326,7 +354,7 @@ export function registerAccountIpcs(
 									"[deepseek-login] Platform token found, waiting 2.5s before navigating to chat...",
 								);
 								setTimeout(() => {
-									win.loadURL("https://chat.deepseek.com/");
+									view.webContents.loadURL("https://chat.deepseek.com/");
 								}, 2500);
 							}
 						} else if (message.startsWith("__CHAT_TOKEN__:")) {
@@ -360,7 +388,7 @@ export function registerAccountIpcs(
 				console.log(
 					"[deepseek-login] Opening platform sign_in page...",
 				);
-				await win.loadURL("https://platform.deepseek.com/sign_in");
+				await view.webContents.loadURL("https://platform.deepseek.com/sign_in");
 			});
 		},
 	);

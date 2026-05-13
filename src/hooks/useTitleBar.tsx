@@ -7,6 +7,7 @@ interface TitleBarConfig {
   showLogo: boolean;
   showBack: boolean;
   title: string;
+  logoIcon?: 'default' | 'deepseek';
   onBack?: () => void;
 }
 
@@ -22,6 +23,7 @@ const defaultConfig: TitleBarConfig = {
   showLogo: true,
   showBack: false,
   title: "ShallowSeek",
+  logoIcon: 'default',
 };
 
 const TitleBarContext = createContext<TitleBarContextType | undefined>(undefined);

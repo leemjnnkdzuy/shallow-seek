@@ -30,7 +30,6 @@ export default function AccountManagerPage() {
       if (res?.success && res.data) {
         const acc = res.data.find((a: any) => a.id === id);
         if (acc) {
-          console.log("[AccountManagerPage] Found account:", acc.email, "Token exists:", !!acc.chat_token);
           setAccount(acc);
           setConfig({ 
             title: `Quản lý: ${acc.email}`,
@@ -82,12 +81,10 @@ export default function AccountManagerPage() {
   const fetchHistory = async () => {
     if (!account) return;
     setLoadingHistory(true);
-    console.log("[AccountManagerPage] Fetching history for account:", account.email);
     try {
       const res = await window.electron?.deepseek?.fetchHistory({
         token: account.chat_token,
       });
-      console.log("[AccountManagerPage] fetchHistory response:", res);
       if (res?.ok && res.data?.data?.biz_data?.chat_sessions) {
         setHistory(res.data.data.biz_data.chat_sessions);
       } else {

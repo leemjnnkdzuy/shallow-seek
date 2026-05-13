@@ -1,593 +1,385 @@
-var __defProp = Object.defineProperty;
-var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
-import { ipcMain, BrowserWindow, shell, session, app, Menu } from "electron";
-import path$1 from "node:path";
-import { fileURLToPath } from "node:url";
-import require$$1 from "util";
-import stream, { Readable } from "stream";
-import require$$1$1, { resolve } from "path";
-import require$$3 from "http";
-import require$$4 from "https";
-import require$$5 from "url";
-import require$$6 from "fs";
-import require$$8 from "crypto";
-import http2 from "http2";
-import require$$4$1 from "assert";
-import require$$1$2 from "tty";
-import require$$0$1 from "os";
-import zlib from "zlib";
-import { EventEmitter } from "events";
-import fs$1 from "node:fs";
-import Database from "better-sqlite3";
-import http$2 from "node:http";
-import crypto$1 from "node:crypto";
-function registerWindowIpcs(__dirname, VITE_DEV_SERVER_URL2, RENDERER_DIST2) {
-  ipcMain.on("window-minimize", (event) => {
-    const webContents = event.sender;
-    const win2 = BrowserWindow.fromWebContents(webContents);
-    win2 == null ? void 0 : win2.minimize();
+var Ns = Object.defineProperty;
+var Ds = (e, n, t) => n in e ? Ns(e, n, { enumerable: !0, configurable: !0, writable: !0, value: t }) : e[n] = t;
+var mn = (e, n, t) => Ds(e, typeof n != "symbol" ? n + "" : n, t);
+import { ipcMain as C, BrowserWindow as X, shell as Is, session as Fs, BrowserView as Us, app as We, Menu as Bs } from "electron";
+import B from "node:path";
+import { fileURLToPath as zs } from "node:url";
+import De from "util";
+import te, { Readable as qs } from "stream";
+import ko, { resolve as ya } from "path";
+import Xt from "http";
+import Yt from "https";
+import Zt from "url";
+import $s from "fs";
+import _o from "crypto";
+import Eo from "http2";
+import Ms from "assert";
+import So from "tty";
+import Hs from "os";
+import Se from "zlib";
+import { EventEmitter as Ws } from "events";
+import Rn from "node:fs";
+import Ks from "better-sqlite3";
+import Gs from "node:http";
+import Qt from "node:crypto";
+function Js(e, n, t) {
+  C.on("window-minimize", (o) => {
+    const s = o.sender, i = X.fromWebContents(s);
+    i == null || i.minimize();
+  }), C.on("window-maximize", (o) => {
+    const s = o.sender, i = X.fromWebContents(s);
+    i != null && i.isMaximized() ? i.unmaximize() : i == null || i.maximize();
+  }), C.on("window-close", (o) => {
+    const s = o.sender, i = X.fromWebContents(s);
+    i && (i.hide(), i.close());
+  }), C.on("window-zoom-in", (o) => {
+    const s = o.sender, i = s.getZoomLevel();
+    s.setZoomLevel(i + 0.5);
+  }), C.on("window-zoom-out", (o) => {
+    const s = o.sender, i = s.getZoomLevel();
+    s.setZoomLevel(i - 0.5);
+  }), C.on("window-zoom-reset", (o) => {
+    o.sender.setZoomLevel(0);
+  }), C.on("renderer-log", (o, s) => {
+    console.log("[renderer-log]", s);
   });
-  ipcMain.on("window-maximize", (event) => {
-    const webContents = event.sender;
-    const win2 = BrowserWindow.fromWebContents(webContents);
-    if (win2 == null ? void 0 : win2.isMaximized()) {
-      win2.unmaximize();
-    } else {
-      win2 == null ? void 0 : win2.maximize();
-    }
-  });
-  ipcMain.on("window-close", (event) => {
-    const webContents = event.sender;
-    const win2 = BrowserWindow.fromWebContents(webContents);
-    if (win2) {
-      win2.hide();
-      win2.close();
-    }
-  });
-  ipcMain.on("window-zoom-in", (event) => {
-    const webContents = event.sender;
-    const currentZoom = webContents.getZoomLevel();
-    webContents.setZoomLevel(currentZoom + 0.5);
-  });
-  ipcMain.on("window-zoom-out", (event) => {
-    const webContents = event.sender;
-    const currentZoom = webContents.getZoomLevel();
-    webContents.setZoomLevel(currentZoom - 0.5);
-  });
-  ipcMain.on("window-zoom-reset", (event) => {
-    const webContents = event.sender;
-    webContents.setZoomLevel(0);
-  });
-  ipcMain.on("renderer-log", (_event, payload) => {
-    console.log("[renderer-log]", payload);
-  });
-  let confirmResolve = null;
-  ipcMain.handle("open-confirm", async (event, options) => {
-    const parentWindow = BrowserWindow.fromWebContents(event.sender) || void 0;
-    const params = new URLSearchParams();
-    Object.entries(options).forEach(([key, value]) => {
-      params.append(key, String(value));
+  let a = null;
+  C.handle("open-confirm", async (o, s) => {
+    const i = X.fromWebContents(o.sender) || void 0, r = new URLSearchParams();
+    Object.entries(s).forEach(([l, c]) => {
+      r.append(l, String(c));
     });
-    const popup = new BrowserWindow({
+    const p = new X({
       width: 500,
       height: 240,
-      frame: false,
-      resizable: false,
-      parent: parentWindow,
-      modal: true,
-      show: false,
+      frame: !1,
+      resizable: !1,
+      parent: i,
+      modal: !0,
+      show: !1,
       webPreferences: {
-        preload: path$1.join(__dirname, "preload.mjs")
+        preload: B.join(e, "preload.mjs")
       }
     });
-    if (VITE_DEV_SERVER_URL2) {
-      popup.loadURL(
-        `${VITE_DEV_SERVER_URL2}#/confirm?${params.toString()}`
-      );
-    } else {
-      popup.loadFile(path$1.join(RENDERER_DIST2, "index.html"), {
-        hash: `/confirm?${params.toString()}`
-      });
-    }
-    popup.once("ready-to-show", () => {
-      popup.show();
-    });
-    return new Promise((resolve2) => {
-      confirmResolve = resolve2;
-      popup.on("closed", () => {
-        if (confirmResolve) {
-          confirmResolve(false);
-          confirmResolve = null;
-        }
+    return n ? p.loadURL(
+      `${n}#/confirm?${r.toString()}`
+    ) : p.loadFile(B.join(t, "index.html"), {
+      hash: `/confirm?${r.toString()}`
+    }), p.once("ready-to-show", () => {
+      p.show();
+    }), new Promise((l) => {
+      a = l, p.on("closed", () => {
+        a && (a(!1), a = null);
       });
     });
-  });
-  ipcMain.on("confirm-result", (event, result) => {
-    if (confirmResolve) {
-      confirmResolve(result);
-      confirmResolve = null;
-    }
-    const win2 = BrowserWindow.fromWebContents(event.sender);
-    win2 == null ? void 0 : win2.close();
-  });
-  ipcMain.on("open-settings", (event) => {
-    const parentWindow = BrowserWindow.fromWebContents(event.sender) || void 0;
-    const settingsWin = new BrowserWindow({
+  }), C.on("confirm-result", (o, s) => {
+    a && (a(s), a = null);
+    const i = X.fromWebContents(o.sender);
+    i == null || i.close();
+  }), C.on("open-settings", (o) => {
+    const s = X.fromWebContents(o.sender) || void 0, i = new X({
       width: 900,
       height: 600,
-      frame: false,
-      parent: parentWindow,
-      modal: true,
+      frame: !1,
+      parent: s,
+      modal: !0,
       webPreferences: {
-        preload: path$1.join(__dirname, "preload.mjs")
+        preload: B.join(e, "preload.mjs")
       }
     });
-    if (VITE_DEV_SERVER_URL2) {
-      settingsWin.loadURL(`${VITE_DEV_SERVER_URL2}#/settings/interface`);
-    } else {
-      settingsWin.loadFile(path$1.join(RENDERER_DIST2, "index.html"), {
-        hash: "/settings/interface"
-      });
-    }
-  });
-  ipcMain.on("theme-changed", (_event, theme) => {
-    BrowserWindow.getAllWindows().forEach((win2) => {
-      win2.webContents.send("on-theme-changed", theme);
+    n ? i.loadURL(`${n}#/settings/interface`) : i.loadFile(B.join(t, "index.html"), {
+      hash: "/settings/interface"
     });
-  });
-  ipcMain.on("language-changed", (_event, lang) => {
-    BrowserWindow.getAllWindows().forEach((win2) => {
-      win2.webContents.send("on-language-changed", lang);
+  }), C.on("theme-changed", (o, s) => {
+    X.getAllWindows().forEach((i) => {
+      i.webContents.send("on-theme-changed", s);
     });
-  });
-  ipcMain.on("open-external", (_event, url2) => {
-    shell.openExternal(url2);
+  }), C.on("language-changed", (o, s) => {
+    X.getAllWindows().forEach((i) => {
+      i.webContents.send("on-language-changed", s);
+    });
+  }), C.on("open-external", (o, s) => {
+    Is.openExternal(s);
   });
 }
-function bind$2(fn, thisArg) {
-  return function wrap2() {
-    return fn.apply(thisArg, arguments);
+function Ro(e, n) {
+  return function() {
+    return e.apply(n, arguments);
   };
 }
-const { toString } = Object.prototype;
-const { getPrototypeOf } = Object;
-const { iterator, toStringTag: toStringTag$1 } = Symbol;
-const kindOf = /* @__PURE__ */ ((cache) => (thing) => {
-  const str = toString.call(thing);
-  return cache[str] || (cache[str] = str.slice(8, -1).toLowerCase());
-})(/* @__PURE__ */ Object.create(null));
-const kindOfTest = (type2) => {
-  type2 = type2.toLowerCase();
-  return (thing) => kindOf(thing) === type2;
-};
-const typeOfTest = (type2) => (thing) => typeof thing === type2;
-const { isArray: isArray$1 } = Array;
-const isUndefined = typeOfTest("undefined");
-function isBuffer$1(val) {
-  return val !== null && !isUndefined(val) && val.constructor !== null && !isUndefined(val.constructor) && isFunction$2(val.constructor.isBuffer) && val.constructor.isBuffer(val);
+const { toString: Vs } = Object.prototype, { getPrototypeOf: Nn } = Object, { iterator: Dn, toStringTag: Ao } = Symbol, In = /* @__PURE__ */ ((e) => (n) => {
+  const t = Vs.call(n);
+  return e[t] || (e[t] = t.slice(8, -1).toLowerCase());
+})(/* @__PURE__ */ Object.create(null)), ve = (e) => (e = e.toLowerCase(), (n) => In(n) === e), Fn = (e) => (n) => typeof n === e, { isArray: Xe } = Array, Ke = Fn("undefined");
+function on(e) {
+  return e !== null && !Ke(e) && e.constructor !== null && !Ke(e.constructor) && ce(e.constructor.isBuffer) && e.constructor.isBuffer(e);
 }
-const isArrayBuffer = kindOfTest("ArrayBuffer");
-function isArrayBufferView(val) {
-  let result;
-  if (typeof ArrayBuffer !== "undefined" && ArrayBuffer.isView) {
-    result = ArrayBuffer.isView(val);
-  } else {
-    result = val && val.buffer && isArrayBuffer(val.buffer);
-  }
-  return result;
+const To = ve("ArrayBuffer");
+function Xs(e) {
+  let n;
+  return typeof ArrayBuffer < "u" && ArrayBuffer.isView ? n = ArrayBuffer.isView(e) : n = e && e.buffer && To(e.buffer), n;
 }
-const isString$1 = typeOfTest("string");
-const isFunction$2 = typeOfTest("function");
-const isNumber = typeOfTest("number");
-const isObject = (thing) => thing !== null && typeof thing === "object";
-const isBoolean = (thing) => thing === true || thing === false;
-const isPlainObject = (val) => {
-  if (kindOf(val) !== "object") {
-    return false;
-  }
-  const prototype2 = getPrototypeOf(val);
-  return (prototype2 === null || prototype2 === Object.prototype || Object.getPrototypeOf(prototype2) === null) && !(toStringTag$1 in val) && !(iterator in val);
-};
-const isEmptyObject = (val) => {
-  if (!isObject(val) || isBuffer$1(val)) {
-    return false;
-  }
+const Ys = Fn("string"), ce = Fn("function"), Co = Fn("number"), sn = (e) => e !== null && typeof e == "object", Zs = (e) => e === !0 || e === !1, wn = (e) => {
+  if (In(e) !== "object")
+    return !1;
+  const n = Nn(e);
+  return (n === null || n === Object.prototype || Object.getPrototypeOf(n) === null) && !(Ao in e) && !(Dn in e);
+}, Qs = (e) => {
+  if (!sn(e) || on(e))
+    return !1;
   try {
-    return Object.keys(val).length === 0 && Object.getPrototypeOf(val) === Object.prototype;
-  } catch (e) {
-    return false;
+    return Object.keys(e).length === 0 && Object.getPrototypeOf(e) === Object.prototype;
+  } catch {
+    return !1;
   }
-};
-const isDate = kindOfTest("Date");
-const isFile = kindOfTest("File");
-const isReactNativeBlob = (value) => {
-  return !!(value && typeof value.uri !== "undefined");
-};
-const isReactNative = (formData) => formData && typeof formData.getParts !== "undefined";
-const isBlob = kindOfTest("Blob");
-const isFileList = kindOfTest("FileList");
-const isStream = (val) => isObject(val) && isFunction$2(val.pipe);
-function getGlobal() {
-  if (typeof globalThis !== "undefined") return globalThis;
-  if (typeof self !== "undefined") return self;
-  if (typeof window !== "undefined") return window;
-  if (typeof global !== "undefined") return global;
-  return {};
+}, ei = ve("Date"), ni = ve("File"), ti = (e) => !!(e && typeof e.uri < "u"), ai = (e) => e && typeof e.getParts < "u", oi = ve("Blob"), si = ve("FileList"), ii = (e) => sn(e) && ce(e.pipe);
+function ri() {
+  return typeof globalThis < "u" ? globalThis : typeof self < "u" ? self : typeof window < "u" ? window : typeof global < "u" ? global : {};
 }
-const G = getGlobal();
-const FormDataCtor = typeof G.FormData !== "undefined" ? G.FormData : void 0;
-const isFormData = (thing) => {
-  if (!thing) return false;
-  if (FormDataCtor && thing instanceof FormDataCtor) return true;
-  const proto = getPrototypeOf(thing);
-  if (!proto || proto === Object.prototype) return false;
-  if (!isFunction$2(thing.append)) return false;
-  const kind = kindOf(thing);
-  return kind === "formdata" || // detect form-data instance
-  kind === "object" && isFunction$2(thing.toString) && thing.toString() === "[object FormData]";
-};
-const isURLSearchParams = kindOfTest("URLSearchParams");
-const [isReadableStream, isRequest, isResponse, isHeaders] = [
+const wa = ri(), ka = typeof wa.FormData < "u" ? wa.FormData : void 0, ci = (e) => {
+  if (!e) return !1;
+  if (ka && e instanceof ka) return !0;
+  const n = Nn(e);
+  if (!n || n === Object.prototype || !ce(e.append)) return !1;
+  const t = In(e);
+  return t === "formdata" || // detect form-data instance
+  t === "object" && ce(e.toString) && e.toString() === "[object FormData]";
+}, pi = ve("URLSearchParams"), [li, ui, di, mi] = [
   "ReadableStream",
   "Request",
   "Response",
   "Headers"
-].map(kindOfTest);
-const trim = (str) => {
-  return str.trim ? str.trim() : str.replace(/^[\s\uFEFF\xA0]+|[\s\uFEFF\xA0]+$/g, "");
-};
-function forEach(obj, fn, { allOwnKeys = false } = {}) {
-  if (obj === null || typeof obj === "undefined") {
+].map(ve), fi = (e) => e.trim ? e.trim() : e.replace(/^[\s\uFEFF\xA0]+|[\s\uFEFF\xA0]+$/g, "");
+function rn(e, n, { allOwnKeys: t = !1 } = {}) {
+  if (e === null || typeof e > "u")
     return;
-  }
-  let i;
-  let l;
-  if (typeof obj !== "object") {
-    obj = [obj];
-  }
-  if (isArray$1(obj)) {
-    for (i = 0, l = obj.length; i < l; i++) {
-      fn.call(null, obj[i], i, obj);
-    }
-  } else {
-    if (isBuffer$1(obj)) {
+  let a, o;
+  if (typeof e != "object" && (e = [e]), Xe(e))
+    for (a = 0, o = e.length; a < o; a++)
+      n.call(null, e[a], a, e);
+  else {
+    if (on(e))
       return;
-    }
-    const keys = allOwnKeys ? Object.getOwnPropertyNames(obj) : Object.keys(obj);
-    const len = keys.length;
-    let key;
-    for (i = 0; i < len; i++) {
-      key = keys[i];
-      fn.call(null, obj[key], key, obj);
-    }
+    const s = t ? Object.getOwnPropertyNames(e) : Object.keys(e), i = s.length;
+    let r;
+    for (a = 0; a < i; a++)
+      r = s[a], n.call(null, e[r], r, e);
   }
 }
-function findKey(obj, key) {
-  if (isBuffer$1(obj)) {
+function Oo(e, n) {
+  if (on(e))
     return null;
-  }
-  key = key.toLowerCase();
-  const keys = Object.keys(obj);
-  let i = keys.length;
-  let _key;
-  while (i-- > 0) {
-    _key = keys[i];
-    if (key === _key.toLowerCase()) {
-      return _key;
-    }
-  }
+  n = n.toLowerCase();
+  const t = Object.keys(e);
+  let a = t.length, o;
+  for (; a-- > 0; )
+    if (o = t[a], n === o.toLowerCase())
+      return o;
   return null;
 }
-const _global = (() => {
-  if (typeof globalThis !== "undefined") return globalThis;
-  return typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : global;
-})();
-const isContextDefined = (context) => !isUndefined(context) && context !== _global;
-function merge(...objs) {
-  const { caseless, skipUndefined } = isContextDefined(this) && this || {};
-  const result = {};
-  const assignValue = (val, key) => {
-    if (key === "__proto__" || key === "constructor" || key === "prototype") {
+const Ae = typeof globalThis < "u" ? globalThis : typeof self < "u" ? self : typeof window < "u" ? window : global, jo = (e) => !Ke(e) && e !== Ae;
+function Ct(...e) {
+  const { caseless: n, skipUndefined: t } = jo(this) && this || {}, a = {}, o = (s, i) => {
+    if (i === "__proto__" || i === "constructor" || i === "prototype")
       return;
-    }
-    const targetKey = caseless && findKey(result, key) || key;
-    const existing = hasOwnProperty(result, targetKey) ? result[targetKey] : void 0;
-    if (isPlainObject(existing) && isPlainObject(val)) {
-      result[targetKey] = merge(existing, val);
-    } else if (isPlainObject(val)) {
-      result[targetKey] = merge({}, val);
-    } else if (isArray$1(val)) {
-      result[targetKey] = val.slice();
-    } else if (!skipUndefined || !isUndefined(val)) {
-      result[targetKey] = val;
-    }
+    const r = n && Oo(a, i) || i, p = Ot(a, r) ? a[r] : void 0;
+    wn(p) && wn(s) ? a[r] = Ct(p, s) : wn(s) ? a[r] = Ct({}, s) : Xe(s) ? a[r] = s.slice() : (!t || !Ke(s)) && (a[r] = s);
   };
-  for (let i = 0, l = objs.length; i < l; i++) {
-    objs[i] && forEach(objs[i], assignValue);
-  }
-  return result;
-}
-const extend = (a, b, thisArg, { allOwnKeys } = {}) => {
-  forEach(
-    b,
-    (val, key) => {
-      if (thisArg && isFunction$2(val)) {
-        Object.defineProperty(a, key, {
-          // Null-proto descriptor so a polluted Object.prototype.get cannot
-          // hijack defineProperty's accessor-vs-data resolution.
-          __proto__: null,
-          value: bind$2(val, thisArg),
-          writable: true,
-          enumerable: true,
-          configurable: true
-        });
-      } else {
-        Object.defineProperty(a, key, {
-          __proto__: null,
-          value: val,
-          writable: true,
-          enumerable: true,
-          configurable: true
-        });
-      }
-    },
-    { allOwnKeys }
-  );
+  for (let s = 0, i = e.length; s < i; s++)
+    e[s] && rn(e[s], o);
   return a;
-};
-const stripBOM = (content) => {
-  if (content.charCodeAt(0) === 65279) {
-    content = content.slice(1);
-  }
-  return content;
-};
-const inherits = (constructor, superConstructor, props, descriptors) => {
-  constructor.prototype = Object.create(superConstructor.prototype, descriptors);
-  Object.defineProperty(constructor.prototype, "constructor", {
-    __proto__: null,
-    value: constructor,
-    writable: true,
-    enumerable: false,
-    configurable: true
-  });
-  Object.defineProperty(constructor, "super", {
-    __proto__: null,
-    value: superConstructor.prototype
-  });
-  props && Object.assign(constructor.prototype, props);
-};
-const toFlatObject = (sourceObj, destObj, filter2, propFilter) => {
-  let props;
-  let i;
-  let prop;
-  const merged = {};
-  destObj = destObj || {};
-  if (sourceObj == null) return destObj;
-  do {
-    props = Object.getOwnPropertyNames(sourceObj);
-    i = props.length;
-    while (i-- > 0) {
-      prop = props[i];
-      if ((!propFilter || propFilter(prop, sourceObj, destObj)) && !merged[prop]) {
-        destObj[prop] = sourceObj[prop];
-        merged[prop] = true;
-      }
-    }
-    sourceObj = filter2 !== false && getPrototypeOf(sourceObj);
-  } while (sourceObj && (!filter2 || filter2(sourceObj, destObj)) && sourceObj !== Object.prototype);
-  return destObj;
-};
-const endsWith = (str, searchString, position) => {
-  str = String(str);
-  if (position === void 0 || position > str.length) {
-    position = str.length;
-  }
-  position -= searchString.length;
-  const lastIndex = str.indexOf(searchString, position);
-  return lastIndex !== -1 && lastIndex === position;
-};
-const toArray = (thing) => {
-  if (!thing) return null;
-  if (isArray$1(thing)) return thing;
-  let i = thing.length;
-  if (!isNumber(i)) return null;
-  const arr = new Array(i);
-  while (i-- > 0) {
-    arr[i] = thing[i];
-  }
-  return arr;
-};
-const isTypedArray = /* @__PURE__ */ ((TypedArray2) => {
-  return (thing) => {
-    return TypedArray2 && thing instanceof TypedArray2;
-  };
-})(typeof Uint8Array !== "undefined" && getPrototypeOf(Uint8Array));
-const forEachEntry = (obj, fn) => {
-  const generator = obj && obj[iterator];
-  const _iterator = generator.call(obj);
-  let result;
-  while ((result = _iterator.next()) && !result.done) {
-    const pair = result.value;
-    fn.call(obj, pair[0], pair[1]);
-  }
-};
-const matchAll = (regExp, str) => {
-  let matches;
-  const arr = [];
-  while ((matches = regExp.exec(str)) !== null) {
-    arr.push(matches);
-  }
-  return arr;
-};
-const isHTMLForm = kindOfTest("HTMLFormElement");
-const toCamelCase = (str) => {
-  return str.toLowerCase().replace(/[-_\s]([a-z\d])(\w*)/g, function replacer(m, p1, p2) {
-    return p1.toUpperCase() + p2;
-  });
-};
-const hasOwnProperty = (({ hasOwnProperty: hasOwnProperty2 }) => (obj, prop) => hasOwnProperty2.call(obj, prop))(Object.prototype);
-const isRegExp = kindOfTest("RegExp");
-const reduceDescriptors = (obj, reducer) => {
-  const descriptors = Object.getOwnPropertyDescriptors(obj);
-  const reducedDescriptors = {};
-  forEach(descriptors, (descriptor, name) => {
-    let ret;
-    if ((ret = reducer(descriptor, name, obj)) !== false) {
-      reducedDescriptors[name] = ret || descriptor;
-    }
-  });
-  Object.defineProperties(obj, reducedDescriptors);
-};
-const freezeMethods = (obj) => {
-  reduceDescriptors(obj, (descriptor, name) => {
-    if (isFunction$2(obj) && ["arguments", "caller", "callee"].includes(name)) {
-      return false;
-    }
-    const value = obj[name];
-    if (!isFunction$2(value)) return;
-    descriptor.enumerable = false;
-    if ("writable" in descriptor) {
-      descriptor.writable = false;
-      return;
-    }
-    if (!descriptor.set) {
-      descriptor.set = () => {
-        throw Error("Can not rewrite read-only method '" + name + "'");
-      };
-    }
-  });
-};
-const toObjectSet = (arrayOrString, delimiter) => {
-  const obj = {};
-  const define = (arr) => {
-    arr.forEach((value) => {
-      obj[value] = true;
-    });
-  };
-  isArray$1(arrayOrString) ? define(arrayOrString) : define(String(arrayOrString).split(delimiter));
-  return obj;
-};
-const noop$1 = () => {
-};
-const toFiniteNumber = (value, defaultValue) => {
-  return value != null && Number.isFinite(value = +value) ? value : defaultValue;
-};
-function isSpecCompliantForm(thing) {
-  return !!(thing && isFunction$2(thing.append) && thing[toStringTag$1] === "FormData" && thing[iterator]);
 }
-const toJSONObject = (obj) => {
-  const stack = new Array(10);
-  const visit = (source, i) => {
-    if (isObject(source)) {
-      if (stack.indexOf(source) >= 0) {
+const xi = (e, n, t, { allOwnKeys: a } = {}) => (rn(
+  n,
+  (o, s) => {
+    t && ce(o) ? Object.defineProperty(e, s, {
+      // Null-proto descriptor so a polluted Object.prototype.get cannot
+      // hijack defineProperty's accessor-vs-data resolution.
+      __proto__: null,
+      value: Ro(o, t),
+      writable: !0,
+      enumerable: !0,
+      configurable: !0
+    }) : Object.defineProperty(e, s, {
+      __proto__: null,
+      value: o,
+      writable: !0,
+      enumerable: !0,
+      configurable: !0
+    });
+  },
+  { allOwnKeys: a }
+), e), hi = (e) => (e.charCodeAt(0) === 65279 && (e = e.slice(1)), e), vi = (e, n, t, a) => {
+  e.prototype = Object.create(n.prototype, a), Object.defineProperty(e.prototype, "constructor", {
+    __proto__: null,
+    value: e,
+    writable: !0,
+    enumerable: !1,
+    configurable: !0
+  }), Object.defineProperty(e, "super", {
+    __proto__: null,
+    value: n.prototype
+  }), t && Object.assign(e.prototype, t);
+}, bi = (e, n, t, a) => {
+  let o, s, i;
+  const r = {};
+  if (n = n || {}, e == null) return n;
+  do {
+    for (o = Object.getOwnPropertyNames(e), s = o.length; s-- > 0; )
+      i = o[s], (!a || a(i, e, n)) && !r[i] && (n[i] = e[i], r[i] = !0);
+    e = t !== !1 && Nn(e);
+  } while (e && (!t || t(e, n)) && e !== Object.prototype);
+  return n;
+}, gi = (e, n, t) => {
+  e = String(e), (t === void 0 || t > e.length) && (t = e.length), t -= n.length;
+  const a = e.indexOf(n, t);
+  return a !== -1 && a === t;
+}, yi = (e) => {
+  if (!e) return null;
+  if (Xe(e)) return e;
+  let n = e.length;
+  if (!Co(n)) return null;
+  const t = new Array(n);
+  for (; n-- > 0; )
+    t[n] = e[n];
+  return t;
+}, wi = /* @__PURE__ */ ((e) => (n) => e && n instanceof e)(typeof Uint8Array < "u" && Nn(Uint8Array)), ki = (e, n) => {
+  const a = (e && e[Dn]).call(e);
+  let o;
+  for (; (o = a.next()) && !o.done; ) {
+    const s = o.value;
+    n.call(e, s[0], s[1]);
+  }
+}, _i = (e, n) => {
+  let t;
+  const a = [];
+  for (; (t = e.exec(n)) !== null; )
+    a.push(t);
+  return a;
+}, Ei = ve("HTMLFormElement"), Si = (e) => e.toLowerCase().replace(/[-_\s]([a-z\d])(\w*)/g, function(t, a, o) {
+  return a.toUpperCase() + o;
+}), Ot = (({ hasOwnProperty: e }) => (n, t) => e.call(n, t))(Object.prototype), Ri = ve("RegExp"), Po = (e, n) => {
+  const t = Object.getOwnPropertyDescriptors(e), a = {};
+  rn(t, (o, s) => {
+    let i;
+    (i = n(o, s, e)) !== !1 && (a[s] = i || o);
+  }), Object.defineProperties(e, a);
+}, Ai = (e) => {
+  Po(e, (n, t) => {
+    if (ce(e) && ["arguments", "caller", "callee"].includes(t))
+      return !1;
+    const a = e[t];
+    if (ce(a)) {
+      if (n.enumerable = !1, "writable" in n) {
+        n.writable = !1;
         return;
       }
-      if (isBuffer$1(source)) {
-        return source;
-      }
-      if (!("toJSON" in source)) {
-        stack[i] = source;
-        const target = isArray$1(source) ? [] : {};
-        forEach(source, (value, key) => {
-          const reducedValue = visit(value, i + 1);
-          !isUndefined(reducedValue) && (target[key] = reducedValue);
-        });
-        stack[i] = void 0;
-        return target;
+      n.set || (n.set = () => {
+        throw Error("Can not rewrite read-only method '" + t + "'");
+      });
+    }
+  });
+}, Ti = (e, n) => {
+  const t = {}, a = (o) => {
+    o.forEach((s) => {
+      t[s] = !0;
+    });
+  };
+  return Xe(e) ? a(e) : a(String(e).split(n)), t;
+}, Ci = () => {
+}, Oi = (e, n) => e != null && Number.isFinite(e = +e) ? e : n;
+function ji(e) {
+  return !!(e && ce(e.append) && e[Ao] === "FormData" && e[Dn]);
+}
+const Pi = (e) => {
+  const n = new Array(10), t = (a, o) => {
+    if (sn(a)) {
+      if (n.indexOf(a) >= 0)
+        return;
+      if (on(a))
+        return a;
+      if (!("toJSON" in a)) {
+        n[o] = a;
+        const s = Xe(a) ? [] : {};
+        return rn(a, (i, r) => {
+          const p = t(i, o + 1);
+          !Ke(p) && (s[r] = p);
+        }), n[o] = void 0, s;
       }
     }
-    return source;
+    return a;
   };
-  return visit(obj, 0);
-};
-const isAsyncFn = kindOfTest("AsyncFunction");
-const isThenable = (thing) => thing && (isObject(thing) || isFunction$2(thing)) && isFunction$2(thing.then) && isFunction$2(thing.catch);
-const _setImmediate = ((setImmediateSupported, postMessageSupported) => {
-  if (setImmediateSupported) {
-    return setImmediate;
-  }
-  return postMessageSupported ? ((token, callbacks) => {
-    _global.addEventListener(
-      "message",
-      ({ source, data }) => {
-        if (source === _global && data === token) {
-          callbacks.length && callbacks.shift()();
-        }
-      },
-      false
-    );
-    return (cb) => {
-      callbacks.push(cb);
-      _global.postMessage(token, "*");
-    };
-  })(`axios@${Math.random()}`, []) : (cb) => setTimeout(cb);
-})(typeof setImmediate === "function", isFunction$2(_global.postMessage));
-const asap = typeof queueMicrotask !== "undefined" ? queueMicrotask.bind(_global) : typeof process !== "undefined" && process.nextTick || _setImmediate;
-const isIterable = (thing) => thing != null && isFunction$2(thing[iterator]);
-const utils$1 = {
-  isArray: isArray$1,
-  isArrayBuffer,
-  isBuffer: isBuffer$1,
-  isFormData,
-  isArrayBufferView,
-  isString: isString$1,
-  isNumber,
-  isBoolean,
-  isObject,
-  isPlainObject,
-  isEmptyObject,
-  isReadableStream,
-  isRequest,
-  isResponse,
-  isHeaders,
-  isUndefined,
-  isDate,
-  isFile,
-  isReactNativeBlob,
-  isReactNative,
-  isBlob,
-  isRegExp,
-  isFunction: isFunction$2,
-  isStream,
-  isURLSearchParams,
-  isTypedArray,
-  isFileList,
-  forEach,
-  merge,
-  extend,
-  trim,
-  stripBOM,
-  inherits,
-  toFlatObject,
-  kindOf,
-  kindOfTest,
-  endsWith,
-  toArray,
-  forEachEntry,
-  matchAll,
-  isHTMLForm,
-  hasOwnProperty,
-  hasOwnProp: hasOwnProperty,
+  return t(e, 0);
+}, Li = ve("AsyncFunction"), Ni = (e) => e && (sn(e) || ce(e)) && ce(e.then) && ce(e.catch), Lo = ((e, n) => e ? setImmediate : n ? ((t, a) => (Ae.addEventListener(
+  "message",
+  ({ source: o, data: s }) => {
+    o === Ae && s === t && a.length && a.shift()();
+  },
+  !1
+), (o) => {
+  a.push(o), Ae.postMessage(t, "*");
+}))(`axios@${Math.random()}`, []) : (t) => setTimeout(t))(typeof setImmediate == "function", ce(Ae.postMessage)), Di = typeof queueMicrotask < "u" ? queueMicrotask.bind(Ae) : typeof process < "u" && process.nextTick || Lo, Ii = (e) => e != null && ce(e[Dn]), m = {
+  isArray: Xe,
+  isArrayBuffer: To,
+  isBuffer: on,
+  isFormData: ci,
+  isArrayBufferView: Xs,
+  isString: Ys,
+  isNumber: Co,
+  isBoolean: Zs,
+  isObject: sn,
+  isPlainObject: wn,
+  isEmptyObject: Qs,
+  isReadableStream: li,
+  isRequest: ui,
+  isResponse: di,
+  isHeaders: mi,
+  isUndefined: Ke,
+  isDate: ei,
+  isFile: ni,
+  isReactNativeBlob: ti,
+  isReactNative: ai,
+  isBlob: oi,
+  isRegExp: Ri,
+  isFunction: ce,
+  isStream: ii,
+  isURLSearchParams: pi,
+  isTypedArray: wi,
+  isFileList: si,
+  forEach: rn,
+  merge: Ct,
+  extend: xi,
+  trim: fi,
+  stripBOM: hi,
+  inherits: vi,
+  toFlatObject: bi,
+  kindOf: In,
+  kindOfTest: ve,
+  endsWith: gi,
+  toArray: yi,
+  forEachEntry: ki,
+  matchAll: _i,
+  isHTMLForm: Ei,
+  hasOwnProperty: Ot,
+  hasOwnProp: Ot,
   // an alias to avoid ESLint no-prototype-builtins detection
-  reduceDescriptors,
-  freezeMethods,
-  toObjectSet,
-  toCamelCase,
-  noop: noop$1,
-  toFiniteNumber,
-  findKey,
-  global: _global,
-  isContextDefined,
-  isSpecCompliantForm,
-  toJSONObject,
-  isAsyncFn,
-  isThenable,
-  setImmediate: _setImmediate,
-  asap,
-  isIterable
-};
-const ignoreDuplicateOf = utils$1.toObjectSet([
+  reduceDescriptors: Po,
+  freezeMethods: Ai,
+  toObjectSet: Ti,
+  toCamelCase: Si,
+  noop: Ci,
+  toFiniteNumber: Oi,
+  findKey: Oo,
+  global: Ae,
+  isContextDefined: jo,
+  isSpecCompliantForm: ji,
+  toJSONObject: Pi,
+  isAsyncFn: Li,
+  isThenable: Ni,
+  setImmediate: Lo,
+  asap: Di,
+  isIterable: Ii
+}, Fi = m.toObjectSet([
   "age",
   "authorization",
   "content-length",
@@ -605,240 +397,175 @@ const ignoreDuplicateOf = utils$1.toObjectSet([
   "referer",
   "retry-after",
   "user-agent"
-]);
-const parseHeaders = (rawHeaders) => {
-  const parsed = {};
-  let key;
-  let val;
-  let i;
-  rawHeaders && rawHeaders.split("\n").forEach(function parser(line) {
-    i = line.indexOf(":");
-    key = line.substring(0, i).trim().toLowerCase();
-    val = line.substring(i + 1).trim();
-    if (!key || parsed[key] && ignoreDuplicateOf[key]) {
-      return;
-    }
-    if (key === "set-cookie") {
-      if (parsed[key]) {
-        parsed[key].push(val);
-      } else {
-        parsed[key] = [val];
-      }
-    } else {
-      parsed[key] = parsed[key] ? parsed[key] + ", " + val : val;
-    }
-  });
-  return parsed;
-};
-const $internals = Symbol("internals");
-const INVALID_HEADER_VALUE_CHARS_RE = /[^\x09\x20-\x7E\x80-\xFF]/g;
-function trimSPorHTAB(str) {
-  let start = 0;
-  let end = str.length;
-  while (start < end) {
-    const code = str.charCodeAt(start);
-    if (code !== 9 && code !== 32) {
+]), Ui = (e) => {
+  const n = {};
+  let t, a, o;
+  return e && e.split(`
+`).forEach(function(i) {
+    o = i.indexOf(":"), t = i.substring(0, o).trim().toLowerCase(), a = i.substring(o + 1).trim(), !(!t || n[t] && Fi[t]) && (t === "set-cookie" ? n[t] ? n[t].push(a) : n[t] = [a] : n[t] = n[t] ? n[t] + ", " + a : a);
+  }), n;
+}, _a = Symbol("internals"), Bi = /[^\x09\x20-\x7E\x80-\xFF]/g;
+function zi(e) {
+  let n = 0, t = e.length;
+  for (; n < t; ) {
+    const a = e.charCodeAt(n);
+    if (a !== 9 && a !== 32)
       break;
-    }
-    start += 1;
+    n += 1;
   }
-  while (end > start) {
-    const code = str.charCodeAt(end - 1);
-    if (code !== 9 && code !== 32) {
+  for (; t > n; ) {
+    const a = e.charCodeAt(t - 1);
+    if (a !== 9 && a !== 32)
       break;
-    }
-    end -= 1;
+    t -= 1;
   }
-  return start === 0 && end === str.length ? str : str.slice(start, end);
+  return n === 0 && t === e.length ? e : e.slice(n, t);
 }
-function normalizeHeader(header) {
-  return header && String(header).trim().toLowerCase();
+function Ye(e) {
+  return e && String(e).trim().toLowerCase();
 }
-function sanitizeHeaderValue(str) {
-  return trimSPorHTAB(str.replace(INVALID_HEADER_VALUE_CHARS_RE, ""));
+function qi(e) {
+  return zi(e.replace(Bi, ""));
 }
-function normalizeValue(value) {
-  if (value === false || value == null) {
-    return value;
-  }
-  return utils$1.isArray(value) ? value.map(normalizeValue) : sanitizeHeaderValue(String(value));
+function kn(e) {
+  return e === !1 || e == null ? e : m.isArray(e) ? e.map(kn) : qi(String(e));
 }
-function parseTokens(str) {
-  const tokens = /* @__PURE__ */ Object.create(null);
-  const tokensRE = /([^\s,;=]+)\s*(?:=\s*([^,;]+))?/g;
-  let match;
-  while (match = tokensRE.exec(str)) {
-    tokens[match[1]] = match[2];
-  }
-  return tokens;
+function $i(e) {
+  const n = /* @__PURE__ */ Object.create(null), t = /([^\s,;=]+)\s*(?:=\s*([^,;]+))?/g;
+  let a;
+  for (; a = t.exec(e); )
+    n[a[1]] = a[2];
+  return n;
 }
-const isValidHeaderName = (str) => /^[-_a-zA-Z0-9^`|~,!#$%&'*+.]+$/.test(str.trim());
-function matchHeaderValue(context, value, header, filter2, isHeaderNameFilter) {
-  if (utils$1.isFunction(filter2)) {
-    return filter2.call(this, value, header);
-  }
-  if (isHeaderNameFilter) {
-    value = header;
-  }
-  if (!utils$1.isString(value)) return;
-  if (utils$1.isString(filter2)) {
-    return value.indexOf(filter2) !== -1;
-  }
-  if (utils$1.isRegExp(filter2)) {
-    return filter2.test(value);
+const Mi = (e) => /^[-_a-zA-Z0-9^`|~,!#$%&'*+.]+$/.test(e.trim());
+function Xn(e, n, t, a, o) {
+  if (m.isFunction(a))
+    return a.call(this, n, t);
+  if (o && (n = t), !!m.isString(n)) {
+    if (m.isString(a))
+      return n.indexOf(a) !== -1;
+    if (m.isRegExp(a))
+      return a.test(n);
   }
 }
-function formatHeader(header) {
-  return header.trim().toLowerCase().replace(/([a-z\d])(\w*)/g, (w, char, str) => {
-    return char.toUpperCase() + str;
-  });
+function Hi(e) {
+  return e.trim().toLowerCase().replace(/([a-z\d])(\w*)/g, (n, t, a) => t.toUpperCase() + a);
 }
-function buildAccessors(obj, header) {
-  const accessorName = utils$1.toCamelCase(" " + header);
-  ["get", "set", "has"].forEach((methodName) => {
-    Object.defineProperty(obj, methodName + accessorName, {
+function Wi(e, n) {
+  const t = m.toCamelCase(" " + n);
+  ["get", "set", "has"].forEach((a) => {
+    Object.defineProperty(e, a + t, {
       // Null-proto descriptor so a polluted Object.prototype.get cannot turn
       // this data descriptor into an accessor descriptor on the way in.
       __proto__: null,
-      value: function(arg1, arg2, arg3) {
-        return this[methodName].call(this, header, arg1, arg2, arg3);
+      value: function(o, s, i) {
+        return this[a].call(this, n, o, s, i);
       },
-      configurable: true
+      configurable: !0
     });
   });
 }
-let AxiosHeaders$1 = class AxiosHeaders {
-  constructor(headers) {
-    headers && this.set(headers);
+let Q = class {
+  constructor(n) {
+    n && this.set(n);
   }
-  set(header, valueOrRewrite, rewrite) {
-    const self2 = this;
-    function setHeader(_value, _header, _rewrite) {
-      const lHeader = normalizeHeader(_header);
-      if (!lHeader) {
+  set(n, t, a) {
+    const o = this;
+    function s(r, p, l) {
+      const c = Ye(p);
+      if (!c)
         throw new Error("header name must be a non-empty string");
-      }
-      const key = utils$1.findKey(self2, lHeader);
-      if (!key || self2[key] === void 0 || _rewrite === true || _rewrite === void 0 && self2[key] !== false) {
-        self2[key || _header] = normalizeValue(_value);
-      }
+      const u = m.findKey(o, c);
+      (!u || o[u] === void 0 || l === !0 || l === void 0 && o[u] !== !1) && (o[u || p] = kn(r));
     }
-    const setHeaders = (headers, _rewrite) => utils$1.forEach(headers, (_value, _header) => setHeader(_value, _header, _rewrite));
-    if (utils$1.isPlainObject(header) || header instanceof this.constructor) {
-      setHeaders(header, valueOrRewrite);
-    } else if (utils$1.isString(header) && (header = header.trim()) && !isValidHeaderName(header)) {
-      setHeaders(parseHeaders(header), valueOrRewrite);
-    } else if (utils$1.isObject(header) && utils$1.isIterable(header)) {
-      let obj = {}, dest, key;
-      for (const entry of header) {
-        if (!utils$1.isArray(entry)) {
+    const i = (r, p) => m.forEach(r, (l, c) => s(l, c, p));
+    if (m.isPlainObject(n) || n instanceof this.constructor)
+      i(n, t);
+    else if (m.isString(n) && (n = n.trim()) && !Mi(n))
+      i(Ui(n), t);
+    else if (m.isObject(n) && m.isIterable(n)) {
+      let r = {}, p, l;
+      for (const c of n) {
+        if (!m.isArray(c))
           throw TypeError("Object iterator must return a key-value pair");
-        }
-        obj[key = entry[0]] = (dest = obj[key]) ? utils$1.isArray(dest) ? [...dest, entry[1]] : [dest, entry[1]] : entry[1];
+        r[l = c[0]] = (p = r[l]) ? m.isArray(p) ? [...p, c[1]] : [p, c[1]] : c[1];
       }
-      setHeaders(obj, valueOrRewrite);
-    } else {
-      header != null && setHeader(valueOrRewrite, header, rewrite);
-    }
+      i(r, t);
+    } else
+      n != null && s(t, n, a);
     return this;
   }
-  get(header, parser) {
-    header = normalizeHeader(header);
-    if (header) {
-      const key = utils$1.findKey(this, header);
-      if (key) {
-        const value = this[key];
-        if (!parser) {
-          return value;
-        }
-        if (parser === true) {
-          return parseTokens(value);
-        }
-        if (utils$1.isFunction(parser)) {
-          return parser.call(this, value, key);
-        }
-        if (utils$1.isRegExp(parser)) {
-          return parser.exec(value);
-        }
+  get(n, t) {
+    if (n = Ye(n), n) {
+      const a = m.findKey(this, n);
+      if (a) {
+        const o = this[a];
+        if (!t)
+          return o;
+        if (t === !0)
+          return $i(o);
+        if (m.isFunction(t))
+          return t.call(this, o, a);
+        if (m.isRegExp(t))
+          return t.exec(o);
         throw new TypeError("parser must be boolean|regexp|function");
       }
     }
   }
-  has(header, matcher) {
-    header = normalizeHeader(header);
-    if (header) {
-      const key = utils$1.findKey(this, header);
-      return !!(key && this[key] !== void 0 && (!matcher || matchHeaderValue(this, this[key], key, matcher)));
+  has(n, t) {
+    if (n = Ye(n), n) {
+      const a = m.findKey(this, n);
+      return !!(a && this[a] !== void 0 && (!t || Xn(this, this[a], a, t)));
     }
-    return false;
+    return !1;
   }
-  delete(header, matcher) {
-    const self2 = this;
-    let deleted = false;
-    function deleteHeader(_header) {
-      _header = normalizeHeader(_header);
-      if (_header) {
-        const key = utils$1.findKey(self2, _header);
-        if (key && (!matcher || matchHeaderValue(self2, self2[key], key, matcher))) {
-          delete self2[key];
-          deleted = true;
-        }
+  delete(n, t) {
+    const a = this;
+    let o = !1;
+    function s(i) {
+      if (i = Ye(i), i) {
+        const r = m.findKey(a, i);
+        r && (!t || Xn(a, a[r], r, t)) && (delete a[r], o = !0);
       }
     }
-    if (utils$1.isArray(header)) {
-      header.forEach(deleteHeader);
-    } else {
-      deleteHeader(header);
-    }
-    return deleted;
+    return m.isArray(n) ? n.forEach(s) : s(n), o;
   }
-  clear(matcher) {
-    const keys = Object.keys(this);
-    let i = keys.length;
-    let deleted = false;
-    while (i--) {
-      const key = keys[i];
-      if (!matcher || matchHeaderValue(this, this[key], key, matcher, true)) {
-        delete this[key];
-        deleted = true;
-      }
+  clear(n) {
+    const t = Object.keys(this);
+    let a = t.length, o = !1;
+    for (; a--; ) {
+      const s = t[a];
+      (!n || Xn(this, this[s], s, n, !0)) && (delete this[s], o = !0);
     }
-    return deleted;
+    return o;
   }
-  normalize(format) {
-    const self2 = this;
-    const headers = {};
-    utils$1.forEach(this, (value, header) => {
-      const key = utils$1.findKey(headers, header);
-      if (key) {
-        self2[key] = normalizeValue(value);
-        delete self2[header];
+  normalize(n) {
+    const t = this, a = {};
+    return m.forEach(this, (o, s) => {
+      const i = m.findKey(a, s);
+      if (i) {
+        t[i] = kn(o), delete t[s];
         return;
       }
-      const normalized = format ? formatHeader(header) : String(header).trim();
-      if (normalized !== header) {
-        delete self2[header];
-      }
-      self2[normalized] = normalizeValue(value);
-      headers[normalized] = true;
-    });
-    return this;
+      const r = n ? Hi(s) : String(s).trim();
+      r !== s && delete t[s], t[r] = kn(o), a[r] = !0;
+    }), this;
   }
-  concat(...targets) {
-    return this.constructor.concat(this, ...targets);
+  concat(...n) {
+    return this.constructor.concat(this, ...n);
   }
-  toJSON(asStrings) {
-    const obj = /* @__PURE__ */ Object.create(null);
-    utils$1.forEach(this, (value, header) => {
-      value != null && value !== false && (obj[header] = asStrings && utils$1.isArray(value) ? value.join(", ") : value);
-    });
-    return obj;
+  toJSON(n) {
+    const t = /* @__PURE__ */ Object.create(null);
+    return m.forEach(this, (a, o) => {
+      a != null && a !== !1 && (t[o] = n && m.isArray(a) ? a.join(", ") : a);
+    }), t;
   }
   [Symbol.iterator]() {
     return Object.entries(this.toJSON())[Symbol.iterator]();
   }
   toString() {
-    return Object.entries(this.toJSON()).map(([header, value]) => header + ": " + value).join("\n");
+    return Object.entries(this.toJSON()).map(([n, t]) => n + ": " + t).join(`
+`);
   }
   getSetCookie() {
     return this.get("set-cookie") || [];
@@ -846,32 +573,25 @@ let AxiosHeaders$1 = class AxiosHeaders {
   get [Symbol.toStringTag]() {
     return "AxiosHeaders";
   }
-  static from(thing) {
-    return thing instanceof this ? thing : new this(thing);
+  static from(n) {
+    return n instanceof this ? n : new this(n);
   }
-  static concat(first, ...targets) {
-    const computed = new this(first);
-    targets.forEach((target) => computed.set(target));
-    return computed;
+  static concat(n, ...t) {
+    const a = new this(n);
+    return t.forEach((o) => a.set(o)), a;
   }
-  static accessor(header) {
-    const internals = this[$internals] = this[$internals] = {
+  static accessor(n) {
+    const a = (this[_a] = this[_a] = {
       accessors: {}
-    };
-    const accessors = internals.accessors;
-    const prototype2 = this.prototype;
-    function defineAccessor(_header) {
-      const lHeader = normalizeHeader(_header);
-      if (!accessors[lHeader]) {
-        buildAccessors(prototype2, _header);
-        accessors[lHeader] = true;
-      }
+    }).accessors, o = this.prototype;
+    function s(i) {
+      const r = Ye(i);
+      a[r] || (Wi(o, i), a[r] = !0);
     }
-    utils$1.isArray(header) ? header.forEach(defineAccessor) : defineAccessor(header);
-    return this;
+    return m.isArray(n) ? n.forEach(s) : s(n), this;
   }
 };
-AxiosHeaders$1.accessor([
+Q.accessor([
   "Content-Type",
   "Content-Length",
   "Accept",
@@ -879,78 +599,56 @@ AxiosHeaders$1.accessor([
   "User-Agent",
   "Authorization"
 ]);
-utils$1.reduceDescriptors(AxiosHeaders$1.prototype, ({ value }, key) => {
-  let mapped = key[0].toUpperCase() + key.slice(1);
+m.reduceDescriptors(Q.prototype, ({ value: e }, n) => {
+  let t = n[0].toUpperCase() + n.slice(1);
   return {
-    get: () => value,
-    set(headerValue) {
-      this[mapped] = headerValue;
+    get: () => e,
+    set(a) {
+      this[t] = a;
     }
   };
 });
-utils$1.freezeMethods(AxiosHeaders$1);
-const REDACTED = "[REDACTED ****]";
-function hasOwnOrPrototypeToJSON(source) {
-  if (utils$1.hasOwnProp(source, "toJSON")) {
-    return true;
+m.freezeMethods(Q);
+const Ki = "[REDACTED ****]";
+function Gi(e) {
+  if (m.hasOwnProp(e, "toJSON"))
+    return !0;
+  let n = Object.getPrototypeOf(e);
+  for (; n && n !== Object.prototype; ) {
+    if (m.hasOwnProp(n, "toJSON"))
+      return !0;
+    n = Object.getPrototypeOf(n);
   }
-  let prototype2 = Object.getPrototypeOf(source);
-  while (prototype2 && prototype2 !== Object.prototype) {
-    if (utils$1.hasOwnProp(prototype2, "toJSON")) {
-      return true;
-    }
-    prototype2 = Object.getPrototypeOf(prototype2);
-  }
-  return false;
+  return !1;
 }
-function redactConfig(config, redactKeys) {
-  const lowerKeys = new Set(redactKeys.map((k) => String(k).toLowerCase()));
-  const seen = [];
-  const visit = (source) => {
-    if (source === null || typeof source !== "object") return source;
-    if (utils$1.isBuffer(source)) return source;
-    if (seen.indexOf(source) !== -1) return void 0;
-    if (source instanceof AxiosHeaders$1) {
-      source = source.toJSON();
-    }
-    seen.push(source);
-    let result;
-    if (utils$1.isArray(source)) {
-      result = [];
-      source.forEach((v, i) => {
-        const reducedValue = visit(v);
-        if (!utils$1.isUndefined(reducedValue)) {
-          result[i] = reducedValue;
-        }
+function Ji(e, n) {
+  const t = new Set(n.map((s) => String(s).toLowerCase())), a = [], o = (s) => {
+    if (s === null || typeof s != "object" || m.isBuffer(s)) return s;
+    if (a.indexOf(s) !== -1) return;
+    s instanceof Q && (s = s.toJSON()), a.push(s);
+    let i;
+    if (m.isArray(s))
+      i = [], s.forEach((r, p) => {
+        const l = o(r);
+        m.isUndefined(l) || (i[p] = l);
       });
-    } else {
-      if (!utils$1.isPlainObject(source) && hasOwnOrPrototypeToJSON(source)) {
-        seen.pop();
-        return source;
-      }
-      result = /* @__PURE__ */ Object.create(null);
-      for (const [key, value] of Object.entries(source)) {
-        const reducedValue = lowerKeys.has(key.toLowerCase()) ? REDACTED : visit(value);
-        if (!utils$1.isUndefined(reducedValue)) {
-          result[key] = reducedValue;
-        }
+    else {
+      if (!m.isPlainObject(s) && Gi(s))
+        return a.pop(), s;
+      i = /* @__PURE__ */ Object.create(null);
+      for (const [r, p] of Object.entries(s)) {
+        const l = t.has(r.toLowerCase()) ? Ki : o(p);
+        m.isUndefined(l) || (i[r] = l);
       }
     }
-    seen.pop();
-    return result;
+    return a.pop(), i;
   };
-  return visit(config);
+  return o(e);
 }
-let AxiosError$1 = class AxiosError extends Error {
-  static from(error, code, config, request, response, customProps) {
-    const axiosError = new AxiosError(error.message, code || error.code, config, request, response);
-    axiosError.cause = error;
-    axiosError.name = error.name;
-    if (error.status != null && axiosError.status == null) {
-      axiosError.status = error.status;
-    }
-    customProps && Object.assign(axiosError, customProps);
-    return axiosError;
+let g = class No extends Error {
+  static from(n, t, a, o, s, i) {
+    const r = new No(n.message, t || n.code, a, o, s);
+    return r.cause = n, r.name = n.name, n.status != null && r.status == null && (r.status = n.status), i && Object.assign(r, i), r;
   }
   /**
    * Create an Error with the specified message, config, error code, request and response.
@@ -963,31 +661,19 @@ let AxiosError$1 = class AxiosError extends Error {
    *
    * @returns {Error} The created error.
    */
-  constructor(message, code, config, request, response) {
-    super(message);
-    Object.defineProperty(this, "message", {
+  constructor(n, t, a, o, s) {
+    super(n), Object.defineProperty(this, "message", {
       // Null-proto descriptor so a polluted Object.prototype.get cannot turn
       // this data descriptor into an accessor descriptor on the way in.
       __proto__: null,
-      value: message,
-      enumerable: true,
-      writable: true,
-      configurable: true
-    });
-    this.name = "AxiosError";
-    this.isAxiosError = true;
-    code && (this.code = code);
-    config && (this.config = config);
-    request && (this.request = request);
-    if (response) {
-      this.response = response;
-      this.status = response.status;
-    }
+      value: n,
+      enumerable: !0,
+      writable: !0,
+      configurable: !0
+    }), this.name = "AxiosError", this.isAxiosError = !0, t && (this.code = t), a && (this.config = a), o && (this.request = o), s && (this.response = s, this.status = s.status);
   }
   toJSON() {
-    const config = this.config;
-    const redactKeys = config && utils$1.hasOwnProp(config, "redact") ? config.redact : void 0;
-    const serializedConfig = utils$1.isArray(redactKeys) && redactKeys.length > 0 ? redactConfig(config, redactKeys) : utils$1.toJSONObject(config);
+    const n = this.config, t = n && m.hasOwnProp(n, "redact") ? n.redact : void 0, a = m.isArray(t) && t.length > 0 ? Ji(n, t) : m.toJSONObject(n);
     return {
       // Standard
       message: this.message,
@@ -1001,298 +687,218 @@ let AxiosError$1 = class AxiosError extends Error {
       columnNumber: this.columnNumber,
       stack: this.stack,
       // Axios
-      config: serializedConfig,
+      config: a,
       code: this.code,
       status: this.status
     };
   }
 };
-AxiosError$1.ERR_BAD_OPTION_VALUE = "ERR_BAD_OPTION_VALUE";
-AxiosError$1.ERR_BAD_OPTION = "ERR_BAD_OPTION";
-AxiosError$1.ECONNABORTED = "ECONNABORTED";
-AxiosError$1.ETIMEDOUT = "ETIMEDOUT";
-AxiosError$1.ECONNREFUSED = "ECONNREFUSED";
-AxiosError$1.ERR_NETWORK = "ERR_NETWORK";
-AxiosError$1.ERR_FR_TOO_MANY_REDIRECTS = "ERR_FR_TOO_MANY_REDIRECTS";
-AxiosError$1.ERR_DEPRECATED = "ERR_DEPRECATED";
-AxiosError$1.ERR_BAD_RESPONSE = "ERR_BAD_RESPONSE";
-AxiosError$1.ERR_BAD_REQUEST = "ERR_BAD_REQUEST";
-AxiosError$1.ERR_CANCELED = "ERR_CANCELED";
-AxiosError$1.ERR_NOT_SUPPORT = "ERR_NOT_SUPPORT";
-AxiosError$1.ERR_INVALID_URL = "ERR_INVALID_URL";
-AxiosError$1.ERR_FORM_DATA_DEPTH_EXCEEDED = "ERR_FORM_DATA_DEPTH_EXCEEDED";
-function getDefaultExportFromCjs(x) {
-  return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, "default") ? x["default"] : x;
+g.ERR_BAD_OPTION_VALUE = "ERR_BAD_OPTION_VALUE";
+g.ERR_BAD_OPTION = "ERR_BAD_OPTION";
+g.ECONNABORTED = "ECONNABORTED";
+g.ETIMEDOUT = "ETIMEDOUT";
+g.ECONNREFUSED = "ECONNREFUSED";
+g.ERR_NETWORK = "ERR_NETWORK";
+g.ERR_FR_TOO_MANY_REDIRECTS = "ERR_FR_TOO_MANY_REDIRECTS";
+g.ERR_DEPRECATED = "ERR_DEPRECATED";
+g.ERR_BAD_RESPONSE = "ERR_BAD_RESPONSE";
+g.ERR_BAD_REQUEST = "ERR_BAD_REQUEST";
+g.ERR_CANCELED = "ERR_CANCELED";
+g.ERR_NOT_SUPPORT = "ERR_NOT_SUPPORT";
+g.ERR_INVALID_URL = "ERR_INVALID_URL";
+g.ERR_FORM_DATA_DEPTH_EXCEEDED = "ERR_FORM_DATA_DEPTH_EXCEEDED";
+function Do(e) {
+  return e && e.__esModule && Object.prototype.hasOwnProperty.call(e, "default") ? e.default : e;
 }
-var Stream$2 = stream.Stream;
-var util$2 = require$$1;
-var delayed_stream = DelayedStream$1;
-function DelayedStream$1() {
-  this.source = null;
-  this.dataSize = 0;
-  this.maxDataSize = 1024 * 1024;
-  this.pauseStream = true;
-  this._maxDataSizeExceeded = false;
-  this._released = false;
-  this._bufferedEvents = [];
+var Io = te.Stream, Vi = De, Xi = be;
+function be() {
+  this.source = null, this.dataSize = 0, this.maxDataSize = 1024 * 1024, this.pauseStream = !0, this._maxDataSizeExceeded = !1, this._released = !1, this._bufferedEvents = [];
 }
-util$2.inherits(DelayedStream$1, Stream$2);
-DelayedStream$1.create = function(source, options) {
-  var delayedStream = new this();
-  options = options || {};
-  for (var option in options) {
-    delayedStream[option] = options[option];
-  }
-  delayedStream.source = source;
-  var realEmit = source.emit;
-  source.emit = function() {
-    delayedStream._handleEmit(arguments);
-    return realEmit.apply(source, arguments);
-  };
-  source.on("error", function() {
-  });
-  if (delayedStream.pauseStream) {
-    source.pause();
-  }
-  return delayedStream;
+Vi.inherits(be, Io);
+be.create = function(e, n) {
+  var t = new this();
+  n = n || {};
+  for (var a in n)
+    t[a] = n[a];
+  t.source = e;
+  var o = e.emit;
+  return e.emit = function() {
+    return t._handleEmit(arguments), o.apply(e, arguments);
+  }, e.on("error", function() {
+  }), t.pauseStream && e.pause(), t;
 };
-Object.defineProperty(DelayedStream$1.prototype, "readable", {
-  configurable: true,
-  enumerable: true,
+Object.defineProperty(be.prototype, "readable", {
+  configurable: !0,
+  enumerable: !0,
   get: function() {
     return this.source.readable;
   }
 });
-DelayedStream$1.prototype.setEncoding = function() {
+be.prototype.setEncoding = function() {
   return this.source.setEncoding.apply(this.source, arguments);
 };
-DelayedStream$1.prototype.resume = function() {
-  if (!this._released) {
-    this.release();
-  }
-  this.source.resume();
+be.prototype.resume = function() {
+  this._released || this.release(), this.source.resume();
 };
-DelayedStream$1.prototype.pause = function() {
+be.prototype.pause = function() {
   this.source.pause();
 };
-DelayedStream$1.prototype.release = function() {
-  this._released = true;
-  this._bufferedEvents.forEach((function(args) {
-    this.emit.apply(this, args);
-  }).bind(this));
-  this._bufferedEvents = [];
+be.prototype.release = function() {
+  this._released = !0, this._bufferedEvents.forEach((function(e) {
+    this.emit.apply(this, e);
+  }).bind(this)), this._bufferedEvents = [];
 };
-DelayedStream$1.prototype.pipe = function() {
-  var r = Stream$2.prototype.pipe.apply(this, arguments);
-  this.resume();
-  return r;
+be.prototype.pipe = function() {
+  var e = Io.prototype.pipe.apply(this, arguments);
+  return this.resume(), e;
 };
-DelayedStream$1.prototype._handleEmit = function(args) {
+be.prototype._handleEmit = function(e) {
   if (this._released) {
-    this.emit.apply(this, args);
+    this.emit.apply(this, e);
     return;
   }
-  if (args[0] === "data") {
-    this.dataSize += args[1].length;
-    this._checkIfMaxDataSizeExceeded();
-  }
-  this._bufferedEvents.push(args);
+  e[0] === "data" && (this.dataSize += e[1].length, this._checkIfMaxDataSizeExceeded()), this._bufferedEvents.push(e);
 };
-DelayedStream$1.prototype._checkIfMaxDataSizeExceeded = function() {
-  if (this._maxDataSizeExceeded) {
-    return;
+be.prototype._checkIfMaxDataSizeExceeded = function() {
+  if (!this._maxDataSizeExceeded && !(this.dataSize <= this.maxDataSize)) {
+    this._maxDataSizeExceeded = !0;
+    var e = "DelayedStream#maxDataSize of " + this.maxDataSize + " bytes exceeded.";
+    this.emit("error", new Error(e));
   }
-  if (this.dataSize <= this.maxDataSize) {
-    return;
-  }
-  this._maxDataSizeExceeded = true;
-  var message = "DelayedStream#maxDataSize of " + this.maxDataSize + " bytes exceeded.";
-  this.emit("error", new Error(message));
 };
-var util$1 = require$$1;
-var Stream$1 = stream.Stream;
-var DelayedStream = delayed_stream;
-var combined_stream = CombinedStream$1;
-function CombinedStream$1() {
-  this.writable = false;
-  this.readable = true;
-  this.dataSize = 0;
-  this.maxDataSize = 2 * 1024 * 1024;
-  this.pauseStreams = true;
-  this._released = false;
-  this._streams = [];
-  this._currentStream = null;
-  this._insideLoop = false;
-  this._pendingNext = false;
+var Yi = De, Fo = te.Stream, Ea = Xi, Zi = W;
+function W() {
+  this.writable = !1, this.readable = !0, this.dataSize = 0, this.maxDataSize = 2 * 1024 * 1024, this.pauseStreams = !0, this._released = !1, this._streams = [], this._currentStream = null, this._insideLoop = !1, this._pendingNext = !1;
 }
-util$1.inherits(CombinedStream$1, Stream$1);
-CombinedStream$1.create = function(options) {
-  var combinedStream = new this();
-  options = options || {};
-  for (var option in options) {
-    combinedStream[option] = options[option];
-  }
-  return combinedStream;
+Yi.inherits(W, Fo);
+W.create = function(e) {
+  var n = new this();
+  e = e || {};
+  for (var t in e)
+    n[t] = e[t];
+  return n;
 };
-CombinedStream$1.isStreamLike = function(stream2) {
-  return typeof stream2 !== "function" && typeof stream2 !== "string" && typeof stream2 !== "boolean" && typeof stream2 !== "number" && !Buffer.isBuffer(stream2);
+W.isStreamLike = function(e) {
+  return typeof e != "function" && typeof e != "string" && typeof e != "boolean" && typeof e != "number" && !Buffer.isBuffer(e);
 };
-CombinedStream$1.prototype.append = function(stream2) {
-  var isStreamLike = CombinedStream$1.isStreamLike(stream2);
-  if (isStreamLike) {
-    if (!(stream2 instanceof DelayedStream)) {
-      var newStream = DelayedStream.create(stream2, {
-        maxDataSize: Infinity,
+W.prototype.append = function(e) {
+  var n = W.isStreamLike(e);
+  if (n) {
+    if (!(e instanceof Ea)) {
+      var t = Ea.create(e, {
+        maxDataSize: 1 / 0,
         pauseStream: this.pauseStreams
       });
-      stream2.on("data", this._checkDataSize.bind(this));
-      stream2 = newStream;
+      e.on("data", this._checkDataSize.bind(this)), e = t;
     }
-    this._handleErrors(stream2);
-    if (this.pauseStreams) {
-      stream2.pause();
-    }
+    this._handleErrors(e), this.pauseStreams && e.pause();
   }
-  this._streams.push(stream2);
-  return this;
+  return this._streams.push(e), this;
 };
-CombinedStream$1.prototype.pipe = function(dest, options) {
-  Stream$1.prototype.pipe.call(this, dest, options);
-  this.resume();
-  return dest;
+W.prototype.pipe = function(e, n) {
+  return Fo.prototype.pipe.call(this, e, n), this.resume(), e;
 };
-CombinedStream$1.prototype._getNext = function() {
-  this._currentStream = null;
-  if (this._insideLoop) {
-    this._pendingNext = true;
+W.prototype._getNext = function() {
+  if (this._currentStream = null, this._insideLoop) {
+    this._pendingNext = !0;
     return;
   }
-  this._insideLoop = true;
+  this._insideLoop = !0;
   try {
-    do {
-      this._pendingNext = false;
-      this._realGetNext();
-    } while (this._pendingNext);
+    do
+      this._pendingNext = !1, this._realGetNext();
+    while (this._pendingNext);
   } finally {
-    this._insideLoop = false;
+    this._insideLoop = !1;
   }
 };
-CombinedStream$1.prototype._realGetNext = function() {
-  var stream2 = this._streams.shift();
-  if (typeof stream2 == "undefined") {
+W.prototype._realGetNext = function() {
+  var e = this._streams.shift();
+  if (typeof e > "u") {
     this.end();
     return;
   }
-  if (typeof stream2 !== "function") {
-    this._pipeNext(stream2);
+  if (typeof e != "function") {
+    this._pipeNext(e);
     return;
   }
-  var getStream = stream2;
-  getStream((function(stream3) {
-    var isStreamLike = CombinedStream$1.isStreamLike(stream3);
-    if (isStreamLike) {
-      stream3.on("data", this._checkDataSize.bind(this));
-      this._handleErrors(stream3);
-    }
-    this._pipeNext(stream3);
+  var n = e;
+  n((function(t) {
+    var a = W.isStreamLike(t);
+    a && (t.on("data", this._checkDataSize.bind(this)), this._handleErrors(t)), this._pipeNext(t);
   }).bind(this));
 };
-CombinedStream$1.prototype._pipeNext = function(stream2) {
-  this._currentStream = stream2;
-  var isStreamLike = CombinedStream$1.isStreamLike(stream2);
-  if (isStreamLike) {
-    stream2.on("end", this._getNext.bind(this));
-    stream2.pipe(this, { end: false });
+W.prototype._pipeNext = function(e) {
+  this._currentStream = e;
+  var n = W.isStreamLike(e);
+  if (n) {
+    e.on("end", this._getNext.bind(this)), e.pipe(this, { end: !1 });
     return;
   }
-  var value = stream2;
-  this.write(value);
-  this._getNext();
+  var t = e;
+  this.write(t), this._getNext();
 };
-CombinedStream$1.prototype._handleErrors = function(stream2) {
-  var self2 = this;
-  stream2.on("error", function(err) {
-    self2._emitError(err);
+W.prototype._handleErrors = function(e) {
+  var n = this;
+  e.on("error", function(t) {
+    n._emitError(t);
   });
 };
-CombinedStream$1.prototype.write = function(data) {
-  this.emit("data", data);
+W.prototype.write = function(e) {
+  this.emit("data", e);
 };
-CombinedStream$1.prototype.pause = function() {
-  if (!this.pauseStreams) {
-    return;
+W.prototype.pause = function() {
+  this.pauseStreams && (this.pauseStreams && this._currentStream && typeof this._currentStream.pause == "function" && this._currentStream.pause(), this.emit("pause"));
+};
+W.prototype.resume = function() {
+  this._released || (this._released = !0, this.writable = !0, this._getNext()), this.pauseStreams && this._currentStream && typeof this._currentStream.resume == "function" && this._currentStream.resume(), this.emit("resume");
+};
+W.prototype.end = function() {
+  this._reset(), this.emit("end");
+};
+W.prototype.destroy = function() {
+  this._reset(), this.emit("close");
+};
+W.prototype._reset = function() {
+  this.writable = !1, this._streams = [], this._currentStream = null;
+};
+W.prototype._checkDataSize = function() {
+  if (this._updateDataSize(), !(this.dataSize <= this.maxDataSize)) {
+    var e = "DelayedStream#maxDataSize of " + this.maxDataSize + " bytes exceeded.";
+    this._emitError(new Error(e));
   }
-  if (this.pauseStreams && this._currentStream && typeof this._currentStream.pause == "function") this._currentStream.pause();
-  this.emit("pause");
 };
-CombinedStream$1.prototype.resume = function() {
-  if (!this._released) {
-    this._released = true;
-    this.writable = true;
-    this._getNext();
-  }
-  if (this.pauseStreams && this._currentStream && typeof this._currentStream.resume == "function") this._currentStream.resume();
-  this.emit("resume");
-};
-CombinedStream$1.prototype.end = function() {
-  this._reset();
-  this.emit("end");
-};
-CombinedStream$1.prototype.destroy = function() {
-  this._reset();
-  this.emit("close");
-};
-CombinedStream$1.prototype._reset = function() {
-  this.writable = false;
-  this._streams = [];
-  this._currentStream = null;
-};
-CombinedStream$1.prototype._checkDataSize = function() {
-  this._updateDataSize();
-  if (this.dataSize <= this.maxDataSize) {
-    return;
-  }
-  var message = "DelayedStream#maxDataSize of " + this.maxDataSize + " bytes exceeded.";
-  this._emitError(new Error(message));
-};
-CombinedStream$1.prototype._updateDataSize = function() {
+W.prototype._updateDataSize = function() {
   this.dataSize = 0;
-  var self2 = this;
-  this._streams.forEach(function(stream2) {
-    if (!stream2.dataSize) {
-      return;
-    }
-    self2.dataSize += stream2.dataSize;
-  });
-  if (this._currentStream && this._currentStream.dataSize) {
-    this.dataSize += this._currentStream.dataSize;
-  }
+  var e = this;
+  this._streams.forEach(function(n) {
+    n.dataSize && (e.dataSize += n.dataSize);
+  }), this._currentStream && this._currentStream.dataSize && (this.dataSize += this._currentStream.dataSize);
 };
-CombinedStream$1.prototype._emitError = function(err) {
-  this._reset();
-  this.emit("error", err);
+W.prototype._emitError = function(e) {
+  this._reset(), this.emit("error", e);
 };
-var mimeTypes = {};
-const require$$0 = {
+var Uo = {};
+const Qi = {
   "application/1d-interleaved-parityfec": {
     source: "iana"
   },
   "application/3gpdash-qoe-report+xml": {
     source: "iana",
     charset: "UTF-8",
-    compressible: true
+    compressible: !0
   },
   "application/3gpp-ims+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/3gpphal+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/3gpphalforms+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/a2l": {
     source: "iana"
@@ -1305,55 +911,55 @@ const require$$0 = {
   },
   "application/activity+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/alto-costmap+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/alto-costmapfilter+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/alto-directory+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/alto-endpointcost+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/alto-endpointcostparams+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/alto-endpointprop+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/alto-endpointpropparams+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/alto-error+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/alto-networkmap+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/alto-networkmapfilter+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/alto-updatestreamcontrol+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/alto-updatestreamparams+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/aml": {
     source: "iana"
@@ -1384,21 +990,21 @@ const require$$0 = {
   },
   "application/atom+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "atom"
     ]
   },
   "application/atomcat+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "atomcat"
     ]
   },
   "application/atomdeleted+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "atomdeleted"
     ]
@@ -1408,14 +1014,14 @@ const require$$0 = {
   },
   "application/atomsvc+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "atomsvc"
     ]
   },
   "application/atsc-dwd+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "dwd"
     ]
@@ -1425,18 +1031,18 @@ const require$$0 = {
   },
   "application/atsc-held+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "held"
     ]
   },
   "application/atsc-rdt+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/atsc-rsat+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "rsat"
     ]
@@ -1446,17 +1052,17 @@ const require$$0 = {
   },
   "application/auth-policy+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/bacnet-xdd+zip": {
     source: "iana",
-    compressible: false
+    compressible: !1
   },
   "application/batch-smtp": {
     source: "iana"
   },
   "application/bdoc": {
-    compressible: false,
+    compressible: !1,
     extensions: [
       "bdoc"
     ]
@@ -1464,15 +1070,15 @@ const require$$0 = {
   "application/beep+xml": {
     source: "iana",
     charset: "UTF-8",
-    compressible: true
+    compressible: !0
   },
   "application/calendar+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/calendar+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "xcs"
     ]
@@ -1485,7 +1091,7 @@ const require$$0 = {
   },
   "application/captive+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/cbor": {
     source: "iana"
@@ -1498,18 +1104,18 @@ const require$$0 = {
   },
   "application/ccmp+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/ccxml+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "ccxml"
     ]
   },
   "application/cdfx+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "cdfx"
     ]
@@ -1552,40 +1158,40 @@ const require$$0 = {
   },
   "application/cea-2018+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/cellml+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/cfw": {
     source: "iana"
   },
   "application/city+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/clr": {
     source: "iana"
   },
   "application/clue+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/clue_info+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/cms": {
     source: "iana"
   },
   "application/cnrp+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/coap-group+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/coap-payload": {
     source: "iana"
@@ -1595,7 +1201,7 @@ const require$$0 = {
   },
   "application/conference-info+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/cose": {
     source: "iana"
@@ -1608,7 +1214,7 @@ const require$$0 = {
   },
   "application/cpl+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "cpl"
     ]
@@ -1618,15 +1224,15 @@ const require$$0 = {
   },
   "application/csta+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/cstadata+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/csvm+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/cu-seeme": {
     source: "apache",
@@ -1641,18 +1247,18 @@ const require$$0 = {
     source: "iana"
   },
   "application/dart": {
-    compressible: true
+    compressible: !0
   },
   "application/dash+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "mpd"
     ]
   },
   "application/dash-patch+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "mpp"
     ]
@@ -1662,7 +1268,7 @@ const require$$0 = {
   },
   "application/davmount+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "davmount"
     ]
@@ -1678,18 +1284,18 @@ const require$$0 = {
   },
   "application/dialog-info+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/dicom": {
     source: "iana"
   },
   "application/dicom+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/dicom+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/dii": {
     source: "iana"
@@ -1702,14 +1308,14 @@ const require$$0 = {
   },
   "application/dns+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/dns-message": {
     source: "iana"
   },
   "application/docbook+xml": {
     source: "apache",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "dbk"
     ]
@@ -1719,7 +1325,7 @@ const require$$0 = {
   },
   "application/dskpp+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/dssc+der": {
     source: "iana",
@@ -1729,7 +1335,7 @@ const require$$0 = {
   },
   "application/dssc+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "xdssc"
     ]
@@ -1739,7 +1345,7 @@ const require$$0 = {
   },
   "application/ecmascript": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "es",
       "ecma"
@@ -1750,11 +1356,11 @@ const require$$0 = {
   },
   "application/edi-x12": {
     source: "iana",
-    compressible: false
+    compressible: !1
   },
   "application/edifact": {
     source: "iana",
-    compressible: false
+    compressible: !1
   },
   "application/efi": {
     source: "iana"
@@ -1762,58 +1368,58 @@ const require$$0 = {
   "application/elm+json": {
     source: "iana",
     charset: "UTF-8",
-    compressible: true
+    compressible: !0
   },
   "application/elm+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/emergencycalldata.cap+xml": {
     source: "iana",
     charset: "UTF-8",
-    compressible: true
+    compressible: !0
   },
   "application/emergencycalldata.comment+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/emergencycalldata.control+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/emergencycalldata.deviceinfo+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/emergencycalldata.ecall.msd": {
     source: "iana"
   },
   "application/emergencycalldata.providerinfo+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/emergencycalldata.serviceinfo+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/emergencycalldata.subscriberinfo+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/emergencycalldata.veds+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/emma+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "emma"
     ]
   },
   "application/emotionml+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "emotionml"
     ]
@@ -1823,11 +1429,11 @@ const require$$0 = {
   },
   "application/epp+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/epub+zip": {
     source: "iana",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "epub"
     ]
@@ -1843,7 +1449,7 @@ const require$$0 = {
   },
   "application/expect-ct-report+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/express": {
     source: "iana",
@@ -1859,7 +1465,7 @@ const require$$0 = {
   },
   "application/fdt+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "fdt"
     ]
@@ -1867,15 +1473,15 @@ const require$$0 = {
   "application/fhir+json": {
     source: "iana",
     charset: "UTF-8",
-    compressible: true
+    compressible: !0
   },
   "application/fhir+xml": {
     source: "iana",
     charset: "UTF-8",
-    compressible: true
+    compressible: !0
   },
   "application/fido.trusted-apps+json": {
-    compressible: true
+    compressible: !0
   },
   "application/fits": {
     source: "iana"
@@ -1894,15 +1500,15 @@ const require$$0 = {
   },
   "application/font-woff": {
     source: "iana",
-    compressible: false
+    compressible: !1
   },
   "application/framework-attributes+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/geo+json": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "geojson"
     ]
@@ -1915,21 +1521,21 @@ const require$$0 = {
   },
   "application/geoxacml+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/gltf-buffer": {
     source: "iana"
   },
   "application/gml+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "gml"
     ]
   },
   "application/gpx+xml": {
     source: "apache",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "gpx"
     ]
@@ -1942,7 +1548,7 @@ const require$$0 = {
   },
   "application/gzip": {
     source: "iana",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "gz"
     ]
@@ -1952,7 +1558,7 @@ const require$$0 = {
   },
   "application/held+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/hjson": {
     extensions: [
@@ -1970,11 +1576,11 @@ const require$$0 = {
   },
   "application/ibe-key-request+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/ibe-pkg-reply+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/ibe-pp-data": {
     source: "iana"
@@ -1985,7 +1591,7 @@ const require$$0 = {
   "application/im-iscomposing+xml": {
     source: "iana",
     charset: "UTF-8",
-    compressible: true
+    compressible: !0
   },
   "application/index": {
     source: "iana"
@@ -2004,7 +1610,7 @@ const require$$0 = {
   },
   "application/inkml+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "ink",
       "inkml"
@@ -2027,14 +1633,14 @@ const require$$0 = {
   },
   "application/its+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "its"
     ]
   },
   "application/java-archive": {
     source: "apache",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "jar",
       "war",
@@ -2043,14 +1649,14 @@ const require$$0 = {
   },
   "application/java-serialized-object": {
     source: "apache",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "ser"
     ]
   },
   "application/java-vm": {
     source: "apache",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "class"
     ]
@@ -2058,7 +1664,7 @@ const require$$0 = {
   "application/javascript": {
     source: "iana",
     charset: "UTF-8",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "js",
       "mjs"
@@ -2066,27 +1672,27 @@ const require$$0 = {
   },
   "application/jf2feed+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/jose": {
     source: "iana"
   },
   "application/jose+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/jrd+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/jscalendar+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/json": {
     source: "iana",
     charset: "UTF-8",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "json",
       "map"
@@ -2094,7 +1700,7 @@ const require$$0 = {
   },
   "application/json-patch+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/json-seq": {
     source: "iana"
@@ -2106,40 +1712,40 @@ const require$$0 = {
   },
   "application/jsonml+json": {
     source: "apache",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "jsonml"
     ]
   },
   "application/jwk+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/jwk-set+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/jwt": {
     source: "iana"
   },
   "application/kpml-request+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/kpml-response+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/ld+json": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "jsonld"
     ]
   },
   "application/lgr+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "lgr"
     ]
@@ -2149,22 +1755,22 @@ const require$$0 = {
   },
   "application/load-control+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/lost+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "lostxml"
     ]
   },
   "application/lostsync+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/lpf+zip": {
     source: "iana",
-    compressible: false
+    compressible: !1
   },
   "application/lxf": {
     source: "iana"
@@ -2186,7 +1792,7 @@ const require$$0 = {
   },
   "application/mads+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "mads"
     ]
@@ -2194,7 +1800,7 @@ const require$$0 = {
   "application/manifest+json": {
     source: "iana",
     charset: "UTF-8",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "webmanifest"
     ]
@@ -2207,7 +1813,7 @@ const require$$0 = {
   },
   "application/marcxml+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "mrcx"
     ]
@@ -2222,62 +1828,62 @@ const require$$0 = {
   },
   "application/mathml+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "mathml"
     ]
   },
   "application/mathml-content+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/mathml-presentation+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/mbms-associated-procedure-description+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/mbms-deregister+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/mbms-envelope+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/mbms-msk+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/mbms-msk-response+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/mbms-protection-description+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/mbms-reception-report+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/mbms-register+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/mbms-register-response+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/mbms-schedule+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/mbms-user-service-description+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/mbox": {
     source: "iana",
@@ -2287,43 +1893,43 @@ const require$$0 = {
   },
   "application/media-policy-dataset+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "mpf"
     ]
   },
   "application/media_control+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/mediaservercontrol+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "mscml"
     ]
   },
   "application/merge-patch+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/metalink+xml": {
     source: "apache",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "metalink"
     ]
   },
   "application/metalink4+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "meta4"
     ]
   },
   "application/mets+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "mets"
     ]
@@ -2342,21 +1948,21 @@ const require$$0 = {
   },
   "application/mmt-aei+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "maei"
     ]
   },
   "application/mmt-usd+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "musd"
     ]
   },
   "application/mods+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "mods"
     ]
@@ -2398,25 +2004,25 @@ const require$$0 = {
   },
   "application/mrb-consumer+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/mrb-publish+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/msc-ivr+xml": {
     source: "iana",
     charset: "UTF-8",
-    compressible: true
+    compressible: !0
   },
   "application/msc-mixer+xml": {
     source: "iana",
     charset: "UTF-8",
-    compressible: true
+    compressible: !0
   },
   "application/msword": {
     source: "iana",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "doc",
       "dot"
@@ -2424,7 +2030,7 @@ const require$$0 = {
   },
   "application/mud+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/multipart-core": {
     source: "iana"
@@ -2463,7 +2069,7 @@ const require$$0 = {
   },
   "application/nlsml+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/node": {
     source: "iana",
@@ -2488,7 +2094,7 @@ const require$$0 = {
   },
   "application/octet-stream": {
     source: "iana",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "bin",
       "dms",
@@ -2522,28 +2128,28 @@ const require$$0 = {
   },
   "application/odm+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/odx": {
     source: "iana"
   },
   "application/oebps-package+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "opf"
     ]
   },
   "application/ogg": {
     source: "iana",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "ogx"
     ]
   },
   "application/omdoc+xml": {
     source: "apache",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "omdoc"
     ]
@@ -2559,7 +2165,7 @@ const require$$0 = {
   },
   "application/opc-nodeset+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/oscore": {
     source: "iana"
@@ -2575,11 +2181,11 @@ const require$$0 = {
   },
   "application/p21+zip": {
     source: "iana",
-    compressible: false
+    compressible: !1
   },
   "application/p2p-overlay+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "relo"
     ]
@@ -2592,14 +2198,14 @@ const require$$0 = {
   },
   "application/patch-ops-error+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "xer"
     ]
   },
   "application/pdf": {
     source: "iana",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "pdf"
     ]
@@ -2612,7 +2218,7 @@ const require$$0 = {
   },
   "application/pgp-encrypted": {
     source: "iana",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "pgp"
     ]
@@ -2639,12 +2245,12 @@ const require$$0 = {
   "application/pidf+xml": {
     source: "iana",
     charset: "UTF-8",
-    compressible: true
+    compressible: !0
   },
   "application/pidf-diff+xml": {
     source: "iana",
     charset: "UTF-8",
-    compressible: true
+    compressible: !0
   },
   "application/pkcs10": {
     source: "iana",
@@ -2709,7 +2315,7 @@ const require$$0 = {
   },
   "application/pls+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "pls"
     ]
@@ -2717,11 +2323,11 @@ const require$$0 = {
   "application/poc-settings+xml": {
     source: "iana",
     charset: "UTF-8",
-    compressible: true
+    compressible: !0
   },
   "application/postscript": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "ai",
       "eps",
@@ -2730,19 +2336,19 @@ const require$$0 = {
   },
   "application/ppsp-tracker+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/problem+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/problem+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/provenance+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "provx"
     ]
@@ -2762,7 +2368,7 @@ const require$$0 = {
   },
   "application/prs.hpub+zip": {
     source: "iana",
-    compressible: false
+    compressible: !1
   },
   "application/prs.nprend": {
     source: "iana"
@@ -2775,24 +2381,24 @@ const require$$0 = {
   },
   "application/prs.xsf+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/pskc+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "pskcxml"
     ]
   },
   "application/pvd+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/qsig": {
     source: "iana"
   },
   "application/raml+yaml": {
-    compressible: true,
+    compressible: !0,
     extensions: [
       "raml"
     ]
@@ -2802,11 +2408,11 @@ const require$$0 = {
   },
   "application/rdap+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/rdf+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "rdf",
       "owl"
@@ -2814,7 +2420,7 @@ const require$$0 = {
   },
   "application/reginfo+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "rif"
     ]
@@ -2830,57 +2436,57 @@ const require$$0 = {
   },
   "application/reputon+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/resource-lists+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "rl"
     ]
   },
   "application/resource-lists-diff+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "rld"
     ]
   },
   "application/rfc+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/riscos": {
     source: "iana"
   },
   "application/rlmi+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/rls-services+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "rs"
     ]
   },
   "application/route-apd+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "rapd"
     ]
   },
   "application/route-s-tsid+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "sls"
     ]
   },
   "application/route-usd+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "rusd"
     ]
@@ -2911,21 +2517,21 @@ const require$$0 = {
   },
   "application/rsd+xml": {
     source: "apache",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "rsd"
     ]
   },
   "application/rss+xml": {
     source: "apache",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "rss"
     ]
   },
   "application/rtf": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "rtf"
     ]
@@ -2938,37 +2544,37 @@ const require$$0 = {
   },
   "application/samlassertion+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/samlmetadata+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/sarif+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/sarif-external-properties+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/sbe": {
     source: "iana"
   },
   "application/sbml+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "sbml"
     ]
   },
   "application/scaip+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/scim+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/scvp-cv-request": {
     source: "iana",
@@ -3008,11 +2614,11 @@ const require$$0 = {
   },
   "application/senml+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/senml+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "senmlx"
     ]
@@ -3022,7 +2628,7 @@ const require$$0 = {
   },
   "application/senml-etch+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/senml-exi": {
     source: "iana"
@@ -3032,11 +2638,11 @@ const require$$0 = {
   },
   "application/sensml+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/sensml+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "sensmlx"
     ]
@@ -3046,7 +2652,7 @@ const require$$0 = {
   },
   "application/sep+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/sep-exi": {
     source: "iana"
@@ -3080,7 +2686,7 @@ const require$$0 = {
   },
   "application/shf+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "shf"
     ]
@@ -3094,7 +2700,7 @@ const require$$0 = {
   },
   "application/simple-filter+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/simple-message-summary": {
     source: "iana"
@@ -3113,7 +2719,7 @@ const require$$0 = {
   },
   "application/smil+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "smi",
       "smil"
@@ -3127,7 +2733,7 @@ const require$$0 = {
   },
   "application/soap+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/sparql-query": {
     source: "iana",
@@ -3137,18 +2743,18 @@ const require$$0 = {
   },
   "application/sparql-results+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "srx"
     ]
   },
   "application/spdx+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/spirits-event+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/sql": {
     source: "iana"
@@ -3161,39 +2767,39 @@ const require$$0 = {
   },
   "application/srgs+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "grxml"
     ]
   },
   "application/sru+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "sru"
     ]
   },
   "application/ssdl+xml": {
     source: "apache",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "ssdl"
     ]
   },
   "application/ssml+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "ssml"
     ]
   },
   "application/stix+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/swid+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "swidtag"
     ]
@@ -3232,19 +2838,19 @@ const require$$0 = {
     source: "iana"
   },
   "application/tar": {
-    compressible: true
+    compressible: !0
   },
   "application/taxii+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/td+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/tei+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "tei",
       "teicorpus"
@@ -3255,7 +2861,7 @@ const require$$0 = {
   },
   "application/thraud+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "tfi"
     ]
@@ -3277,7 +2883,7 @@ const require$$0 = {
   },
   "application/tlsrpt+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/tnauthlist": {
     source: "iana"
@@ -3286,7 +2892,7 @@ const require$$0 = {
     source: "iana"
   },
   "application/toml": {
-    compressible: true,
+    compressible: !0,
     extensions: [
       "toml"
     ]
@@ -3302,7 +2908,7 @@ const require$$0 = {
   },
   "application/ttml+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "ttml"
     ]
@@ -3317,7 +2923,7 @@ const require$$0 = {
     source: "iana"
   },
   "application/ubjson": {
-    compressible: false,
+    compressible: !1,
     extensions: [
       "ubj"
     ]
@@ -3327,33 +2933,33 @@ const require$$0 = {
   },
   "application/urc-grpsheet+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/urc-ressheet+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "rsheet"
     ]
   },
   "application/urc-targetdesc+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "td"
     ]
   },
   "application/urc-uisocketdesc+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vcard+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vcard+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vemmi": {
     source: "iana"
@@ -3363,18 +2969,18 @@ const require$$0 = {
   },
   "application/vnd.1000minds.decision-model+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "1km"
     ]
   },
   "application/vnd.3gpp-prose+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.3gpp-prose-pc3ch+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.3gpp-v2x-local-service-information": {
     source: "iana"
@@ -3384,15 +2990,15 @@ const require$$0 = {
   },
   "application/vnd.3gpp.access-transfer-events+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.3gpp.bsf+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.3gpp.gmop+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.3gpp.gtpc": {
     source: "iana"
@@ -3408,109 +3014,109 @@ const require$$0 = {
   },
   "application/vnd.3gpp.mcdata-affiliation-command+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.3gpp.mcdata-info+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.3gpp.mcdata-payload": {
     source: "iana"
   },
   "application/vnd.3gpp.mcdata-service-config+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.3gpp.mcdata-signalling": {
     source: "iana"
   },
   "application/vnd.3gpp.mcdata-ue-config+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.3gpp.mcdata-user-profile+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.3gpp.mcptt-affiliation-command+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.3gpp.mcptt-floor-request+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.3gpp.mcptt-info+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.3gpp.mcptt-location-info+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.3gpp.mcptt-mbms-usage-info+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.3gpp.mcptt-service-config+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.3gpp.mcptt-signed+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.3gpp.mcptt-ue-config+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.3gpp.mcptt-ue-init-config+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.3gpp.mcptt-user-profile+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.3gpp.mcvideo-affiliation-command+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.3gpp.mcvideo-affiliation-info+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.3gpp.mcvideo-info+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.3gpp.mcvideo-location-info+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.3gpp.mcvideo-mbms-usage-info+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.3gpp.mcvideo-service-config+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.3gpp.mcvideo-transmission-request+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.3gpp.mcvideo-ue-config+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.3gpp.mcvideo-user-profile+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.3gpp.mid-call+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.3gpp.ngap": {
     source: "iana"
@@ -3544,27 +3150,27 @@ const require$$0 = {
   },
   "application/vnd.3gpp.sms+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.3gpp.srvcc-ext+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.3gpp.srvcc-info+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.3gpp.state-and-event-info+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.3gpp.ussd+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.3gpp2.bcmcsinfo+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.3gpp2.sms": {
     source: "iana"
@@ -3611,7 +3217,7 @@ const require$$0 = {
   },
   "application/vnd.adobe.air-application-installer-package+zip": {
     source: "apache",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "air"
     ]
@@ -3637,7 +3243,7 @@ const require$$0 = {
   },
   "application/vnd.adobe.xdp+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "xdp"
     ]
@@ -3719,7 +3325,7 @@ const require$$0 = {
   },
   "application/vnd.amadeus+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.amazon.ebook": {
     source: "apache",
@@ -3744,14 +3350,14 @@ const require$$0 = {
   },
   "application/vnd.amundsen.maze+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.android.ota": {
     source: "iana"
   },
   "application/vnd.android.package-archive": {
     source: "apache",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "apk"
     ]
@@ -3794,19 +3400,19 @@ const require$$0 = {
   },
   "application/vnd.api+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.aplextor.warrp+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.apothekende.reservation+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.apple.installer+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "mpkg"
     ]
@@ -3836,7 +3442,7 @@ const require$$0 = {
     ]
   },
   "application/vnd.apple.pkpass": {
-    compressible: false,
+    compressible: !1,
     extensions: [
       "pkpass"
     ]
@@ -3852,7 +3458,7 @@ const require$$0 = {
   },
   "application/vnd.artisan+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.artsquare": {
     source: "iana"
@@ -3874,15 +3480,15 @@ const require$$0 = {
   },
   "application/vnd.avalon+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.avistar+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.balsamiq.bmml+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "bmml"
     ]
@@ -3901,18 +3507,18 @@ const require$$0 = {
   },
   "application/vnd.bbf.usp.msg+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.bekitzur-stech+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.bint.med-content": {
     source: "iana"
   },
   "application/vnd.biopax.rdf+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.blink-idb-value-wrapper": {
     source: "iana"
@@ -3949,7 +3555,7 @@ const require$$0 = {
   },
   "application/vnd.byu.uapi+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.cab-jscript": {
     source: "iana"
@@ -3962,7 +3568,7 @@ const require$$0 = {
   },
   "application/vnd.capasystems-pg+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.cendio.thinlinc.clientconf": {
     source: "iana"
@@ -3972,7 +3578,7 @@ const require$$0 = {
   },
   "application/vnd.chemdraw+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "cdxml"
     ]
@@ -4000,7 +3606,7 @@ const require$$0 = {
   },
   "application/vnd.citationstyles.style+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "csl"
     ]
@@ -4062,19 +3668,19 @@ const require$$0 = {
   },
   "application/vnd.collection+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.collection.doc+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.collection.next+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.comicbook+zip": {
     source: "iana",
-    compressible: false
+    compressible: !1
   },
   "application/vnd.comicbook-rar": {
     source: "iana"
@@ -4096,7 +3702,7 @@ const require$$0 = {
   },
   "application/vnd.coreos.ignition+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.cosmocaller": {
     source: "iana",
@@ -4136,14 +3742,14 @@ const require$$0 = {
   },
   "application/vnd.criticaltools.wbs+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "wbs"
     ]
   },
   "application/vnd.cryptii.pipe+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.crypto-shade-file": {
     source: "iana"
@@ -4162,7 +3768,7 @@ const require$$0 = {
   },
   "application/vnd.ctct.ws+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.cups-pdf": {
     source: "iana"
@@ -4199,22 +3805,22 @@ const require$$0 = {
   },
   "application/vnd.cyan.dean.root+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.cybank": {
     source: "iana"
   },
   "application/vnd.cyclonedx+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.cyclonedx+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.d2l.coursepackage1p0+zip": {
     source: "iana",
-    compressible: false
+    compressible: !1
   },
   "application/vnd.d3m-dataset": {
     source: "iana"
@@ -4224,7 +3830,7 @@ const require$$0 = {
   },
   "application/vnd.dart": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "dart"
     ]
@@ -4237,11 +3843,11 @@ const require$$0 = {
   },
   "application/vnd.datapackage+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.dataresource+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.dbf": {
     source: "iana",
@@ -4263,7 +3869,7 @@ const require$$0 = {
   },
   "application/vnd.dece.ttml+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "uvt",
       "uvvt"
@@ -4297,7 +3903,7 @@ const require$$0 = {
   },
   "application/vnd.dm.delegation+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.dna": {
     source: "iana",
@@ -4307,7 +3913,7 @@ const require$$0 = {
   },
   "application/vnd.document+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.dolby.mlp": {
     source: "apache",
@@ -4338,7 +3944,7 @@ const require$$0 = {
   },
   "application/vnd.drive+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.ds-keypoint": {
     source: "apache",
@@ -4363,7 +3969,7 @@ const require$$0 = {
   },
   "application/vnd.dvb.dvbisl+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.dvb.dvbj": {
     source: "iana"
@@ -4394,31 +4000,31 @@ const require$$0 = {
   },
   "application/vnd.dvb.notif-aggregate-root+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.dvb.notif-container+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.dvb.notif-generic+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.dvb.notif-ia-msglist+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.dvb.notif-ia-registration-request+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.dvb.notif-ia-registration-response+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.dvb.notif-init+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.dvb.pfr": {
     source: "iana"
@@ -4452,7 +4058,7 @@ const require$$0 = {
   },
   "application/vnd.eclipse.ditto+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.ecowin.chart": {
     source: "iana",
@@ -4483,7 +4089,7 @@ const require$$0 = {
   },
   "application/vnd.emclient.accessrequest+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.enliven": {
     source: "iana",
@@ -4496,7 +4102,7 @@ const require$$0 = {
   },
   "application/vnd.eprints.data+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.epson.esf": {
     source: "iana",
@@ -4533,11 +4139,11 @@ const require$$0 = {
   },
   "application/vnd.espass-espass+zip": {
     source: "iana",
-    compressible: false
+    compressible: !1
   },
   "application/vnd.eszigno3+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "es3",
       "et3"
@@ -4545,92 +4151,92 @@ const require$$0 = {
   },
   "application/vnd.etsi.aoc+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.etsi.asic-e+zip": {
     source: "iana",
-    compressible: false
+    compressible: !1
   },
   "application/vnd.etsi.asic-s+zip": {
     source: "iana",
-    compressible: false
+    compressible: !1
   },
   "application/vnd.etsi.cug+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.etsi.iptvcommand+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.etsi.iptvdiscovery+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.etsi.iptvprofile+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.etsi.iptvsad-bc+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.etsi.iptvsad-cod+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.etsi.iptvsad-npvr+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.etsi.iptvservice+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.etsi.iptvsync+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.etsi.iptvueprofile+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.etsi.mcid+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.etsi.mheg5": {
     source: "iana"
   },
   "application/vnd.etsi.overload-control-policy-dataset+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.etsi.pstn+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.etsi.sci+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.etsi.simservs+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.etsi.timestamp-token": {
     source: "iana"
   },
   "application/vnd.etsi.tsl+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.etsi.tsl.der": {
     source: "iana"
   },
   "application/vnd.eu.kasparian.car+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.eudora.data": {
     source: "iana"
@@ -4646,7 +4252,7 @@ const require$$0 = {
   },
   "application/vnd.exstream-empower+zip": {
     source: "iana",
-    compressible: false
+    compressible: !1
   },
   "application/vnd.exstream-package": {
     source: "iana"
@@ -4668,7 +4274,7 @@ const require$$0 = {
   },
   "application/vnd.familysearch.gedcom+zip": {
     source: "iana",
-    compressible: false
+    compressible: !1
   },
   "application/vnd.fastcopy-disk-image": {
     source: "iana"
@@ -4697,7 +4303,7 @@ const require$$0 = {
   },
   "application/vnd.ficlab.flb+zip": {
     source: "iana",
-    compressible: false
+    compressible: !1
   },
   "application/vnd.filmit.zfc": {
     source: "iana"
@@ -4761,7 +4367,7 @@ const require$$0 = {
   },
   "application/vnd.fujifilm.fb.jfi+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.fujitsu.oasys": {
     source: "iana",
@@ -4831,7 +4437,7 @@ const require$$0 = {
   },
   "application/vnd.futoin+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.fuzzysheet": {
     source: "iana",
@@ -4847,15 +4453,15 @@ const require$$0 = {
   },
   "application/vnd.gentics.grd+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.geo+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.geocube+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.geogebra.file": {
     source: "iana",
@@ -4913,48 +4519,48 @@ const require$$0 = {
     ]
   },
   "application/vnd.google-apps.document": {
-    compressible: false,
+    compressible: !1,
     extensions: [
       "gdoc"
     ]
   },
   "application/vnd.google-apps.presentation": {
-    compressible: false,
+    compressible: !1,
     extensions: [
       "gslides"
     ]
   },
   "application/vnd.google-apps.spreadsheet": {
-    compressible: false,
+    compressible: !1,
     extensions: [
       "gsheet"
     ]
   },
   "application/vnd.google-earth.kml+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "kml"
     ]
   },
   "application/vnd.google-earth.kmz": {
     source: "iana",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "kmz"
     ]
   },
   "application/vnd.gov.sk.e-form+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.gov.sk.e-form+zip": {
     source: "iana",
-    compressible: false
+    compressible: !1
   },
   "application/vnd.gov.sk.xmldatacontainer+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.grafeq": {
     source: "iana",
@@ -5010,18 +4616,18 @@ const require$$0 = {
   },
   "application/vnd.hal+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.hal+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "hal"
     ]
   },
   "application/vnd.handheld-entertainment+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "zmm"
     ]
@@ -5034,7 +4640,7 @@ const require$$0 = {
   },
   "application/vnd.hc+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.hcl-bireports": {
     source: "iana"
@@ -5044,7 +4650,7 @@ const require$$0 = {
   },
   "application/vnd.heroku+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.hhe.lesson-player": {
     source: "iana",
@@ -5055,12 +4661,12 @@ const require$$0 = {
   "application/vnd.hl7cda+xml": {
     source: "iana",
     charset: "UTF-8",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.hl7v2+xml": {
     source: "iana",
     charset: "UTF-8",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.hp-hpgl": {
     source: "iana",
@@ -5109,15 +4715,15 @@ const require$$0 = {
   },
   "application/vnd.hyper+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.hyper-item+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.hyperdrive+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.hzn-3d-crossword": {
     source: "iana"
@@ -5172,11 +4778,11 @@ const require$$0 = {
   },
   "application/vnd.imagemeter.folder+zip": {
     source: "iana",
-    compressible: false
+    compressible: !1
   },
   "application/vnd.imagemeter.image+zip": {
     source: "iana",
-    compressible: false
+    compressible: !1
   },
   "application/vnd.immervision-ivp": {
     source: "iana",
@@ -5201,31 +4807,31 @@ const require$$0 = {
   },
   "application/vnd.ims.lis.v2.result+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.ims.lti.v2.toolconsumerprofile+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.ims.lti.v2.toolproxy+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.ims.lti.v2.toolproxy.id+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.ims.lti.v2.toolsettings+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.ims.lti.v2.toolsettings.simple+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.informedcontrol.rms+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.informix-visionary": {
     source: "iana"
@@ -5235,7 +4841,7 @@ const require$$0 = {
   },
   "application/vnd.infotech.project+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.innopath.wamp.notification": {
     source: "iana"
@@ -5279,31 +4885,31 @@ const require$$0 = {
   },
   "application/vnd.iptc.g2.catalogitem+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.iptc.g2.conceptitem+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.iptc.g2.knowledgeitem+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.iptc.g2.newsitem+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.iptc.g2.newsmessage+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.iptc.g2.packageitem+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.iptc.g2.planningitem+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.ipunplugged.rcprofile": {
     source: "iana",
@@ -5313,7 +4919,7 @@ const require$$0 = {
   },
   "application/vnd.irepository.package+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "irp"
     ]
@@ -5332,7 +4938,7 @@ const require$$0 = {
   },
   "application/vnd.iso11783-10+zip": {
     source: "iana",
-    compressible: false
+    compressible: !1
   },
   "application/vnd.jam": {
     source: "iana",
@@ -5481,11 +5087,11 @@ const require$$0 = {
   },
   "application/vnd.las.las+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.las.las+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "lasxml"
     ]
@@ -5495,11 +5101,11 @@ const require$$0 = {
   },
   "application/vnd.leap+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.liberty-request+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.llamagraphics.life-balance.desktop": {
     source: "iana",
@@ -5509,14 +5115,14 @@ const require$$0 = {
   },
   "application/vnd.llamagraphics.life-balance.exchange+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "lbe"
     ]
   },
   "application/vnd.logipipe.circuit+zip": {
     source: "iana",
-    compressible: false
+    compressible: !1
   },
   "application/vnd.loom": {
     source: "iana"
@@ -5577,26 +5183,26 @@ const require$$0 = {
   },
   "application/vnd.marlin.drm.actiontoken+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.marlin.drm.conftoken+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.marlin.drm.license+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.marlin.drm.mdcf": {
     source: "iana"
   },
   "application/vnd.mason+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.maxar.archive.3tz+zip": {
     source: "iana",
-    compressible: false
+    compressible: !1
   },
   "application/vnd.maxmind.maxmind-db": {
     source: "iana"
@@ -5636,7 +5242,7 @@ const require$$0 = {
   },
   "application/vnd.micro+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.micrografx.flo": {
     source: "iana",
@@ -5658,7 +5264,7 @@ const require$$0 = {
   },
   "application/vnd.miele+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.mif": {
     source: "iana",
@@ -5752,7 +5358,7 @@ const require$$0 = {
   },
   "application/vnd.mozilla.xul+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "xul"
     ]
@@ -5780,7 +5386,7 @@ const require$$0 = {
   },
   "application/vnd.ms-excel": {
     source: "iana",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "xls",
       "xlm",
@@ -5816,7 +5422,7 @@ const require$$0 = {
   },
   "application/vnd.ms-fontobject": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "eot"
     ]
@@ -5841,7 +5447,7 @@ const require$$0 = {
   },
   "application/vnd.ms-office.activex+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.ms-officetheme": {
     source: "iana",
@@ -5851,10 +5457,10 @@ const require$$0 = {
   },
   "application/vnd.ms-opentype": {
     source: "apache",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.ms-outlook": {
-    compressible: false,
+    compressible: !1,
     extensions: [
       "msg"
     ]
@@ -5876,11 +5482,11 @@ const require$$0 = {
   },
   "application/vnd.ms-playready.initiator+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.ms-powerpoint": {
     source: "iana",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "ppt",
       "pps",
@@ -5919,15 +5525,15 @@ const require$$0 = {
   },
   "application/vnd.ms-printdevicecapabilities+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.ms-printing.printticket+xml": {
     source: "apache",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.ms-printschematicket+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.ms-project": {
     source: "iana",
@@ -5992,7 +5598,7 @@ const require$$0 = {
   },
   "application/vnd.ms-xpsdocument": {
     source: "iana",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "xps"
     ]
@@ -6038,7 +5644,7 @@ const require$$0 = {
   },
   "application/vnd.nacamar.ybrid+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.ncd.control": {
     source: "iana"
@@ -6048,7 +5654,7 @@ const require$$0 = {
   },
   "application/vnd.nearst.inv+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.nebumind.line": {
     source: "iana"
@@ -6107,11 +5713,11 @@ const require$$0 = {
   },
   "application/vnd.nokia.conml+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.nokia.iptv.config+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.nokia.isds-radio-presets": {
     source: "iana"
@@ -6121,15 +5727,15 @@ const require$$0 = {
   },
   "application/vnd.nokia.landmark+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.nokia.landmarkcollection+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.nokia.n-gage.ac+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "ac"
     ]
@@ -6154,7 +5760,7 @@ const require$$0 = {
   },
   "application/vnd.nokia.pcd+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.nokia.radio-preset": {
     source: "iana",
@@ -6233,7 +5839,7 @@ const require$$0 = {
   },
   "application/vnd.oasis.opendocument.graphics": {
     source: "iana",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "odg"
     ]
@@ -6258,7 +5864,7 @@ const require$$0 = {
   },
   "application/vnd.oasis.opendocument.presentation": {
     source: "iana",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "odp"
     ]
@@ -6271,7 +5877,7 @@ const require$$0 = {
   },
   "application/vnd.oasis.opendocument.spreadsheet": {
     source: "iana",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "ods"
     ]
@@ -6284,7 +5890,7 @@ const require$$0 = {
   },
   "application/vnd.oasis.opendocument.text": {
     source: "iana",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "odt"
     ]
@@ -6315,53 +5921,53 @@ const require$$0 = {
   },
   "application/vnd.oci.image.manifest.v1+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.oftn.l10n+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.oipf.contentaccessdownload+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.oipf.contentaccessstreaming+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.oipf.cspg-hexbinary": {
     source: "iana"
   },
   "application/vnd.oipf.dae.svg+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.oipf.dae.xhtml+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.oipf.mippvcontrolmessage+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.oipf.pae.gem": {
     source: "iana"
   },
   "application/vnd.oipf.spdiscovery+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.oipf.spdlist+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.oipf.ueprofile+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.oipf.userprofile+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.olpc-sugar": {
     source: "iana",
@@ -6380,22 +5986,22 @@ const require$$0 = {
   },
   "application/vnd.oma.bcast.associated-procedure-parameter+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.oma.bcast.drm-trigger+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.oma.bcast.imd+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.oma.bcast.ltkm": {
     source: "iana"
   },
   "application/vnd.oma.bcast.notification+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.oma.bcast.provisioningtrigger": {
     source: "iana"
@@ -6405,7 +6011,7 @@ const require$$0 = {
   },
   "application/vnd.oma.bcast.sgdd+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.oma.bcast.sgdu": {
     source: "iana"
@@ -6415,34 +6021,34 @@ const require$$0 = {
   },
   "application/vnd.oma.bcast.smartcard-trigger+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.oma.bcast.sprov+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.oma.bcast.stkm": {
     source: "iana"
   },
   "application/vnd.oma.cab-address-book+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.oma.cab-feature-handler+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.oma.cab-pcc+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.oma.cab-subs-invite+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.oma.cab-user-prefs+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.oma.dcd": {
     source: "iana"
@@ -6452,78 +6058,78 @@ const require$$0 = {
   },
   "application/vnd.oma.dd2+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "dd2"
     ]
   },
   "application/vnd.oma.drm.risd+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.oma.group-usage-list+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.oma.lwm2m+cbor": {
     source: "iana"
   },
   "application/vnd.oma.lwm2m+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.oma.lwm2m+tlv": {
     source: "iana"
   },
   "application/vnd.oma.pal+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.oma.poc.detailed-progress-report+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.oma.poc.final-report+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.oma.poc.groups+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.oma.poc.invocation-descriptor+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.oma.poc.optimized-progress-report+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.oma.push": {
     source: "iana"
   },
   "application/vnd.oma.scidm.messages+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.oma.xcap-directory+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.omads-email+xml": {
     source: "iana",
     charset: "UTF-8",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.omads-file+xml": {
     source: "iana",
     charset: "UTF-8",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.omads-folder+xml": {
     source: "iana",
     charset: "UTF-8",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.omaloc-supl-init": {
     source: "iana"
@@ -6548,7 +6154,7 @@ const require$$0 = {
   },
   "application/vnd.openblox.game+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "obgx"
     ]
@@ -6567,7 +6173,7 @@ const require$$0 = {
   },
   "application/vnd.openstreetmap.data+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "osm"
     ]
@@ -6577,78 +6183,78 @@ const require$$0 = {
   },
   "application/vnd.openxmlformats-officedocument.custom-properties+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.customxmlproperties+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.drawing+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.drawingml.chart+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.drawingml.chartshapes+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.drawingml.diagramcolors+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.drawingml.diagramdata+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.drawingml.diagramlayout+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.drawingml.diagramstyle+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.extended-properties+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.presentationml.commentauthors+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.presentationml.comments+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.presentationml.handoutmaster+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.presentationml.notesmaster+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.presentationml.notesslide+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.presentationml.presentation": {
     source: "iana",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "pptx"
     ]
   },
   "application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.presentationml.presprops+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.presentationml.slide": {
     source: "iana",
@@ -6658,15 +6264,15 @@ const require$$0 = {
   },
   "application/vnd.openxmlformats-officedocument.presentationml.slide+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.presentationml.slidelayout+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.presentationml.slidemaster+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.presentationml.slideshow": {
     source: "iana",
@@ -6676,19 +6282,19 @@ const require$$0 = {
   },
   "application/vnd.openxmlformats-officedocument.presentationml.slideshow.main+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.presentationml.slideupdateinfo+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.presentationml.tablestyles+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.presentationml.tags+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.presentationml.template": {
     source: "iana",
@@ -6698,90 +6304,90 @@ const require$$0 = {
   },
   "application/vnd.openxmlformats-officedocument.presentationml.template.main+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.presentationml.viewprops+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.spreadsheetml.calcchain+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.spreadsheetml.chartsheet+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.spreadsheetml.comments+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.spreadsheetml.connections+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.spreadsheetml.dialogsheet+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.spreadsheetml.externallink+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.spreadsheetml.pivotcachedefinition+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.spreadsheetml.pivotcacherecords+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.spreadsheetml.pivottable+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.spreadsheetml.querytable+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.spreadsheetml.revisionheaders+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.spreadsheetml.revisionlog+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sharedstrings+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
     source: "iana",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "xlsx"
     ]
   },
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheetmetadata+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.spreadsheetml.table+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.spreadsheetml.tablesinglecells+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.spreadsheetml.template": {
     source: "iana",
@@ -6791,77 +6397,77 @@ const require$$0 = {
   },
   "application/vnd.openxmlformats-officedocument.spreadsheetml.template.main+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.spreadsheetml.usernames+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.spreadsheetml.volatiledependencies+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.theme+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.themeoverride+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.vmldrawing": {
     source: "iana"
   },
   "application/vnd.openxmlformats-officedocument.wordprocessingml.comments+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
     source: "iana",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "docx"
     ]
   },
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document.glossary+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.wordprocessingml.endnotes+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.wordprocessingml.fonttable+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.wordprocessingml.footnotes+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.wordprocessingml.template": {
     source: "iana",
@@ -6871,27 +6477,27 @@ const require$$0 = {
   },
   "application/vnd.openxmlformats-officedocument.wordprocessingml.template.main+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-officedocument.wordprocessingml.websettings+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-package.core-properties+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-package.digital-signature-xmlsignature+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.openxmlformats-package.relationships+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.oracle.resource+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.orange.indata": {
     source: "iana"
@@ -6922,14 +6528,14 @@ const require$$0 = {
   },
   "application/vnd.otps.ct-kip+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.oxli.countgraph": {
     source: "iana"
   },
   "application/vnd.pagerduty+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.palm": {
     source: "iana",
@@ -6989,7 +6595,7 @@ const require$$0 = {
   },
   "application/vnd.poc.group-advertisement+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.pocketlearn": {
     source: "iana",
@@ -7053,7 +6659,7 @@ const require$$0 = {
   },
   "application/vnd.pwg-xhtml-print+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.qualcomm.brew-app-res": {
     source: "iana"
@@ -7077,63 +6683,63 @@ const require$$0 = {
   },
   "application/vnd.radisys.moml+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.radisys.msml+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.radisys.msml-audit+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.radisys.msml-audit-conf+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.radisys.msml-audit-conn+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.radisys.msml-audit-dialog+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.radisys.msml-audit-stream+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.radisys.msml-conf+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.radisys.msml-dialog+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.radisys.msml-dialog-base+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.radisys.msml-dialog-fax-detect+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.radisys.msml-dialog-fax-sendrecv+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.radisys.msml-dialog-group+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.radisys.msml-dialog-speech+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.radisys.msml-dialog-transform+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.rainstor.data": {
     source: "iana"
@@ -7161,7 +6767,7 @@ const require$$0 = {
   },
   "application/vnd.recordare.musicxml+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "musicxml"
     ]
@@ -7174,7 +6780,7 @@ const require$$0 = {
   },
   "application/vnd.restful+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.rig.cryptonote": {
     source: "iana",
@@ -7202,7 +6808,7 @@ const require$$0 = {
   },
   "application/vnd.route66.link66+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "link66"
     ]
@@ -7275,7 +6881,7 @@ const require$$0 = {
   },
   "application/vnd.seis+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.sema": {
     source: "iana",
@@ -7324,11 +6930,11 @@ const require$$0 = {
   },
   "application/vnd.shootproof+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.shopkick+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.shp": {
     source: "iana"
@@ -7348,7 +6954,7 @@ const require$$0 = {
   },
   "application/vnd.siren+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.smaf": {
     source: "iana",
@@ -7370,7 +6976,7 @@ const require$$0 = {
   },
   "application/vnd.software602.filler.form+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "fo"
     ]
@@ -7380,7 +6986,7 @@ const require$$0 = {
   },
   "application/vnd.solent.sdkm+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "sdkm",
       "sdkd"
@@ -7464,7 +7070,7 @@ const require$$0 = {
   },
   "application/vnd.sun.wadl+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "wadl"
     ]
@@ -7547,11 +7153,11 @@ const require$$0 = {
   },
   "application/vnd.sycle+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.syft+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.symbian.install": {
     source: "apache",
@@ -7563,7 +7169,7 @@ const require$$0 = {
   "application/vnd.syncml+xml": {
     source: "iana",
     charset: "UTF-8",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "xsm"
     ]
@@ -7578,7 +7184,7 @@ const require$$0 = {
   "application/vnd.syncml.dm+xml": {
     source: "iana",
     charset: "UTF-8",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "xdm"
     ]
@@ -7592,7 +7198,7 @@ const require$$0 = {
   "application/vnd.syncml.dmddf+xml": {
     source: "iana",
     charset: "UTF-8",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "ddf"
     ]
@@ -7603,14 +7209,14 @@ const require$$0 = {
   "application/vnd.syncml.dmtnds+xml": {
     source: "iana",
     charset: "UTF-8",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.syncml.ds.notification": {
     source: "iana"
   },
   "application/vnd.tableschema+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.tao.intent-module-archive": {
     source: "iana",
@@ -7628,11 +7234,11 @@ const require$$0 = {
   },
   "application/vnd.think-cell.ppttc+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.tmd.mediaflex.api+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.tml": {
     source: "iana"
@@ -7697,7 +7303,7 @@ const require$$0 = {
   },
   "application/vnd.uoml+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "uoml"
     ]
@@ -7761,14 +7367,14 @@ const require$$0 = {
   },
   "application/vnd.vel+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.verimatrix.vcas": {
     source: "iana"
   },
   "application/vnd.veritone.aion+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.veryant.thin": {
     source: "iana"
@@ -7890,15 +7496,15 @@ const require$$0 = {
   },
   "application/vnd.wv.csp+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.wv.ssp+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.xacml+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.xara": {
     source: "iana",
@@ -7917,7 +7523,7 @@ const require$$0 = {
   },
   "application/vnd.xmi+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vnd.xmpie.cpkg": {
     source: "iana"
@@ -7960,7 +7566,7 @@ const require$$0 = {
   },
   "application/vnd.yamaha.openscoreformat.osfpvg+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "osfpvg"
     ]
@@ -8007,42 +7613,42 @@ const require$$0 = {
   },
   "application/vnd.zzazz.deck+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "zaz"
     ]
   },
   "application/voicexml+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "vxml"
     ]
   },
   "application/voucher-cms+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/vq-rtcpxr": {
     source: "iana"
   },
   "application/wasm": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "wasm"
     ]
   },
   "application/watcherinfo+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "wif"
     ]
   },
   "application/webpush-options+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/whoispp-query": {
     source: "iana"
@@ -8070,21 +7676,21 @@ const require$$0 = {
   },
   "application/wsdl+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "wsdl"
     ]
   },
   "application/wspolicy+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "wspolicy"
     ]
   },
   "application/x-7z-compressed": {
     source: "apache",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "7z"
     ]
@@ -8111,7 +7717,7 @@ const require$$0 = {
     ]
   },
   "application/x-arj": {
-    compressible: false,
+    compressible: !1,
     extensions: [
       "arj"
     ]
@@ -8144,7 +7750,7 @@ const require$$0 = {
     ]
   },
   "application/x-bdoc": {
-    compressible: false,
+    compressible: !1,
     extensions: [
       "bdoc"
     ]
@@ -8164,14 +7770,14 @@ const require$$0 = {
   },
   "application/x-bzip": {
     source: "apache",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "bz"
     ]
   },
   "application/x-bzip2": {
     source: "apache",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "bz2",
       "boz"
@@ -8244,7 +7850,7 @@ const require$$0 = {
     ]
   },
   "application/x-deb": {
-    compressible: false
+    compressible: !1
   },
   "application/x-debian-package": {
     source: "apache",
@@ -8281,28 +7887,28 @@ const require$$0 = {
   },
   "application/x-dtbncx+xml": {
     source: "apache",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "ncx"
     ]
   },
   "application/x-dtbook+xml": {
     source: "apache",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "dtb"
     ]
   },
   "application/x-dtbresource+xml": {
     source: "apache",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "res"
     ]
   },
   "application/x-dvi": {
     source: "apache",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "dvi"
     ]
@@ -8428,7 +8034,7 @@ const require$$0 = {
     ]
   },
   "application/x-httpd-php": {
-    compressible: true,
+    compressible: !0,
     extensions: [
       "php"
     ]
@@ -8468,13 +8074,13 @@ const require$$0 = {
   },
   "application/x-java-jnlp-file": {
     source: "apache",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "jnlp"
     ]
   },
   "application/x-javascript": {
-    compressible: true
+    compressible: !0
   },
   "application/x-keepass2": {
     extensions: [
@@ -8483,7 +8089,7 @@ const require$$0 = {
   },
   "application/x-latex": {
     source: "apache",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "latex"
     ]
@@ -8520,7 +8126,7 @@ const require$$0 = {
     ]
   },
   "application/x-mpegurl": {
-    compressible: false
+    compressible: !1
   },
   "application/x-ms-application": {
     source: "apache",
@@ -8646,7 +8252,7 @@ const require$$0 = {
     ]
   },
   "application/x-ns-proxy-autoconfig": {
-    compressible: true,
+    compressible: !0,
     extensions: [
       "pac"
     ]
@@ -8673,7 +8279,7 @@ const require$$0 = {
   },
   "application/x-pkcs12": {
     source: "apache",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "p12",
       "pfx"
@@ -8697,7 +8303,7 @@ const require$$0 = {
   },
   "application/x-rar-compressed": {
     source: "apache",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "rar"
     ]
@@ -8722,7 +8328,7 @@ const require$$0 = {
   },
   "application/x-sh": {
     source: "apache",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "sh"
     ]
@@ -8735,7 +8341,7 @@ const require$$0 = {
   },
   "application/x-shockwave-flash": {
     source: "apache",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "swf"
     ]
@@ -8754,7 +8360,7 @@ const require$$0 = {
   },
   "application/x-stuffit": {
     source: "apache",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "sit"
     ]
@@ -8797,7 +8403,7 @@ const require$$0 = {
   },
   "application/x-tar": {
     source: "apache",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "tar"
     ]
@@ -8841,49 +8447,49 @@ const require$$0 = {
     ]
   },
   "application/x-virtualbox-hdd": {
-    compressible: true,
+    compressible: !0,
     extensions: [
       "hdd"
     ]
   },
   "application/x-virtualbox-ova": {
-    compressible: true,
+    compressible: !0,
     extensions: [
       "ova"
     ]
   },
   "application/x-virtualbox-ovf": {
-    compressible: true,
+    compressible: !0,
     extensions: [
       "ovf"
     ]
   },
   "application/x-virtualbox-vbox": {
-    compressible: true,
+    compressible: !0,
     extensions: [
       "vbox"
     ]
   },
   "application/x-virtualbox-vbox-extpack": {
-    compressible: false,
+    compressible: !1,
     extensions: [
       "vbox-extpack"
     ]
   },
   "application/x-virtualbox-vdi": {
-    compressible: true,
+    compressible: !0,
     extensions: [
       "vdi"
     ]
   },
   "application/x-virtualbox-vhd": {
-    compressible: true,
+    compressible: !0,
     extensions: [
       "vhd"
     ]
   },
   "application/x-virtualbox-vmdk": {
-    compressible: true,
+    compressible: !0,
     extensions: [
       "vmdk"
     ]
@@ -8895,14 +8501,14 @@ const require$$0 = {
     ]
   },
   "application/x-web-app-manifest+json": {
-    compressible: true,
+    compressible: !0,
     extensions: [
       "webapp"
     ]
   },
   "application/x-www-form-urlencoded": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/x-x509-ca-cert": {
     source: "iana",
@@ -8926,14 +8532,14 @@ const require$$0 = {
   },
   "application/x-xliff+xml": {
     source: "apache",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "xlf"
     ]
   },
   "application/x-xpinstall": {
     source: "apache",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "xpi"
     ]
@@ -8962,72 +8568,72 @@ const require$$0 = {
   },
   "application/xacml+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/xaml+xml": {
     source: "apache",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "xaml"
     ]
   },
   "application/xcap-att+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "xav"
     ]
   },
   "application/xcap-caps+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "xca"
     ]
   },
   "application/xcap-diff+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "xdf"
     ]
   },
   "application/xcap-el+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "xel"
     ]
   },
   "application/xcap-error+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/xcap-ns+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "xns"
     ]
   },
   "application/xcon-conference-info+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/xcon-conference-info-diff+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/xenc+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "xenc"
     ]
   },
   "application/xhtml+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "xhtml",
       "xht"
@@ -9035,18 +8641,18 @@ const require$$0 = {
   },
   "application/xhtml-voice+xml": {
     source: "apache",
-    compressible: true
+    compressible: !0
   },
   "application/xliff+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "xlf"
     ]
   },
   "application/xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "xml",
       "xsl",
@@ -9056,7 +8662,7 @@ const require$$0 = {
   },
   "application/xml-dtd": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "dtd"
     ]
@@ -9066,29 +8672,29 @@ const require$$0 = {
   },
   "application/xml-patch+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/xmpp+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/xop+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "xop"
     ]
   },
   "application/xproc+xml": {
     source: "apache",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "xpl"
     ]
   },
   "application/xslt+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "xsl",
       "xslt"
@@ -9096,14 +8702,14 @@ const require$$0 = {
   },
   "application/xspf+xml": {
     source: "apache",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "xspf"
     ]
   },
   "application/xv+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "mxml",
       "xhvml",
@@ -9119,30 +8725,30 @@ const require$$0 = {
   },
   "application/yang-data+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/yang-data+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/yang-patch+json": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/yang-patch+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "application/yin+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "yin"
     ]
   },
   "application/zip": {
     source: "iana",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "zip"
     ]
@@ -9161,7 +8767,7 @@ const require$$0 = {
   },
   "audio/3gpp": {
     source: "iana",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "3gpp"
     ]
@@ -9210,7 +8816,7 @@ const require$$0 = {
   },
   "audio/basic": {
     source: "iana",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "au",
       "snd"
@@ -9374,7 +8980,7 @@ const require$$0 = {
   },
   "audio/l24": {
     source: "iana",
-    compressible: false
+    compressible: !1
   },
   "audio/l8": {
     source: "iana"
@@ -9413,14 +9019,14 @@ const require$$0 = {
     ]
   },
   "audio/mp3": {
-    compressible: false,
+    compressible: !1,
     extensions: [
       "mp3"
     ]
   },
   "audio/mp4": {
     source: "iana",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "m4a",
       "mp4a"
@@ -9437,7 +9043,7 @@ const require$$0 = {
   },
   "audio/mpeg": {
     source: "iana",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "mpga",
       "mp2",
@@ -9455,7 +9061,7 @@ const require$$0 = {
   },
   "audio/ogg": {
     source: "iana",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "oga",
       "ogg",
@@ -9723,7 +9329,7 @@ const require$$0 = {
     ]
   },
   "audio/vnd.rn-realaudio": {
-    compressible: false
+    compressible: !1
   },
   "audio/vnd.sealedmedia.softseal.mpeg": {
     source: "iana"
@@ -9732,37 +9338,37 @@ const require$$0 = {
     source: "iana"
   },
   "audio/vnd.wave": {
-    compressible: false
+    compressible: !1
   },
   "audio/vorbis": {
     source: "iana",
-    compressible: false
+    compressible: !1
   },
   "audio/vorbis-config": {
     source: "iana"
   },
   "audio/wav": {
-    compressible: false,
+    compressible: !1,
     extensions: [
       "wav"
     ]
   },
   "audio/wave": {
-    compressible: false,
+    compressible: !1,
     extensions: [
       "wav"
     ]
   },
   "audio/webm": {
     source: "apache",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "weba"
     ]
   },
   "audio/x-aac": {
     source: "apache",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "aac"
     ]
@@ -9777,7 +9383,7 @@ const require$$0 = {
   },
   "audio/x-caf": {
     source: "apache",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "caf"
     ]
@@ -9899,7 +9505,7 @@ const require$$0 = {
   },
   "font/otf": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "otf"
     ]
@@ -9909,7 +9515,7 @@ const require$$0 = {
   },
   "font/ttf": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "ttf"
     ]
@@ -9933,7 +9539,7 @@ const require$$0 = {
     ]
   },
   "image/apng": {
-    compressible: false,
+    compressible: !1,
     extensions: [
       "apng"
     ]
@@ -9952,14 +9558,14 @@ const require$$0 = {
   },
   "image/avif": {
     source: "iana",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "avif"
     ]
   },
   "image/bmp": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "bmp"
     ]
@@ -9996,7 +9602,7 @@ const require$$0 = {
   },
   "image/gif": {
     source: "iana",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "gif"
     ]
@@ -10051,7 +9657,7 @@ const require$$0 = {
   },
   "image/jp2": {
     source: "iana",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "jp2",
       "jpg2"
@@ -10059,7 +9665,7 @@ const require$$0 = {
   },
   "image/jpeg": {
     source: "iana",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "jpeg",
       "jpg",
@@ -10080,14 +9686,14 @@ const require$$0 = {
   },
   "image/jpm": {
     source: "iana",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "jpm"
     ]
   },
   "image/jpx": {
     source: "iana",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "jpx",
       "jpf"
@@ -10151,11 +9757,11 @@ const require$$0 = {
     source: "iana"
   },
   "image/pjpeg": {
-    compressible: false
+    compressible: !1
   },
   "image/png": {
     source: "iana",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "png"
     ]
@@ -10183,7 +9789,7 @@ const require$$0 = {
   },
   "image/svg+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "svg",
       "svgz"
@@ -10197,7 +9803,7 @@ const require$$0 = {
   },
   "image/tiff": {
     source: "iana",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "tif",
       "tiff"
@@ -10211,7 +9817,7 @@ const require$$0 = {
   },
   "image/vnd.adobe.photoshop": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "psd"
     ]
@@ -10294,7 +9900,7 @@ const require$$0 = {
   },
   "image/vnd.microsoft.icon": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "ico"
     ]
@@ -10306,7 +9912,7 @@ const require$$0 = {
     source: "iana"
   },
   "image/vnd.ms-dds": {
-    compressible: true,
+    compressible: !0,
     extensions: [
       "dds"
     ]
@@ -10422,7 +10028,7 @@ const require$$0 = {
   },
   "image/x-icon": {
     source: "apache",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "ico"
     ]
@@ -10441,7 +10047,7 @@ const require$$0 = {
   },
   "image/x-ms-bmp": {
     source: "nginx",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "bmp"
     ]
@@ -10502,7 +10108,7 @@ const require$$0 = {
     ]
   },
   "image/x-xcf": {
-    compressible: false
+    compressible: !1
   },
   "image/x-xpixmap": {
     source: "apache",
@@ -10560,22 +10166,22 @@ const require$$0 = {
   },
   "message/http": {
     source: "iana",
-    compressible: false
+    compressible: !1
   },
   "message/imdn+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "message/news": {
     source: "iana"
   },
   "message/partial": {
     source: "iana",
-    compressible: false
+    compressible: !1
   },
   "message/rfc822": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "eml",
       "mime"
@@ -10613,21 +10219,21 @@ const require$$0 = {
   },
   "model/gltf+json": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "gltf"
     ]
   },
   "model/gltf-binary": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "glb"
     ]
   },
   "model/iges": {
     source: "iana",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "igs",
       "iges"
@@ -10635,7 +10241,7 @@ const require$$0 = {
   },
   "model/mesh": {
     source: "iana",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "msh",
       "mesh",
@@ -10659,21 +10265,21 @@ const require$$0 = {
   },
   "model/step+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "stpx"
     ]
   },
   "model/step+zip": {
     source: "iana",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "stpz"
     ]
   },
   "model/step-xml+zip": {
     source: "iana",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "stpxz"
     ]
@@ -10686,7 +10292,7 @@ const require$$0 = {
   },
   "model/vnd.collada+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "dae"
     ]
@@ -10720,7 +10326,7 @@ const require$$0 = {
   },
   "model/vnd.moml+xml": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "model/vnd.mts": {
     source: "iana",
@@ -10760,7 +10366,7 @@ const require$$0 = {
   },
   "model/vnd.usdz+zip": {
     source: "iana",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "usdz"
     ]
@@ -10779,7 +10385,7 @@ const require$$0 = {
   },
   "model/vrml": {
     source: "iana",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "wrl",
       "vrml"
@@ -10787,7 +10393,7 @@ const require$$0 = {
   },
   "model/x3d+binary": {
     source: "apache",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "x3db",
       "x3dbz"
@@ -10801,7 +10407,7 @@ const require$$0 = {
   },
   "model/x3d+vrml": {
     source: "apache",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "x3dv",
       "x3dvz"
@@ -10809,7 +10415,7 @@ const require$$0 = {
   },
   "model/x3d+xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "x3d",
       "x3dz"
@@ -10823,7 +10429,7 @@ const require$$0 = {
   },
   "multipart/alternative": {
     source: "iana",
-    compressible: false
+    compressible: !1
   },
   "multipart/appledouble": {
     source: "iana"
@@ -10836,11 +10442,11 @@ const require$$0 = {
   },
   "multipart/encrypted": {
     source: "iana",
-    compressible: false
+    compressible: !1
   },
   "multipart/form-data": {
     source: "iana",
-    compressible: false
+    compressible: !1
   },
   "multipart/header-set": {
     source: "iana"
@@ -10856,14 +10462,14 @@ const require$$0 = {
   },
   "multipart/related": {
     source: "iana",
-    compressible: false
+    compressible: !1
   },
   "multipart/report": {
     source: "iana"
   },
   "multipart/signed": {
     source: "iana",
-    compressible: false
+    compressible: !1
   },
   "multipart/vnd.bint.med-plus": {
     source: "iana"
@@ -10879,7 +10485,7 @@ const require$$0 = {
   },
   "text/cache-manifest": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "appcache",
       "manifest"
@@ -10893,10 +10499,10 @@ const require$$0 = {
     ]
   },
   "text/calender": {
-    compressible: true
+    compressible: !0
   },
   "text/cmd": {
-    compressible: true
+    compressible: !0
   },
   "text/coffeescript": {
     extensions: [
@@ -10916,14 +10522,14 @@ const require$$0 = {
   "text/css": {
     source: "iana",
     charset: "UTF-8",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "css"
     ]
   },
   "text/csv": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "csv"
     ]
@@ -10963,7 +10569,7 @@ const require$$0 = {
   },
   "text/html": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "html",
       "htm",
@@ -10977,26 +10583,26 @@ const require$$0 = {
   },
   "text/javascript": {
     source: "iana",
-    compressible: true
+    compressible: !0
   },
   "text/jcr-cnd": {
     source: "iana"
   },
   "text/jsx": {
-    compressible: true,
+    compressible: !0,
     extensions: [
       "jsx"
     ]
   },
   "text/less": {
-    compressible: true,
+    compressible: !0,
     extensions: [
       "less"
     ]
   },
   "text/markdown": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "markdown",
       "md"
@@ -11009,7 +10615,7 @@ const require$$0 = {
     ]
   },
   "text/mdx": {
-    compressible: true,
+    compressible: !0,
     extensions: [
       "mdx"
     ]
@@ -11020,7 +10626,7 @@ const require$$0 = {
   "text/n3": {
     source: "iana",
     charset: "UTF-8",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "n3"
     ]
@@ -11034,7 +10640,7 @@ const require$$0 = {
   },
   "text/plain": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "txt",
       "text",
@@ -11073,14 +10679,14 @@ const require$$0 = {
   },
   "text/richtext": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "rtx"
     ]
   },
   "text/rtf": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "rtf"
     ]
@@ -11136,7 +10742,7 @@ const require$$0 = {
   },
   "text/tab-separated-values": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "tsv"
     ]
@@ -11164,7 +10770,7 @@ const require$$0 = {
   },
   "text/uri-list": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "uri",
       "uris",
@@ -11173,7 +10779,7 @@ const require$$0 = {
   },
   "text/vcard": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "vcard"
     ]
@@ -11338,7 +10944,7 @@ const require$$0 = {
   "text/vtt": {
     source: "iana",
     charset: "UTF-8",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "vtt"
     ]
@@ -11378,7 +10984,7 @@ const require$$0 = {
     ]
   },
   "text/x-gwt-rpc": {
-    compressible: true
+    compressible: !0
   },
   "text/x-handlebars-template": {
     extensions: [
@@ -11392,7 +10998,7 @@ const require$$0 = {
     ]
   },
   "text/x-jquery-tmpl": {
-    compressible: true
+    compressible: !0
   },
   "text/x-lua": {
     extensions: [
@@ -11400,7 +11006,7 @@ const require$$0 = {
     ]
   },
   "text/x-markdown": {
-    compressible: true,
+    compressible: !0,
     extensions: [
       "mkd"
     ]
@@ -11418,7 +11024,7 @@ const require$$0 = {
     ]
   },
   "text/x-org": {
-    compressible: true,
+    compressible: !0,
     extensions: [
       "org"
     ]
@@ -11431,7 +11037,7 @@ const require$$0 = {
     ]
   },
   "text/x-processing": {
-    compressible: true,
+    compressible: !0,
     extensions: [
       "pde"
     ]
@@ -11459,7 +11065,7 @@ const require$$0 = {
     ]
   },
   "text/x-suse-ymp": {
-    compressible: true,
+    compressible: !0,
     extensions: [
       "ymp"
     ]
@@ -11484,7 +11090,7 @@ const require$$0 = {
   },
   "text/xml": {
     source: "iana",
-    compressible: true,
+    compressible: !0,
     extensions: [
       "xml"
     ]
@@ -11493,7 +11099,7 @@ const require$$0 = {
     source: "iana"
   },
   "text/yaml": {
-    compressible: true,
+    compressible: !0,
     extensions: [
       "yaml",
       "yml"
@@ -11621,7 +11227,7 @@ const require$$0 = {
   },
   "video/mp4": {
     source: "iana",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "mp4",
       "mp4v",
@@ -11633,7 +11239,7 @@ const require$$0 = {
   },
   "video/mpeg": {
     source: "iana",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "mpeg",
       "mpg",
@@ -11653,7 +11259,7 @@ const require$$0 = {
   },
   "video/ogg": {
     source: "iana",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "ogv"
     ]
@@ -11666,7 +11272,7 @@ const require$$0 = {
   },
   "video/quicktime": {
     source: "iana",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "qt",
       "mov"
@@ -11861,7 +11467,7 @@ const require$$0 = {
   },
   "video/webm": {
     source: "apache",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "webm"
     ]
@@ -11880,7 +11486,7 @@ const require$$0 = {
   },
   "video/x-flv": {
     source: "apache",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "flv"
     ]
@@ -11893,7 +11499,7 @@ const require$$0 = {
   },
   "video/x-matroska": {
     source: "apache",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "mkv",
       "mk3d",
@@ -11927,7 +11533,7 @@ const require$$0 = {
   },
   "video/x-ms-wmv": {
     source: "apache",
-    compressible: false,
+    compressible: !1,
     extensions: [
       "wmv"
     ]
@@ -11969,10 +11575,10 @@ const require$$0 = {
     ]
   },
   "x-shader/x-fragment": {
-    compressible: true
+    compressible: !0
   },
   "x-shader/x-vertex": {
-    compressible: true
+    compressible: !0
   }
 };
 /*!
@@ -11981,731 +11587,467 @@ const require$$0 = {
  * Copyright(c) 2015-2022 Douglas Christopher Wilson
  * MIT Licensed
  */
-var mimeDb = require$$0;
+var er = Qi;
 /*!
  * mime-types
  * Copyright(c) 2014 Jonathan Ong
  * Copyright(c) 2015 Douglas Christopher Wilson
  * MIT Licensed
  */
-(function(exports) {
-  var db2 = mimeDb;
-  var extname = require$$1$1.extname;
-  var EXTRACT_TYPE_REGEXP = /^\s*([^;\s]*)(?:;|\s|$)/;
-  var TEXT_TYPE_REGEXP = /^text\//i;
-  exports.charset = charset;
-  exports.charsets = { lookup: charset };
-  exports.contentType = contentType;
-  exports.extension = extension;
-  exports.extensions = /* @__PURE__ */ Object.create(null);
-  exports.lookup = lookup;
-  exports.types = /* @__PURE__ */ Object.create(null);
-  populateMaps(exports.extensions, exports.types);
-  function charset(type2) {
-    if (!type2 || typeof type2 !== "string") {
-      return false;
-    }
-    var match = EXTRACT_TYPE_REGEXP.exec(type2);
-    var mime2 = match && db2[match[1].toLowerCase()];
-    if (mime2 && mime2.charset) {
-      return mime2.charset;
-    }
-    if (match && TEXT_TYPE_REGEXP.test(match[1])) {
-      return "UTF-8";
-    }
-    return false;
+(function(e) {
+  var n = er, t = ko.extname, a = /^\s*([^;\s]*)(?:;|\s|$)/, o = /^text\//i;
+  e.charset = s, e.charsets = { lookup: s }, e.contentType = i, e.extension = r, e.extensions = /* @__PURE__ */ Object.create(null), e.lookup = p, e.types = /* @__PURE__ */ Object.create(null), l(e.extensions, e.types);
+  function s(c) {
+    if (!c || typeof c != "string")
+      return !1;
+    var u = a.exec(c), d = u && n[u[1].toLowerCase()];
+    return d && d.charset ? d.charset : u && o.test(u[1]) ? "UTF-8" : !1;
   }
-  function contentType(str) {
-    if (!str || typeof str !== "string") {
-      return false;
+  function i(c) {
+    if (!c || typeof c != "string")
+      return !1;
+    var u = c.indexOf("/") === -1 ? e.lookup(c) : c;
+    if (!u)
+      return !1;
+    if (u.indexOf("charset") === -1) {
+      var d = e.charset(u);
+      d && (u += "; charset=" + d.toLowerCase());
     }
-    var mime2 = str.indexOf("/") === -1 ? exports.lookup(str) : str;
-    if (!mime2) {
-      return false;
-    }
-    if (mime2.indexOf("charset") === -1) {
-      var charset2 = exports.charset(mime2);
-      if (charset2) mime2 += "; charset=" + charset2.toLowerCase();
-    }
-    return mime2;
+    return u;
   }
-  function extension(type2) {
-    if (!type2 || typeof type2 !== "string") {
-      return false;
-    }
-    var match = EXTRACT_TYPE_REGEXP.exec(type2);
-    var exts = match && exports.extensions[match[1].toLowerCase()];
-    if (!exts || !exts.length) {
-      return false;
-    }
-    return exts[0];
+  function r(c) {
+    if (!c || typeof c != "string")
+      return !1;
+    var u = a.exec(c), d = u && e.extensions[u[1].toLowerCase()];
+    return !d || !d.length ? !1 : d[0];
   }
-  function lookup(path2) {
-    if (!path2 || typeof path2 !== "string") {
-      return false;
-    }
-    var extension2 = extname("x." + path2).toLowerCase().substr(1);
-    if (!extension2) {
-      return false;
-    }
-    return exports.types[extension2] || false;
+  function p(c) {
+    if (!c || typeof c != "string")
+      return !1;
+    var u = t("x." + c).toLowerCase().substr(1);
+    return u && e.types[u] || !1;
   }
-  function populateMaps(extensions, types) {
-    var preference = ["nginx", "apache", void 0, "iana"];
-    Object.keys(db2).forEach(function forEachMimeType(type2) {
-      var mime2 = db2[type2];
-      var exts = mime2.extensions;
-      if (!exts || !exts.length) {
-        return;
-      }
-      extensions[type2] = exts;
-      for (var i = 0; i < exts.length; i++) {
-        var extension2 = exts[i];
-        if (types[extension2]) {
-          var from = preference.indexOf(db2[types[extension2]].source);
-          var to = preference.indexOf(mime2.source);
-          if (types[extension2] !== "application/octet-stream" && (from > to || from === to && types[extension2].substr(0, 12) === "application/")) {
-            continue;
+  function l(c, u) {
+    var d = ["nginx", "apache", void 0, "iana"];
+    Object.keys(n).forEach(function(b) {
+      var x = n[b], v = x.extensions;
+      if (!(!v || !v.length)) {
+        c[b] = v;
+        for (var h = 0; h < v.length; h++) {
+          var w = v[h];
+          if (u[w]) {
+            var _ = d.indexOf(n[u[w]].source), k = d.indexOf(x.source);
+            if (u[w] !== "application/octet-stream" && (_ > k || _ === k && u[w].substr(0, 12) === "application/"))
+              continue;
           }
+          u[w] = b;
         }
-        types[extension2] = type2;
       }
     });
   }
-})(mimeTypes);
-var defer_1 = defer$1;
-function defer$1(fn) {
-  var nextTick = typeof setImmediate == "function" ? setImmediate : typeof process == "object" && typeof process.nextTick == "function" ? process.nextTick : null;
-  if (nextTick) {
-    nextTick(fn);
-  } else {
-    setTimeout(fn, 0);
-  }
+})(Uo);
+var nr = tr;
+function tr(e) {
+  var n = typeof setImmediate == "function" ? setImmediate : typeof process == "object" && typeof process.nextTick == "function" ? process.nextTick : null;
+  n ? n(e) : setTimeout(e, 0);
 }
-var defer = defer_1;
-var async_1 = async$2;
-function async$2(callback) {
-  var isAsync = false;
-  defer(function() {
-    isAsync = true;
-  });
-  return function async_callback(err, result) {
-    if (isAsync) {
-      callback(err, result);
-    } else {
-      defer(function nextTick_callback() {
-        callback(err, result);
-      });
-    }
+var Sa = nr, Bo = ar;
+function ar(e) {
+  var n = !1;
+  return Sa(function() {
+    n = !0;
+  }), function(a, o) {
+    n ? e(a, o) : Sa(function() {
+      e(a, o);
+    });
   };
 }
-var abort_1 = abort$2;
-function abort$2(state2) {
-  Object.keys(state2.jobs).forEach(clean.bind(state2));
-  state2.jobs = {};
+var zo = or;
+function or(e) {
+  Object.keys(e.jobs).forEach(sr.bind(e)), e.jobs = {};
 }
-function clean(key) {
-  if (typeof this.jobs[key] == "function") {
-    this.jobs[key]();
-  }
+function sr(e) {
+  typeof this.jobs[e] == "function" && this.jobs[e]();
 }
-var async$1 = async_1, abort$1 = abort_1;
-var iterate_1 = iterate$2;
-function iterate$2(list, iterator2, state2, callback) {
-  var key = state2["keyedList"] ? state2["keyedList"][state2.index] : state2.index;
-  state2.jobs[key] = runJob(iterator2, key, list[key], function(error, output) {
-    if (!(key in state2.jobs)) {
-      return;
-    }
-    delete state2.jobs[key];
-    if (error) {
-      abort$1(state2);
-    } else {
-      state2.results[key] = output;
-    }
-    callback(error, state2.results);
+var Ra = Bo, ir = zo, qo = rr;
+function rr(e, n, t, a) {
+  var o = t.keyedList ? t.keyedList[t.index] : t.index;
+  t.jobs[o] = cr(n, o, e[o], function(s, i) {
+    o in t.jobs && (delete t.jobs[o], s ? ir(t) : t.results[o] = i, a(s, t.results));
   });
 }
-function runJob(iterator2, key, item, callback) {
-  var aborter;
-  if (iterator2.length == 2) {
-    aborter = iterator2(item, async$1(callback));
-  } else {
-    aborter = iterator2(item, key, async$1(callback));
-  }
-  return aborter;
+function cr(e, n, t, a) {
+  var o;
+  return e.length == 2 ? o = e(t, Ra(a)) : o = e(t, n, Ra(a)), o;
 }
-var state_1 = state;
-function state(list, sortMethod) {
-  var isNamedList = !Array.isArray(list), initState2 = {
+var $o = pr;
+function pr(e, n) {
+  var t = !Array.isArray(e), a = {
     index: 0,
-    keyedList: isNamedList || sortMethod ? Object.keys(list) : null,
+    keyedList: t || n ? Object.keys(e) : null,
     jobs: {},
-    results: isNamedList ? {} : [],
-    size: isNamedList ? Object.keys(list).length : list.length
+    results: t ? {} : [],
+    size: t ? Object.keys(e).length : e.length
   };
-  if (sortMethod) {
-    initState2.keyedList.sort(isNamedList ? sortMethod : function(a, b) {
-      return sortMethod(list[a], list[b]);
-    });
-  }
-  return initState2;
+  return n && a.keyedList.sort(t ? n : function(o, s) {
+    return n(e[o], e[s]);
+  }), a;
 }
-var abort = abort_1, async = async_1;
-var terminator_1 = terminator$2;
-function terminator$2(callback) {
-  if (!Object.keys(this.jobs).length) {
-    return;
-  }
-  this.index = this.size;
-  abort(this);
-  async(callback)(null, this.results);
+var lr = zo, ur = Bo, Mo = dr;
+function dr(e) {
+  Object.keys(this.jobs).length && (this.index = this.size, lr(this), ur(e)(null, this.results));
 }
-var iterate$1 = iterate_1, initState$1 = state_1, terminator$1 = terminator_1;
-var parallel_1 = parallel;
-function parallel(list, iterator2, callback) {
-  var state2 = initState$1(list);
-  while (state2.index < (state2["keyedList"] || list).length) {
-    iterate$1(list, iterator2, state2, function(error, result) {
-      if (error) {
-        callback(error, result);
+var mr = qo, fr = $o, xr = Mo, hr = vr;
+function vr(e, n, t) {
+  for (var a = fr(e); a.index < (a.keyedList || e).length; )
+    mr(e, n, a, function(o, s) {
+      if (o) {
+        t(o, s);
         return;
       }
-      if (Object.keys(state2.jobs).length === 0) {
-        callback(null, state2.results);
+      if (Object.keys(a.jobs).length === 0) {
+        t(null, a.results);
         return;
       }
-    });
-    state2.index++;
-  }
-  return terminator$1.bind(state2, callback);
+    }), a.index++;
+  return xr.bind(a, t);
 }
-var serialOrdered$2 = { exports: {} };
-var iterate = iterate_1, initState = state_1, terminator = terminator_1;
-serialOrdered$2.exports = serialOrdered$1;
-serialOrdered$2.exports.ascending = ascending;
-serialOrdered$2.exports.descending = descending;
-function serialOrdered$1(list, iterator2, sortMethod, callback) {
-  var state2 = initState(list, sortMethod);
-  iterate(list, iterator2, state2, function iteratorHandler(error, result) {
-    if (error) {
-      callback(error, result);
+var Un = { exports: {} }, Aa = qo, br = $o, gr = Mo;
+Un.exports = yr;
+Un.exports.ascending = Ho;
+Un.exports.descending = wr;
+function yr(e, n, t, a) {
+  var o = br(e, t);
+  return Aa(e, n, o, function s(i, r) {
+    if (i) {
+      a(i, r);
       return;
     }
-    state2.index++;
-    if (state2.index < (state2["keyedList"] || list).length) {
-      iterate(list, iterator2, state2, iteratorHandler);
+    if (o.index++, o.index < (o.keyedList || e).length) {
+      Aa(e, n, o, s);
       return;
     }
-    callback(null, state2.results);
-  });
-  return terminator.bind(state2, callback);
+    a(null, o.results);
+  }), gr.bind(o, a);
 }
-function ascending(a, b) {
-  return a < b ? -1 : a > b ? 1 : 0;
+function Ho(e, n) {
+  return e < n ? -1 : e > n ? 1 : 0;
 }
-function descending(a, b) {
-  return -1 * ascending(a, b);
+function wr(e, n) {
+  return -1 * Ho(e, n);
 }
-var serialOrderedExports = serialOrdered$2.exports;
-var serialOrdered = serialOrderedExports;
-var serial_1 = serial;
-function serial(list, iterator2, callback) {
-  return serialOrdered(list, iterator2, null, callback);
+var Wo = Un.exports, kr = Wo, _r = Er;
+function Er(e, n, t) {
+  return kr(e, n, null, t);
 }
-var asynckit$1 = {
-  parallel: parallel_1,
-  serial: serial_1,
-  serialOrdered: serialOrderedExports
-};
-var esObjectAtoms = Object;
-var esErrors = Error;
-var _eval = EvalError;
-var range = RangeError;
-var ref = ReferenceError;
-var syntax = SyntaxError;
-var type;
-var hasRequiredType;
-function requireType() {
-  if (hasRequiredType) return type;
-  hasRequiredType = 1;
-  type = TypeError;
-  return type;
+var Sr = {
+  parallel: hr,
+  serial: _r,
+  serialOrdered: Wo
+}, Ko = Object, Rr = Error, Ar = EvalError, Tr = RangeError, Cr = ReferenceError, Or = SyntaxError, Yn, Ta;
+function ea() {
+  return Ta || (Ta = 1, Yn = TypeError), Yn;
 }
-var uri = URIError;
-var abs$1 = Math.abs;
-var floor$1 = Math.floor;
-var max$2 = Math.max;
-var min$1 = Math.min;
-var pow$1 = Math.pow;
-var round$1 = Math.round;
-var _isNaN = Number.isNaN || function isNaN2(a) {
-  return a !== a;
-};
-var $isNaN = _isNaN;
-var sign$1 = function sign(number) {
-  if ($isNaN(number) || number === 0) {
-    return number;
-  }
-  return number < 0 ? -1 : 1;
-};
-var gOPD = Object.getOwnPropertyDescriptor;
-var $gOPD$1 = gOPD;
-if ($gOPD$1) {
+var jr = URIError, Pr = Math.abs, Lr = Math.floor, Nr = Math.max, Dr = Math.min, Ir = Math.pow, Fr = Math.round, Ur = Number.isNaN || function(n) {
+  return n !== n;
+}, Br = Ur, zr = function(n) {
+  return Br(n) || n === 0 ? n : n < 0 ? -1 : 1;
+}, qr = Object.getOwnPropertyDescriptor, _n = qr;
+if (_n)
   try {
-    $gOPD$1([], "length");
-  } catch (e) {
-    $gOPD$1 = null;
+    _n([], "length");
+  } catch {
+    _n = null;
   }
-}
-var gopd = $gOPD$1;
-var $defineProperty$2 = Object.defineProperty || false;
-if ($defineProperty$2) {
+var Go = _n, En = Object.defineProperty || !1;
+if (En)
   try {
-    $defineProperty$2({}, "a", { value: 1 });
-  } catch (e) {
-    $defineProperty$2 = false;
+    En({}, "a", { value: 1 });
+  } catch {
+    En = !1;
   }
-}
-var esDefineProperty = $defineProperty$2;
-var shams$1;
-var hasRequiredShams$1;
-function requireShams$1() {
-  if (hasRequiredShams$1) return shams$1;
-  hasRequiredShams$1 = 1;
-  shams$1 = function hasSymbols2() {
-    if (typeof Symbol !== "function" || typeof Object.getOwnPropertySymbols !== "function") {
-      return false;
-    }
-    if (typeof Symbol.iterator === "symbol") {
-      return true;
-    }
-    var obj = {};
-    var sym = Symbol("test");
-    var symObj = Object(sym);
-    if (typeof sym === "string") {
-      return false;
-    }
-    if (Object.prototype.toString.call(sym) !== "[object Symbol]") {
-      return false;
-    }
-    if (Object.prototype.toString.call(symObj) !== "[object Symbol]") {
-      return false;
-    }
-    var symVal = 42;
-    obj[sym] = symVal;
-    for (var _ in obj) {
-      return false;
-    }
-    if (typeof Object.keys === "function" && Object.keys(obj).length !== 0) {
-      return false;
-    }
-    if (typeof Object.getOwnPropertyNames === "function" && Object.getOwnPropertyNames(obj).length !== 0) {
-      return false;
-    }
-    var syms = Object.getOwnPropertySymbols(obj);
-    if (syms.length !== 1 || syms[0] !== sym) {
-      return false;
-    }
-    if (!Object.prototype.propertyIsEnumerable.call(obj, sym)) {
-      return false;
-    }
-    if (typeof Object.getOwnPropertyDescriptor === "function") {
-      var descriptor = (
+var $r = En, Zn, Ca;
+function Jo() {
+  return Ca || (Ca = 1, Zn = function() {
+    if (typeof Symbol != "function" || typeof Object.getOwnPropertySymbols != "function")
+      return !1;
+    if (typeof Symbol.iterator == "symbol")
+      return !0;
+    var n = {}, t = Symbol("test"), a = Object(t);
+    if (typeof t == "string" || Object.prototype.toString.call(t) !== "[object Symbol]" || Object.prototype.toString.call(a) !== "[object Symbol]")
+      return !1;
+    var o = 42;
+    n[t] = o;
+    for (var s in n)
+      return !1;
+    if (typeof Object.keys == "function" && Object.keys(n).length !== 0 || typeof Object.getOwnPropertyNames == "function" && Object.getOwnPropertyNames(n).length !== 0)
+      return !1;
+    var i = Object.getOwnPropertySymbols(n);
+    if (i.length !== 1 || i[0] !== t || !Object.prototype.propertyIsEnumerable.call(n, t))
+      return !1;
+    if (typeof Object.getOwnPropertyDescriptor == "function") {
+      var r = (
         /** @type {PropertyDescriptor} */
-        Object.getOwnPropertyDescriptor(obj, sym)
+        Object.getOwnPropertyDescriptor(n, t)
       );
-      if (descriptor.value !== symVal || descriptor.enumerable !== true) {
-        return false;
-      }
+      if (r.value !== o || r.enumerable !== !0)
+        return !1;
     }
-    return true;
-  };
-  return shams$1;
+    return !0;
+  }), Zn;
 }
-var hasSymbols$1;
-var hasRequiredHasSymbols;
-function requireHasSymbols() {
-  if (hasRequiredHasSymbols) return hasSymbols$1;
-  hasRequiredHasSymbols = 1;
-  var origSymbol = typeof Symbol !== "undefined" && Symbol;
-  var hasSymbolSham = requireShams$1();
-  hasSymbols$1 = function hasNativeSymbols() {
-    if (typeof origSymbol !== "function") {
-      return false;
-    }
-    if (typeof Symbol !== "function") {
-      return false;
-    }
-    if (typeof origSymbol("foo") !== "symbol") {
-      return false;
-    }
-    if (typeof Symbol("bar") !== "symbol") {
-      return false;
-    }
-    return hasSymbolSham();
-  };
-  return hasSymbols$1;
+var Qn, Oa;
+function Mr() {
+  if (Oa) return Qn;
+  Oa = 1;
+  var e = typeof Symbol < "u" && Symbol, n = Jo();
+  return Qn = function() {
+    return typeof e != "function" || typeof Symbol != "function" || typeof e("foo") != "symbol" || typeof Symbol("bar") != "symbol" ? !1 : n();
+  }, Qn;
 }
-var Reflect_getPrototypeOf;
-var hasRequiredReflect_getPrototypeOf;
-function requireReflect_getPrototypeOf() {
-  if (hasRequiredReflect_getPrototypeOf) return Reflect_getPrototypeOf;
-  hasRequiredReflect_getPrototypeOf = 1;
-  Reflect_getPrototypeOf = typeof Reflect !== "undefined" && Reflect.getPrototypeOf || null;
-  return Reflect_getPrototypeOf;
+var et, ja;
+function Vo() {
+  return ja || (ja = 1, et = typeof Reflect < "u" && Reflect.getPrototypeOf || null), et;
 }
-var Object_getPrototypeOf;
-var hasRequiredObject_getPrototypeOf;
-function requireObject_getPrototypeOf() {
-  if (hasRequiredObject_getPrototypeOf) return Object_getPrototypeOf;
-  hasRequiredObject_getPrototypeOf = 1;
-  var $Object2 = esObjectAtoms;
-  Object_getPrototypeOf = $Object2.getPrototypeOf || null;
-  return Object_getPrototypeOf;
+var nt, Pa;
+function Xo() {
+  if (Pa) return nt;
+  Pa = 1;
+  var e = Ko;
+  return nt = e.getPrototypeOf || null, nt;
 }
-var ERROR_MESSAGE = "Function.prototype.bind called on incompatible ";
-var toStr = Object.prototype.toString;
-var max$1 = Math.max;
-var funcType = "[object Function]";
-var concatty = function concatty2(a, b) {
-  var arr = [];
-  for (var i = 0; i < a.length; i += 1) {
-    arr[i] = a[i];
-  }
-  for (var j = 0; j < b.length; j += 1) {
-    arr[j + a.length] = b[j];
-  }
-  return arr;
-};
-var slicy = function slicy2(arrLike, offset) {
-  var arr = [];
-  for (var i = offset, j = 0; i < arrLike.length; i += 1, j += 1) {
-    arr[j] = arrLike[i];
-  }
-  return arr;
-};
-var joiny = function(arr, joiner) {
-  var str = "";
-  for (var i = 0; i < arr.length; i += 1) {
-    str += arr[i];
-    if (i + 1 < arr.length) {
-      str += joiner;
-    }
-  }
-  return str;
-};
-var implementation$1 = function bind(that) {
-  var target = this;
-  if (typeof target !== "function" || toStr.apply(target) !== funcType) {
-    throw new TypeError(ERROR_MESSAGE + target);
-  }
-  var args = slicy(arguments, 1);
-  var bound;
-  var binder = function() {
-    if (this instanceof bound) {
-      var result = target.apply(
+var Hr = "Function.prototype.bind called on incompatible ", Wr = Object.prototype.toString, Kr = Math.max, Gr = "[object Function]", La = function(n, t) {
+  for (var a = [], o = 0; o < n.length; o += 1)
+    a[o] = n[o];
+  for (var s = 0; s < t.length; s += 1)
+    a[s + n.length] = t[s];
+  return a;
+}, Jr = function(n, t) {
+  for (var a = [], o = t, s = 0; o < n.length; o += 1, s += 1)
+    a[s] = n[o];
+  return a;
+}, Vr = function(e, n) {
+  for (var t = "", a = 0; a < e.length; a += 1)
+    t += e[a], a + 1 < e.length && (t += n);
+  return t;
+}, Xr = function(n) {
+  var t = this;
+  if (typeof t != "function" || Wr.apply(t) !== Gr)
+    throw new TypeError(Hr + t);
+  for (var a = Jr(arguments, 1), o, s = function() {
+    if (this instanceof o) {
+      var c = t.apply(
         this,
-        concatty(args, arguments)
+        La(a, arguments)
       );
-      if (Object(result) === result) {
-        return result;
-      }
-      return this;
+      return Object(c) === c ? c : this;
     }
-    return target.apply(
-      that,
-      concatty(args, arguments)
+    return t.apply(
+      n,
+      La(a, arguments)
     );
-  };
-  var boundLength = max$1(0, target.length - args.length);
-  var boundArgs = [];
-  for (var i = 0; i < boundLength; i++) {
-    boundArgs[i] = "$" + i;
-  }
-  bound = Function("binder", "return function (" + joiny(boundArgs, ",") + "){ return binder.apply(this,arguments); }")(binder);
-  if (target.prototype) {
-    var Empty = function Empty2() {
+  }, i = Kr(0, t.length - a.length), r = [], p = 0; p < i; p++)
+    r[p] = "$" + p;
+  if (o = Function("binder", "return function (" + Vr(r, ",") + "){ return binder.apply(this,arguments); }")(s), t.prototype) {
+    var l = function() {
     };
-    Empty.prototype = target.prototype;
-    bound.prototype = new Empty();
-    Empty.prototype = null;
+    l.prototype = t.prototype, o.prototype = new l(), l.prototype = null;
   }
-  return bound;
-};
-var implementation = implementation$1;
-var functionBind = Function.prototype.bind || implementation;
-var functionCall;
-var hasRequiredFunctionCall;
-function requireFunctionCall() {
-  if (hasRequiredFunctionCall) return functionCall;
-  hasRequiredFunctionCall = 1;
-  functionCall = Function.prototype.call;
-  return functionCall;
+  return o;
+}, Yr = Xr, Bn = Function.prototype.bind || Yr, tt, Na;
+function na() {
+  return Na || (Na = 1, tt = Function.prototype.call), tt;
 }
-var functionApply;
-var hasRequiredFunctionApply;
-function requireFunctionApply() {
-  if (hasRequiredFunctionApply) return functionApply;
-  hasRequiredFunctionApply = 1;
-  functionApply = Function.prototype.apply;
-  return functionApply;
+var at, Da;
+function Yo() {
+  return Da || (Da = 1, at = Function.prototype.apply), at;
 }
-var reflectApply;
-var hasRequiredReflectApply;
-function requireReflectApply() {
-  if (hasRequiredReflectApply) return reflectApply;
-  hasRequiredReflectApply = 1;
-  reflectApply = typeof Reflect !== "undefined" && Reflect && Reflect.apply;
-  return reflectApply;
+var ot, Ia;
+function Zr() {
+  return Ia || (Ia = 1, ot = typeof Reflect < "u" && Reflect && Reflect.apply), ot;
 }
-var actualApply;
-var hasRequiredActualApply;
-function requireActualApply() {
-  if (hasRequiredActualApply) return actualApply;
-  hasRequiredActualApply = 1;
-  var bind3 = functionBind;
-  var $apply2 = requireFunctionApply();
-  var $call2 = requireFunctionCall();
-  var $reflectApply = requireReflectApply();
-  actualApply = $reflectApply || bind3.call($call2, $apply2);
-  return actualApply;
+var st, Fa;
+function Qr() {
+  if (Fa) return st;
+  Fa = 1;
+  var e = Bn, n = Yo(), t = na(), a = Zr();
+  return st = a || e.call(t, n), st;
 }
-var callBindApplyHelpers;
-var hasRequiredCallBindApplyHelpers;
-function requireCallBindApplyHelpers() {
-  if (hasRequiredCallBindApplyHelpers) return callBindApplyHelpers;
-  hasRequiredCallBindApplyHelpers = 1;
-  var bind3 = functionBind;
-  var $TypeError2 = requireType();
-  var $call2 = requireFunctionCall();
-  var $actualApply = requireActualApply();
-  callBindApplyHelpers = function callBindBasic(args) {
-    if (args.length < 1 || typeof args[0] !== "function") {
-      throw new $TypeError2("a function is required");
-    }
-    return $actualApply(bind3, $call2, args);
-  };
-  return callBindApplyHelpers;
+var it, Ua;
+function ec() {
+  if (Ua) return it;
+  Ua = 1;
+  var e = Bn, n = ea(), t = na(), a = Qr();
+  return it = function(s) {
+    if (s.length < 1 || typeof s[0] != "function")
+      throw new n("a function is required");
+    return a(e, t, s);
+  }, it;
 }
-var get;
-var hasRequiredGet;
-function requireGet() {
-  if (hasRequiredGet) return get;
-  hasRequiredGet = 1;
-  var callBind = requireCallBindApplyHelpers();
-  var gOPD2 = gopd;
-  var hasProtoAccessor;
+var rt, Ba;
+function nc() {
+  if (Ba) return rt;
+  Ba = 1;
+  var e = ec(), n = Go, t;
   try {
-    hasProtoAccessor = /** @type {{ __proto__?: typeof Array.prototype }} */
+    t = /** @type {{ __proto__?: typeof Array.prototype }} */
     [].__proto__ === Array.prototype;
-  } catch (e) {
-    if (!e || typeof e !== "object" || !("code" in e) || e.code !== "ERR_PROTO_ACCESS") {
-      throw e;
-    }
+  } catch (i) {
+    if (!i || typeof i != "object" || !("code" in i) || i.code !== "ERR_PROTO_ACCESS")
+      throw i;
   }
-  var desc = !!hasProtoAccessor && gOPD2 && gOPD2(
+  var a = !!t && n && n(
     Object.prototype,
     /** @type {keyof typeof Object.prototype} */
     "__proto__"
-  );
-  var $Object2 = Object;
-  var $getPrototypeOf = $Object2.getPrototypeOf;
-  get = desc && typeof desc.get === "function" ? callBind([desc.get]) : typeof $getPrototypeOf === "function" ? (
+  ), o = Object, s = o.getPrototypeOf;
+  return rt = a && typeof a.get == "function" ? e([a.get]) : typeof s == "function" ? (
     /** @type {import('./get')} */
-    function getDunder(value) {
-      return $getPrototypeOf(value == null ? value : $Object2(value));
+    function(r) {
+      return s(r == null ? r : o(r));
     }
-  ) : false;
-  return get;
+  ) : !1, rt;
 }
-var getProto$1;
-var hasRequiredGetProto;
-function requireGetProto() {
-  if (hasRequiredGetProto) return getProto$1;
-  hasRequiredGetProto = 1;
-  var reflectGetProto = requireReflect_getPrototypeOf();
-  var originalGetProto = requireObject_getPrototypeOf();
-  var getDunderProto = requireGet();
-  getProto$1 = reflectGetProto ? function getProto2(O) {
-    return reflectGetProto(O);
-  } : originalGetProto ? function getProto2(O) {
-    if (!O || typeof O !== "object" && typeof O !== "function") {
+var ct, za;
+function tc() {
+  if (za) return ct;
+  za = 1;
+  var e = Vo(), n = Xo(), t = nc();
+  return ct = e ? function(o) {
+    return e(o);
+  } : n ? function(o) {
+    if (!o || typeof o != "object" && typeof o != "function")
       throw new TypeError("getProto: not an object");
-    }
-    return originalGetProto(O);
-  } : getDunderProto ? function getProto2(O) {
-    return getDunderProto(O);
-  } : null;
-  return getProto$1;
+    return n(o);
+  } : t ? function(o) {
+    return t(o);
+  } : null, ct;
 }
-var call = Function.prototype.call;
-var $hasOwn = Object.prototype.hasOwnProperty;
-var bind$1 = functionBind;
-var hasown = bind$1.call(call, $hasOwn);
-var undefined$1;
-var $Object = esObjectAtoms;
-var $Error = esErrors;
-var $EvalError = _eval;
-var $RangeError = range;
-var $ReferenceError = ref;
-var $SyntaxError = syntax;
-var $TypeError$1 = requireType();
-var $URIError = uri;
-var abs = abs$1;
-var floor = floor$1;
-var max = max$2;
-var min = min$1;
-var pow = pow$1;
-var round = round$1;
-var sign2 = sign$1;
-var $Function = Function;
-var getEvalledConstructor = function(expressionSyntax) {
+var ac = Function.prototype.call, oc = Object.prototype.hasOwnProperty, sc = Bn, ta = sc.call(ac, oc), T, ic = Ko, rc = Rr, cc = Ar, pc = Tr, lc = Cr, Ge = Or, Me = ea(), uc = jr, dc = Pr, mc = Lr, fc = Nr, xc = Dr, hc = Ir, vc = Fr, bc = zr, Zo = Function, pt = function(e) {
   try {
-    return $Function('"use strict"; return (' + expressionSyntax + ").constructor;")();
-  } catch (e) {
+    return Zo('"use strict"; return (' + e + ").constructor;")();
+  } catch {
   }
-};
-var $gOPD = gopd;
-var $defineProperty$1 = esDefineProperty;
-var throwTypeError = function() {
-  throw new $TypeError$1();
-};
-var ThrowTypeError = $gOPD ? function() {
+}, en = Go, gc = $r, lt = function() {
+  throw new Me();
+}, yc = en ? function() {
   try {
-    arguments.callee;
-    return throwTypeError;
-  } catch (calleeThrows) {
+    return arguments.callee, lt;
+  } catch {
     try {
-      return $gOPD(arguments, "callee").get;
-    } catch (gOPDthrows) {
-      return throwTypeError;
+      return en(arguments, "callee").get;
+    } catch {
+      return lt;
     }
   }
-}() : throwTypeError;
-var hasSymbols = requireHasSymbols()();
-var getProto = requireGetProto();
-var $ObjectGPO = requireObject_getPrototypeOf();
-var $ReflectGPO = requireReflect_getPrototypeOf();
-var $apply = requireFunctionApply();
-var $call = requireFunctionCall();
-var needsEval = {};
-var TypedArray = typeof Uint8Array === "undefined" || !getProto ? undefined$1 : getProto(Uint8Array);
-var INTRINSICS = {
+}() : lt, Fe = Mr()(), Z = tc(), wc = Xo(), kc = Vo(), Qo = Yo(), cn = na(), ze = {}, _c = typeof Uint8Array > "u" || !Z ? T : Z(Uint8Array), Ce = {
   __proto__: null,
-  "%AggregateError%": typeof AggregateError === "undefined" ? undefined$1 : AggregateError,
+  "%AggregateError%": typeof AggregateError > "u" ? T : AggregateError,
   "%Array%": Array,
-  "%ArrayBuffer%": typeof ArrayBuffer === "undefined" ? undefined$1 : ArrayBuffer,
-  "%ArrayIteratorPrototype%": hasSymbols && getProto ? getProto([][Symbol.iterator]()) : undefined$1,
-  "%AsyncFromSyncIteratorPrototype%": undefined$1,
-  "%AsyncFunction%": needsEval,
-  "%AsyncGenerator%": needsEval,
-  "%AsyncGeneratorFunction%": needsEval,
-  "%AsyncIteratorPrototype%": needsEval,
-  "%Atomics%": typeof Atomics === "undefined" ? undefined$1 : Atomics,
-  "%BigInt%": typeof BigInt === "undefined" ? undefined$1 : BigInt,
-  "%BigInt64Array%": typeof BigInt64Array === "undefined" ? undefined$1 : BigInt64Array,
-  "%BigUint64Array%": typeof BigUint64Array === "undefined" ? undefined$1 : BigUint64Array,
+  "%ArrayBuffer%": typeof ArrayBuffer > "u" ? T : ArrayBuffer,
+  "%ArrayIteratorPrototype%": Fe && Z ? Z([][Symbol.iterator]()) : T,
+  "%AsyncFromSyncIteratorPrototype%": T,
+  "%AsyncFunction%": ze,
+  "%AsyncGenerator%": ze,
+  "%AsyncGeneratorFunction%": ze,
+  "%AsyncIteratorPrototype%": ze,
+  "%Atomics%": typeof Atomics > "u" ? T : Atomics,
+  "%BigInt%": typeof BigInt > "u" ? T : BigInt,
+  "%BigInt64Array%": typeof BigInt64Array > "u" ? T : BigInt64Array,
+  "%BigUint64Array%": typeof BigUint64Array > "u" ? T : BigUint64Array,
   "%Boolean%": Boolean,
-  "%DataView%": typeof DataView === "undefined" ? undefined$1 : DataView,
+  "%DataView%": typeof DataView > "u" ? T : DataView,
   "%Date%": Date,
   "%decodeURI%": decodeURI,
   "%decodeURIComponent%": decodeURIComponent,
   "%encodeURI%": encodeURI,
   "%encodeURIComponent%": encodeURIComponent,
-  "%Error%": $Error,
+  "%Error%": rc,
   "%eval%": eval,
   // eslint-disable-line no-eval
-  "%EvalError%": $EvalError,
-  "%Float16Array%": typeof Float16Array === "undefined" ? undefined$1 : Float16Array,
-  "%Float32Array%": typeof Float32Array === "undefined" ? undefined$1 : Float32Array,
-  "%Float64Array%": typeof Float64Array === "undefined" ? undefined$1 : Float64Array,
-  "%FinalizationRegistry%": typeof FinalizationRegistry === "undefined" ? undefined$1 : FinalizationRegistry,
-  "%Function%": $Function,
-  "%GeneratorFunction%": needsEval,
-  "%Int8Array%": typeof Int8Array === "undefined" ? undefined$1 : Int8Array,
-  "%Int16Array%": typeof Int16Array === "undefined" ? undefined$1 : Int16Array,
-  "%Int32Array%": typeof Int32Array === "undefined" ? undefined$1 : Int32Array,
+  "%EvalError%": cc,
+  "%Float16Array%": typeof Float16Array > "u" ? T : Float16Array,
+  "%Float32Array%": typeof Float32Array > "u" ? T : Float32Array,
+  "%Float64Array%": typeof Float64Array > "u" ? T : Float64Array,
+  "%FinalizationRegistry%": typeof FinalizationRegistry > "u" ? T : FinalizationRegistry,
+  "%Function%": Zo,
+  "%GeneratorFunction%": ze,
+  "%Int8Array%": typeof Int8Array > "u" ? T : Int8Array,
+  "%Int16Array%": typeof Int16Array > "u" ? T : Int16Array,
+  "%Int32Array%": typeof Int32Array > "u" ? T : Int32Array,
   "%isFinite%": isFinite,
   "%isNaN%": isNaN,
-  "%IteratorPrototype%": hasSymbols && getProto ? getProto(getProto([][Symbol.iterator]())) : undefined$1,
-  "%JSON%": typeof JSON === "object" ? JSON : undefined$1,
-  "%Map%": typeof Map === "undefined" ? undefined$1 : Map,
-  "%MapIteratorPrototype%": typeof Map === "undefined" || !hasSymbols || !getProto ? undefined$1 : getProto((/* @__PURE__ */ new Map())[Symbol.iterator]()),
+  "%IteratorPrototype%": Fe && Z ? Z(Z([][Symbol.iterator]())) : T,
+  "%JSON%": typeof JSON == "object" ? JSON : T,
+  "%Map%": typeof Map > "u" ? T : Map,
+  "%MapIteratorPrototype%": typeof Map > "u" || !Fe || !Z ? T : Z((/* @__PURE__ */ new Map())[Symbol.iterator]()),
   "%Math%": Math,
   "%Number%": Number,
-  "%Object%": $Object,
-  "%Object.getOwnPropertyDescriptor%": $gOPD,
+  "%Object%": ic,
+  "%Object.getOwnPropertyDescriptor%": en,
   "%parseFloat%": parseFloat,
   "%parseInt%": parseInt,
-  "%Promise%": typeof Promise === "undefined" ? undefined$1 : Promise,
-  "%Proxy%": typeof Proxy === "undefined" ? undefined$1 : Proxy,
-  "%RangeError%": $RangeError,
-  "%ReferenceError%": $ReferenceError,
-  "%Reflect%": typeof Reflect === "undefined" ? undefined$1 : Reflect,
+  "%Promise%": typeof Promise > "u" ? T : Promise,
+  "%Proxy%": typeof Proxy > "u" ? T : Proxy,
+  "%RangeError%": pc,
+  "%ReferenceError%": lc,
+  "%Reflect%": typeof Reflect > "u" ? T : Reflect,
   "%RegExp%": RegExp,
-  "%Set%": typeof Set === "undefined" ? undefined$1 : Set,
-  "%SetIteratorPrototype%": typeof Set === "undefined" || !hasSymbols || !getProto ? undefined$1 : getProto((/* @__PURE__ */ new Set())[Symbol.iterator]()),
-  "%SharedArrayBuffer%": typeof SharedArrayBuffer === "undefined" ? undefined$1 : SharedArrayBuffer,
+  "%Set%": typeof Set > "u" ? T : Set,
+  "%SetIteratorPrototype%": typeof Set > "u" || !Fe || !Z ? T : Z((/* @__PURE__ */ new Set())[Symbol.iterator]()),
+  "%SharedArrayBuffer%": typeof SharedArrayBuffer > "u" ? T : SharedArrayBuffer,
   "%String%": String,
-  "%StringIteratorPrototype%": hasSymbols && getProto ? getProto(""[Symbol.iterator]()) : undefined$1,
-  "%Symbol%": hasSymbols ? Symbol : undefined$1,
-  "%SyntaxError%": $SyntaxError,
-  "%ThrowTypeError%": ThrowTypeError,
-  "%TypedArray%": TypedArray,
-  "%TypeError%": $TypeError$1,
-  "%Uint8Array%": typeof Uint8Array === "undefined" ? undefined$1 : Uint8Array,
-  "%Uint8ClampedArray%": typeof Uint8ClampedArray === "undefined" ? undefined$1 : Uint8ClampedArray,
-  "%Uint16Array%": typeof Uint16Array === "undefined" ? undefined$1 : Uint16Array,
-  "%Uint32Array%": typeof Uint32Array === "undefined" ? undefined$1 : Uint32Array,
-  "%URIError%": $URIError,
-  "%WeakMap%": typeof WeakMap === "undefined" ? undefined$1 : WeakMap,
-  "%WeakRef%": typeof WeakRef === "undefined" ? undefined$1 : WeakRef,
-  "%WeakSet%": typeof WeakSet === "undefined" ? undefined$1 : WeakSet,
-  "%Function.prototype.call%": $call,
-  "%Function.prototype.apply%": $apply,
-  "%Object.defineProperty%": $defineProperty$1,
-  "%Object.getPrototypeOf%": $ObjectGPO,
-  "%Math.abs%": abs,
-  "%Math.floor%": floor,
-  "%Math.max%": max,
-  "%Math.min%": min,
-  "%Math.pow%": pow,
-  "%Math.round%": round,
-  "%Math.sign%": sign2,
-  "%Reflect.getPrototypeOf%": $ReflectGPO
+  "%StringIteratorPrototype%": Fe && Z ? Z(""[Symbol.iterator]()) : T,
+  "%Symbol%": Fe ? Symbol : T,
+  "%SyntaxError%": Ge,
+  "%ThrowTypeError%": yc,
+  "%TypedArray%": _c,
+  "%TypeError%": Me,
+  "%Uint8Array%": typeof Uint8Array > "u" ? T : Uint8Array,
+  "%Uint8ClampedArray%": typeof Uint8ClampedArray > "u" ? T : Uint8ClampedArray,
+  "%Uint16Array%": typeof Uint16Array > "u" ? T : Uint16Array,
+  "%Uint32Array%": typeof Uint32Array > "u" ? T : Uint32Array,
+  "%URIError%": uc,
+  "%WeakMap%": typeof WeakMap > "u" ? T : WeakMap,
+  "%WeakRef%": typeof WeakRef > "u" ? T : WeakRef,
+  "%WeakSet%": typeof WeakSet > "u" ? T : WeakSet,
+  "%Function.prototype.call%": cn,
+  "%Function.prototype.apply%": Qo,
+  "%Object.defineProperty%": gc,
+  "%Object.getPrototypeOf%": wc,
+  "%Math.abs%": dc,
+  "%Math.floor%": mc,
+  "%Math.max%": fc,
+  "%Math.min%": xc,
+  "%Math.pow%": hc,
+  "%Math.round%": vc,
+  "%Math.sign%": bc,
+  "%Reflect.getPrototypeOf%": kc
 };
-if (getProto) {
+if (Z)
   try {
     null.error;
   } catch (e) {
-    var errorProto = getProto(getProto(e));
-    INTRINSICS["%Error.prototype%"] = errorProto;
+    var Ec = Z(Z(e));
+    Ce["%Error.prototype%"] = Ec;
   }
-}
-var doEval = function doEval2(name) {
-  var value;
-  if (name === "%AsyncFunction%") {
-    value = getEvalledConstructor("async function () {}");
-  } else if (name === "%GeneratorFunction%") {
-    value = getEvalledConstructor("function* () {}");
-  } else if (name === "%AsyncGeneratorFunction%") {
-    value = getEvalledConstructor("async function* () {}");
-  } else if (name === "%AsyncGenerator%") {
-    var fn = doEval2("%AsyncGeneratorFunction%");
-    if (fn) {
-      value = fn.prototype;
-    }
-  } else if (name === "%AsyncIteratorPrototype%") {
-    var gen = doEval2("%AsyncGenerator%");
-    if (gen && getProto) {
-      value = getProto(gen.prototype);
-    }
+var Sc = function e(n) {
+  var t;
+  if (n === "%AsyncFunction%")
+    t = pt("async function () {}");
+  else if (n === "%GeneratorFunction%")
+    t = pt("function* () {}");
+  else if (n === "%AsyncGeneratorFunction%")
+    t = pt("async function* () {}");
+  else if (n === "%AsyncGenerator%") {
+    var a = e("%AsyncGeneratorFunction%");
+    a && (t = a.prototype);
+  } else if (n === "%AsyncIteratorPrototype%") {
+    var o = e("%AsyncGenerator%");
+    o && Z && (t = Z(o.prototype));
   }
-  INTRINSICS[name] = value;
-  return value;
-};
-var LEGACY_ALIASES = {
+  return Ce[n] = t, t;
+}, qa = {
   __proto__: null,
   "%ArrayBufferPrototype%": ["ArrayBuffer", "prototype"],
   "%ArrayPrototype%": ["Array", "prototype"],
@@ -12758,593 +12100,322 @@ var LEGACY_ALIASES = {
   "%URIErrorPrototype%": ["URIError", "prototype"],
   "%WeakMapPrototype%": ["WeakMap", "prototype"],
   "%WeakSetPrototype%": ["WeakSet", "prototype"]
-};
-var bind2 = functionBind;
-var hasOwn$2 = hasown;
-var $concat = bind2.call($call, Array.prototype.concat);
-var $spliceApply = bind2.call($apply, Array.prototype.splice);
-var $replace = bind2.call($call, String.prototype.replace);
-var $strSlice = bind2.call($call, String.prototype.slice);
-var $exec = bind2.call($call, RegExp.prototype.exec);
-var rePropName = /[^%.[\]]+|\[(?:(-?\d+(?:\.\d+)?)|(["'])((?:(?!\2)[^\\]|\\.)*?)\2)\]|(?=(?:\.|\[\])(?:\.|\[\]|%$))/g;
-var reEscapeChar = /\\(\\)?/g;
-var stringToPath = function stringToPath2(string) {
-  var first = $strSlice(string, 0, 1);
-  var last = $strSlice(string, -1);
-  if (first === "%" && last !== "%") {
-    throw new $SyntaxError("invalid intrinsic syntax, expected closing `%`");
-  } else if (last === "%" && first !== "%") {
-    throw new $SyntaxError("invalid intrinsic syntax, expected opening `%`");
-  }
-  var result = [];
-  $replace(string, rePropName, function(match, number, quote, subString) {
-    result[result.length] = quote ? $replace(subString, reEscapeChar, "$1") : number || match;
-  });
-  return result;
-};
-var getBaseIntrinsic = function getBaseIntrinsic2(name, allowMissing) {
-  var intrinsicName = name;
-  var alias;
-  if (hasOwn$2(LEGACY_ALIASES, intrinsicName)) {
-    alias = LEGACY_ALIASES[intrinsicName];
-    intrinsicName = "%" + alias[0] + "%";
-  }
-  if (hasOwn$2(INTRINSICS, intrinsicName)) {
-    var value = INTRINSICS[intrinsicName];
-    if (value === needsEval) {
-      value = doEval(intrinsicName);
-    }
-    if (typeof value === "undefined" && !allowMissing) {
-      throw new $TypeError$1("intrinsic " + name + " exists, but is not available. Please file an issue!");
-    }
+}, pn = Bn, An = ta, Rc = pn.call(cn, Array.prototype.concat), Ac = pn.call(Qo, Array.prototype.splice), $a = pn.call(cn, String.prototype.replace), Tn = pn.call(cn, String.prototype.slice), Tc = pn.call(cn, RegExp.prototype.exec), Cc = /[^%.[\]]+|\[(?:(-?\d+(?:\.\d+)?)|(["'])((?:(?!\2)[^\\]|\\.)*?)\2)\]|(?=(?:\.|\[\])(?:\.|\[\]|%$))/g, Oc = /\\(\\)?/g, jc = function(n) {
+  var t = Tn(n, 0, 1), a = Tn(n, -1);
+  if (t === "%" && a !== "%")
+    throw new Ge("invalid intrinsic syntax, expected closing `%`");
+  if (a === "%" && t !== "%")
+    throw new Ge("invalid intrinsic syntax, expected opening `%`");
+  var o = [];
+  return $a(n, Cc, function(s, i, r, p) {
+    o[o.length] = r ? $a(p, Oc, "$1") : i || s;
+  }), o;
+}, Pc = function(n, t) {
+  var a = n, o;
+  if (An(qa, a) && (o = qa[a], a = "%" + o[0] + "%"), An(Ce, a)) {
+    var s = Ce[a];
+    if (s === ze && (s = Sc(a)), typeof s > "u" && !t)
+      throw new Me("intrinsic " + n + " exists, but is not available. Please file an issue!");
     return {
-      alias,
-      name: intrinsicName,
-      value
+      alias: o,
+      name: a,
+      value: s
     };
   }
-  throw new $SyntaxError("intrinsic " + name + " does not exist!");
-};
-var getIntrinsic = function GetIntrinsic(name, allowMissing) {
-  if (typeof name !== "string" || name.length === 0) {
-    throw new $TypeError$1("intrinsic name must be a non-empty string");
-  }
-  if (arguments.length > 1 && typeof allowMissing !== "boolean") {
-    throw new $TypeError$1('"allowMissing" argument must be a boolean');
-  }
-  if ($exec(/^%?[^%]*%?$/, name) === null) {
-    throw new $SyntaxError("`%` may not be present anywhere but at the beginning and end of the intrinsic name");
-  }
-  var parts = stringToPath(name);
-  var intrinsicBaseName = parts.length > 0 ? parts[0] : "";
-  var intrinsic = getBaseIntrinsic("%" + intrinsicBaseName + "%", allowMissing);
-  var intrinsicRealName = intrinsic.name;
-  var value = intrinsic.value;
-  var skipFurtherCaching = false;
-  var alias = intrinsic.alias;
-  if (alias) {
-    intrinsicBaseName = alias[0];
-    $spliceApply(parts, $concat([0, 1], alias));
-  }
-  for (var i = 1, isOwn = true; i < parts.length; i += 1) {
-    var part = parts[i];
-    var first = $strSlice(part, 0, 1);
-    var last = $strSlice(part, -1);
-    if ((first === '"' || first === "'" || first === "`" || (last === '"' || last === "'" || last === "`")) && first !== last) {
-      throw new $SyntaxError("property names with quotes must have matching quotes");
-    }
-    if (part === "constructor" || !isOwn) {
-      skipFurtherCaching = true;
-    }
-    intrinsicBaseName += "." + part;
-    intrinsicRealName = "%" + intrinsicBaseName + "%";
-    if (hasOwn$2(INTRINSICS, intrinsicRealName)) {
-      value = INTRINSICS[intrinsicRealName];
-    } else if (value != null) {
-      if (!(part in value)) {
-        if (!allowMissing) {
-          throw new $TypeError$1("base intrinsic for " + name + " exists, but the property is not available.");
-        }
-        return void 0;
+  throw new Ge("intrinsic " + n + " does not exist!");
+}, Lc = function(n, t) {
+  if (typeof n != "string" || n.length === 0)
+    throw new Me("intrinsic name must be a non-empty string");
+  if (arguments.length > 1 && typeof t != "boolean")
+    throw new Me('"allowMissing" argument must be a boolean');
+  if (Tc(/^%?[^%]*%?$/, n) === null)
+    throw new Ge("`%` may not be present anywhere but at the beginning and end of the intrinsic name");
+  var a = jc(n), o = a.length > 0 ? a[0] : "", s = Pc("%" + o + "%", t), i = s.name, r = s.value, p = !1, l = s.alias;
+  l && (o = l[0], Ac(a, Rc([0, 1], l)));
+  for (var c = 1, u = !0; c < a.length; c += 1) {
+    var d = a[c], f = Tn(d, 0, 1), b = Tn(d, -1);
+    if ((f === '"' || f === "'" || f === "`" || b === '"' || b === "'" || b === "`") && f !== b)
+      throw new Ge("property names with quotes must have matching quotes");
+    if ((d === "constructor" || !u) && (p = !0), o += "." + d, i = "%" + o + "%", An(Ce, i))
+      r = Ce[i];
+    else if (r != null) {
+      if (!(d in r)) {
+        if (!t)
+          throw new Me("base intrinsic for " + n + " exists, but the property is not available.");
+        return;
       }
-      if ($gOPD && i + 1 >= parts.length) {
-        var desc = $gOPD(value, part);
-        isOwn = !!desc;
-        if (isOwn && "get" in desc && !("originalValue" in desc.get)) {
-          value = desc.get;
-        } else {
-          value = value[part];
-        }
-      } else {
-        isOwn = hasOwn$2(value, part);
-        value = value[part];
-      }
-      if (isOwn && !skipFurtherCaching) {
-        INTRINSICS[intrinsicRealName] = value;
-      }
+      if (en && c + 1 >= a.length) {
+        var x = en(r, d);
+        u = !!x, u && "get" in x && !("originalValue" in x.get) ? r = x.get : r = r[d];
+      } else
+        u = An(r, d), r = r[d];
+      u && !p && (Ce[i] = r);
     }
   }
-  return value;
-};
-var shams;
-var hasRequiredShams;
-function requireShams() {
-  if (hasRequiredShams) return shams;
-  hasRequiredShams = 1;
-  var hasSymbols2 = requireShams$1();
-  shams = function hasToStringTagShams() {
-    return hasSymbols2() && !!Symbol.toStringTag;
-  };
-  return shams;
+  return r;
+}, ut, Ma;
+function Nc() {
+  if (Ma) return ut;
+  Ma = 1;
+  var e = Jo();
+  return ut = function() {
+    return e() && !!Symbol.toStringTag;
+  }, ut;
 }
-var GetIntrinsic2 = getIntrinsic;
-var $defineProperty = GetIntrinsic2("%Object.defineProperty%", true);
-var hasToStringTag = requireShams()();
-var hasOwn$1 = hasown;
-var $TypeError = requireType();
-var toStringTag = hasToStringTag ? Symbol.toStringTag : null;
-var esSetTostringtag = function setToStringTag(object, value) {
-  var overrideIfSet = arguments.length > 2 && !!arguments[2] && arguments[2].force;
-  var nonConfigurable = arguments.length > 2 && !!arguments[2] && arguments[2].nonConfigurable;
-  if (typeof overrideIfSet !== "undefined" && typeof overrideIfSet !== "boolean" || typeof nonConfigurable !== "undefined" && typeof nonConfigurable !== "boolean") {
-    throw new $TypeError("if provided, the `overrideIfSet` and `nonConfigurable` options must be booleans");
-  }
-  if (toStringTag && (overrideIfSet || !hasOwn$1(object, toStringTag))) {
-    if ($defineProperty) {
-      $defineProperty(object, toStringTag, {
-        configurable: !nonConfigurable,
-        enumerable: false,
-        value,
-        writable: false
-      });
-    } else {
-      object[toStringTag] = value;
-    }
-  }
-};
-var populate$1 = function(dst, src2) {
-  Object.keys(src2).forEach(function(prop) {
-    dst[prop] = dst[prop] || src2[prop];
-  });
-  return dst;
-};
-var CombinedStream = combined_stream;
-var util = require$$1;
-var path = require$$1$1;
-var http$1 = require$$3;
-var https$1 = require$$4;
-var parseUrl$2 = require$$5.parse;
-var fs = require$$6;
-var Stream = stream.Stream;
-var crypto = require$$8;
-var mime = mimeTypes;
-var asynckit = asynckit$1;
-var setToStringTag2 = esSetTostringtag;
-var hasOwn = hasown;
-var populate = populate$1;
-function FormData$1(options) {
-  if (!(this instanceof FormData$1)) {
-    return new FormData$1(options);
-  }
-  this._overheadLength = 0;
-  this._valueLength = 0;
-  this._valuesToMeasure = [];
-  CombinedStream.call(this);
-  options = options || {};
-  for (var option in options) {
-    this[option] = options[option];
-  }
+var Dc = Lc, Ha = Dc("%Object.defineProperty%", !0), Ic = Nc()(), Fc = ta, Uc = ea(), fn = Ic ? Symbol.toStringTag : null, Bc = function(n, t) {
+  var a = arguments.length > 2 && !!arguments[2] && arguments[2].force, o = arguments.length > 2 && !!arguments[2] && arguments[2].nonConfigurable;
+  if (typeof a < "u" && typeof a != "boolean" || typeof o < "u" && typeof o != "boolean")
+    throw new Uc("if provided, the `overrideIfSet` and `nonConfigurable` options must be booleans");
+  fn && (a || !Fc(n, fn)) && (Ha ? Ha(n, fn, {
+    configurable: !o,
+    enumerable: !1,
+    value: t,
+    writable: !1
+  }) : n[fn] = t);
+}, zc = function(e, n) {
+  return Object.keys(n).forEach(function(t) {
+    e[t] = e[t] || n[t];
+  }), e;
+}, aa = Zi, qc = De, dt = ko, $c = Xt, Mc = Yt, Hc = Zt.parse, Wc = $s, Kc = te.Stream, Gc = _o, mt = Uo, Jc = Sr, Vc = Bc, Re = ta, jt = zc;
+function N(e) {
+  if (!(this instanceof N))
+    return new N(e);
+  this._overheadLength = 0, this._valueLength = 0, this._valuesToMeasure = [], aa.call(this), e = e || {};
+  for (var n in e)
+    this[n] = e[n];
 }
-util.inherits(FormData$1, CombinedStream);
-FormData$1.LINE_BREAK = "\r\n";
-FormData$1.DEFAULT_CONTENT_TYPE = "application/octet-stream";
-FormData$1.prototype.append = function(field, value, options) {
-  options = options || {};
-  if (typeof options === "string") {
-    options = { filename: options };
-  }
-  var append2 = CombinedStream.prototype.append.bind(this);
-  if (typeof value === "number" || value == null) {
-    value = String(value);
-  }
-  if (Array.isArray(value)) {
+qc.inherits(N, aa);
+N.LINE_BREAK = `\r
+`;
+N.DEFAULT_CONTENT_TYPE = "application/octet-stream";
+N.prototype.append = function(e, n, t) {
+  t = t || {}, typeof t == "string" && (t = { filename: t });
+  var a = aa.prototype.append.bind(this);
+  if ((typeof n == "number" || n == null) && (n = String(n)), Array.isArray(n)) {
     this._error(new Error("Arrays are not supported."));
     return;
   }
-  var header = this._multiPartHeader(field, value, options);
-  var footer = this._multiPartFooter();
-  append2(header);
-  append2(value);
-  append2(footer);
-  this._trackLength(header, value, options);
+  var o = this._multiPartHeader(e, n, t), s = this._multiPartFooter();
+  a(o), a(n), a(s), this._trackLength(o, n, t);
 };
-FormData$1.prototype._trackLength = function(header, value, options) {
-  var valueLength = 0;
-  if (options.knownLength != null) {
-    valueLength += Number(options.knownLength);
-  } else if (Buffer.isBuffer(value)) {
-    valueLength = value.length;
-  } else if (typeof value === "string") {
-    valueLength = Buffer.byteLength(value);
-  }
-  this._valueLength += valueLength;
-  this._overheadLength += Buffer.byteLength(header) + FormData$1.LINE_BREAK.length;
-  if (!value || !value.path && !(value.readable && hasOwn(value, "httpVersion")) && !(value instanceof Stream)) {
-    return;
-  }
-  if (!options.knownLength) {
-    this._valuesToMeasure.push(value);
-  }
+N.prototype._trackLength = function(e, n, t) {
+  var a = 0;
+  t.knownLength != null ? a += Number(t.knownLength) : Buffer.isBuffer(n) ? a = n.length : typeof n == "string" && (a = Buffer.byteLength(n)), this._valueLength += a, this._overheadLength += Buffer.byteLength(e) + N.LINE_BREAK.length, !(!n || !n.path && !(n.readable && Re(n, "httpVersion")) && !(n instanceof Kc)) && (t.knownLength || this._valuesToMeasure.push(n));
 };
-FormData$1.prototype._lengthRetriever = function(value, callback) {
-  if (hasOwn(value, "fd")) {
-    if (value.end != void 0 && value.end != Infinity && value.start != void 0) {
-      callback(null, value.end + 1 - (value.start ? value.start : 0));
-    } else {
-      fs.stat(value.path, function(err, stat) {
-        if (err) {
-          callback(err);
-          return;
-        }
-        var fileSize = stat.size - (value.start ? value.start : 0);
-        callback(null, fileSize);
-      });
+N.prototype._lengthRetriever = function(e, n) {
+  Re(e, "fd") ? e.end != null && e.end != 1 / 0 && e.start != null ? n(null, e.end + 1 - (e.start ? e.start : 0)) : Wc.stat(e.path, function(t, a) {
+    if (t) {
+      n(t);
+      return;
     }
-  } else if (hasOwn(value, "httpVersion")) {
-    callback(null, Number(value.headers["content-length"]));
-  } else if (hasOwn(value, "httpModule")) {
-    value.on("response", function(response) {
-      value.pause();
-      callback(null, Number(response.headers["content-length"]));
-    });
-    value.resume();
-  } else {
-    callback("Unknown stream");
-  }
+    var o = a.size - (e.start ? e.start : 0);
+    n(null, o);
+  }) : Re(e, "httpVersion") ? n(null, Number(e.headers["content-length"])) : Re(e, "httpModule") ? (e.on("response", function(t) {
+    e.pause(), n(null, Number(t.headers["content-length"]));
+  }), e.resume()) : n("Unknown stream");
 };
-FormData$1.prototype._multiPartHeader = function(field, value, options) {
-  if (typeof options.header === "string") {
-    return options.header;
-  }
-  var contentDisposition = this._getContentDisposition(value, options);
-  var contentType = this._getContentType(value, options);
-  var contents = "";
-  var headers = {
+N.prototype._multiPartHeader = function(e, n, t) {
+  if (typeof t.header == "string")
+    return t.header;
+  var a = this._getContentDisposition(n, t), o = this._getContentType(n, t), s = "", i = {
     // add custom disposition as third element or keep it two elements if not
-    "Content-Disposition": ["form-data", 'name="' + field + '"'].concat(contentDisposition || []),
+    "Content-Disposition": ["form-data", 'name="' + e + '"'].concat(a || []),
     // if no content type. allow it to be empty array
-    "Content-Type": [].concat(contentType || [])
+    "Content-Type": [].concat(o || [])
   };
-  if (typeof options.header === "object") {
-    populate(headers, options.header);
-  }
-  var header;
-  for (var prop in headers) {
-    if (hasOwn(headers, prop)) {
-      header = headers[prop];
-      if (header == null) {
+  typeof t.header == "object" && jt(i, t.header);
+  var r;
+  for (var p in i)
+    if (Re(i, p)) {
+      if (r = i[p], r == null)
         continue;
-      }
-      if (!Array.isArray(header)) {
-        header = [header];
-      }
-      if (header.length) {
-        contents += prop + ": " + header.join("; ") + FormData$1.LINE_BREAK;
-      }
+      Array.isArray(r) || (r = [r]), r.length && (s += p + ": " + r.join("; ") + N.LINE_BREAK);
     }
-  }
-  return "--" + this.getBoundary() + FormData$1.LINE_BREAK + contents + FormData$1.LINE_BREAK;
+  return "--" + this.getBoundary() + N.LINE_BREAK + s + N.LINE_BREAK;
 };
-FormData$1.prototype._getContentDisposition = function(value, options) {
-  var filename;
-  if (typeof options.filepath === "string") {
-    filename = path.normalize(options.filepath).replace(/\\/g, "/");
-  } else if (options.filename || value && (value.name || value.path)) {
-    filename = path.basename(options.filename || value && (value.name || value.path));
-  } else if (value && value.readable && hasOwn(value, "httpVersion")) {
-    filename = path.basename(value.client._httpMessage.path || "");
-  }
-  if (filename) {
-    return 'filename="' + filename + '"';
-  }
+N.prototype._getContentDisposition = function(e, n) {
+  var t;
+  if (typeof n.filepath == "string" ? t = dt.normalize(n.filepath).replace(/\\/g, "/") : n.filename || e && (e.name || e.path) ? t = dt.basename(n.filename || e && (e.name || e.path)) : e && e.readable && Re(e, "httpVersion") && (t = dt.basename(e.client._httpMessage.path || "")), t)
+    return 'filename="' + t + '"';
 };
-FormData$1.prototype._getContentType = function(value, options) {
-  var contentType = options.contentType;
-  if (!contentType && value && value.name) {
-    contentType = mime.lookup(value.name);
-  }
-  if (!contentType && value && value.path) {
-    contentType = mime.lookup(value.path);
-  }
-  if (!contentType && value && value.readable && hasOwn(value, "httpVersion")) {
-    contentType = value.headers["content-type"];
-  }
-  if (!contentType && (options.filepath || options.filename)) {
-    contentType = mime.lookup(options.filepath || options.filename);
-  }
-  if (!contentType && value && typeof value === "object") {
-    contentType = FormData$1.DEFAULT_CONTENT_TYPE;
-  }
-  return contentType;
+N.prototype._getContentType = function(e, n) {
+  var t = n.contentType;
+  return !t && e && e.name && (t = mt.lookup(e.name)), !t && e && e.path && (t = mt.lookup(e.path)), !t && e && e.readable && Re(e, "httpVersion") && (t = e.headers["content-type"]), !t && (n.filepath || n.filename) && (t = mt.lookup(n.filepath || n.filename)), !t && e && typeof e == "object" && (t = N.DEFAULT_CONTENT_TYPE), t;
 };
-FormData$1.prototype._multiPartFooter = function() {
-  return (function(next) {
-    var footer = FormData$1.LINE_BREAK;
-    var lastPart = this._streams.length === 0;
-    if (lastPart) {
-      footer += this._lastBoundary();
-    }
-    next(footer);
+N.prototype._multiPartFooter = function() {
+  return (function(e) {
+    var n = N.LINE_BREAK, t = this._streams.length === 0;
+    t && (n += this._lastBoundary()), e(n);
   }).bind(this);
 };
-FormData$1.prototype._lastBoundary = function() {
-  return "--" + this.getBoundary() + "--" + FormData$1.LINE_BREAK;
+N.prototype._lastBoundary = function() {
+  return "--" + this.getBoundary() + "--" + N.LINE_BREAK;
 };
-FormData$1.prototype.getHeaders = function(userHeaders) {
-  var header;
-  var formHeaders = {
+N.prototype.getHeaders = function(e) {
+  var n, t = {
     "content-type": "multipart/form-data; boundary=" + this.getBoundary()
   };
-  for (header in userHeaders) {
-    if (hasOwn(userHeaders, header)) {
-      formHeaders[header.toLowerCase()] = userHeaders[header];
-    }
-  }
-  return formHeaders;
+  for (n in e)
+    Re(e, n) && (t[n.toLowerCase()] = e[n]);
+  return t;
 };
-FormData$1.prototype.setBoundary = function(boundary) {
-  if (typeof boundary !== "string") {
+N.prototype.setBoundary = function(e) {
+  if (typeof e != "string")
     throw new TypeError("FormData boundary must be a string");
-  }
-  this._boundary = boundary;
+  this._boundary = e;
 };
-FormData$1.prototype.getBoundary = function() {
-  if (!this._boundary) {
-    this._generateBoundary();
-  }
-  return this._boundary;
+N.prototype.getBoundary = function() {
+  return this._boundary || this._generateBoundary(), this._boundary;
 };
-FormData$1.prototype.getBuffer = function() {
-  var dataBuffer = new Buffer.alloc(0);
-  var boundary = this.getBoundary();
-  for (var i = 0, len = this._streams.length; i < len; i++) {
-    if (typeof this._streams[i] !== "function") {
-      if (Buffer.isBuffer(this._streams[i])) {
-        dataBuffer = Buffer.concat([dataBuffer, this._streams[i]]);
-      } else {
-        dataBuffer = Buffer.concat([dataBuffer, Buffer.from(this._streams[i])]);
-      }
-      if (typeof this._streams[i] !== "string" || this._streams[i].substring(2, boundary.length + 2) !== boundary) {
-        dataBuffer = Buffer.concat([dataBuffer, Buffer.from(FormData$1.LINE_BREAK)]);
-      }
-    }
-  }
-  return Buffer.concat([dataBuffer, Buffer.from(this._lastBoundary())]);
+N.prototype.getBuffer = function() {
+  for (var e = new Buffer.alloc(0), n = this.getBoundary(), t = 0, a = this._streams.length; t < a; t++)
+    typeof this._streams[t] != "function" && (Buffer.isBuffer(this._streams[t]) ? e = Buffer.concat([e, this._streams[t]]) : e = Buffer.concat([e, Buffer.from(this._streams[t])]), (typeof this._streams[t] != "string" || this._streams[t].substring(2, n.length + 2) !== n) && (e = Buffer.concat([e, Buffer.from(N.LINE_BREAK)])));
+  return Buffer.concat([e, Buffer.from(this._lastBoundary())]);
 };
-FormData$1.prototype._generateBoundary = function() {
-  this._boundary = "--------------------------" + crypto.randomBytes(12).toString("hex");
+N.prototype._generateBoundary = function() {
+  this._boundary = "--------------------------" + Gc.randomBytes(12).toString("hex");
 };
-FormData$1.prototype.getLengthSync = function() {
-  var knownLength = this._overheadLength + this._valueLength;
-  if (this._streams.length) {
-    knownLength += this._lastBoundary().length;
-  }
-  if (!this.hasKnownLength()) {
-    this._error(new Error("Cannot calculate proper length in synchronous way."));
-  }
-  return knownLength;
+N.prototype.getLengthSync = function() {
+  var e = this._overheadLength + this._valueLength;
+  return this._streams.length && (e += this._lastBoundary().length), this.hasKnownLength() || this._error(new Error("Cannot calculate proper length in synchronous way.")), e;
 };
-FormData$1.prototype.hasKnownLength = function() {
-  var hasKnownLength = true;
-  if (this._valuesToMeasure.length) {
-    hasKnownLength = false;
-  }
-  return hasKnownLength;
+N.prototype.hasKnownLength = function() {
+  var e = !0;
+  return this._valuesToMeasure.length && (e = !1), e;
 };
-FormData$1.prototype.getLength = function(cb) {
-  var knownLength = this._overheadLength + this._valueLength;
-  if (this._streams.length) {
-    knownLength += this._lastBoundary().length;
-  }
-  if (!this._valuesToMeasure.length) {
-    process.nextTick(cb.bind(this, null, knownLength));
+N.prototype.getLength = function(e) {
+  var n = this._overheadLength + this._valueLength;
+  if (this._streams.length && (n += this._lastBoundary().length), !this._valuesToMeasure.length) {
+    process.nextTick(e.bind(this, null, n));
     return;
   }
-  asynckit.parallel(this._valuesToMeasure, this._lengthRetriever, function(err, values) {
-    if (err) {
-      cb(err);
+  Jc.parallel(this._valuesToMeasure, this._lengthRetriever, function(t, a) {
+    if (t) {
+      e(t);
       return;
     }
-    values.forEach(function(length) {
-      knownLength += length;
-    });
-    cb(null, knownLength);
+    a.forEach(function(o) {
+      n += o;
+    }), e(null, n);
   });
 };
-FormData$1.prototype.submit = function(params, cb) {
-  var request;
-  var options;
-  var defaults2 = { method: "post" };
-  if (typeof params === "string") {
-    params = parseUrl$2(params);
-    options = populate({
-      port: params.port,
-      path: params.pathname,
-      host: params.hostname,
-      protocol: params.protocol
-    }, defaults2);
-  } else {
-    options = populate(params, defaults2);
-    if (!options.port) {
-      options.port = options.protocol === "https:" ? 443 : 80;
-    }
-  }
-  options.headers = this.getHeaders(params.headers);
-  if (options.protocol === "https:") {
-    request = https$1.request(options);
-  } else {
-    request = http$1.request(options);
-  }
-  this.getLength((function(err, length) {
-    if (err && err !== "Unknown stream") {
-      this._error(err);
+N.prototype.submit = function(e, n) {
+  var t, a, o = { method: "post" };
+  return typeof e == "string" ? (e = Hc(e), a = jt({
+    port: e.port,
+    path: e.pathname,
+    host: e.hostname,
+    protocol: e.protocol
+  }, o)) : (a = jt(e, o), a.port || (a.port = a.protocol === "https:" ? 443 : 80)), a.headers = this.getHeaders(e.headers), a.protocol === "https:" ? t = Mc.request(a) : t = $c.request(a), this.getLength((function(s, i) {
+    if (s && s !== "Unknown stream") {
+      this._error(s);
       return;
     }
-    if (length) {
-      request.setHeader("Content-Length", length);
-    }
-    this.pipe(request);
-    if (cb) {
-      var onResponse;
-      var callback = function(error, responce) {
-        request.removeListener("error", callback);
-        request.removeListener("response", onResponse);
-        return cb.call(this, error, responce);
+    if (i && t.setHeader("Content-Length", i), this.pipe(t), n) {
+      var r, p = function(l, c) {
+        return t.removeListener("error", p), t.removeListener("response", r), n.call(this, l, c);
       };
-      onResponse = callback.bind(this, null);
-      request.on("error", callback);
-      request.on("response", onResponse);
+      r = p.bind(this, null), t.on("error", p), t.on("response", r);
     }
-  }).bind(this));
-  return request;
+  }).bind(this)), t;
 };
-FormData$1.prototype._error = function(err) {
-  if (!this.error) {
-    this.error = err;
-    this.pause();
-    this.emit("error", err);
-  }
+N.prototype._error = function(e) {
+  this.error || (this.error = e, this.pause(), this.emit("error", e));
 };
-FormData$1.prototype.toString = function() {
+N.prototype.toString = function() {
   return "[object FormData]";
 };
-setToStringTag2(FormData$1.prototype, "FormData");
-var form_data = FormData$1;
-const FormData$2 = /* @__PURE__ */ getDefaultExportFromCjs(form_data);
-function isVisitable(thing) {
-  return utils$1.isPlainObject(thing) || utils$1.isArray(thing);
+Vc(N.prototype, "FormData");
+var Xc = N;
+const oa = /* @__PURE__ */ Do(Xc);
+function Pt(e) {
+  return m.isPlainObject(e) || m.isArray(e);
 }
-function removeBrackets(key) {
-  return utils$1.endsWith(key, "[]") ? key.slice(0, -2) : key;
+function es(e) {
+  return m.endsWith(e, "[]") ? e.slice(0, -2) : e;
 }
-function renderKey(path2, key, dots) {
-  if (!path2) return key;
-  return path2.concat(key).map(function each(token, i) {
-    token = removeBrackets(token);
-    return !dots && i ? "[" + token + "]" : token;
-  }).join(dots ? "." : "");
+function ft(e, n, t) {
+  return e ? e.concat(n).map(function(o, s) {
+    return o = es(o), !t && s ? "[" + o + "]" : o;
+  }).join(t ? "." : "") : n;
 }
-function isFlatArray(arr) {
-  return utils$1.isArray(arr) && !arr.some(isVisitable);
+function Yc(e) {
+  return m.isArray(e) && !e.some(Pt);
 }
-const predicates = utils$1.toFlatObject(utils$1, {}, null, function filter(prop) {
-  return /^is[A-Z]/.test(prop);
+const Zc = m.toFlatObject(m, {}, null, function(n) {
+  return /^is[A-Z]/.test(n);
 });
-function toFormData$1(obj, formData, options) {
-  if (!utils$1.isObject(obj)) {
+function zn(e, n, t) {
+  if (!m.isObject(e))
     throw new TypeError("target must be an object");
-  }
-  formData = formData || new (FormData$2 || FormData)();
-  options = utils$1.toFlatObject(
-    options,
+  n = n || new (oa || FormData)(), t = m.toFlatObject(
+    t,
     {
-      metaTokens: true,
-      dots: false,
-      indexes: false
+      metaTokens: !0,
+      dots: !1,
+      indexes: !1
     },
-    false,
-    function defined(option, source) {
-      return !utils$1.isUndefined(source[option]);
+    !1,
+    function(v, h) {
+      return !m.isUndefined(h[v]);
     }
   );
-  const metaTokens = options.metaTokens;
-  const visitor = options.visitor || defaultVisitor;
-  const dots = options.dots;
-  const indexes = options.indexes;
-  const _Blob = options.Blob || typeof Blob !== "undefined" && Blob;
-  const maxDepth = options.maxDepth === void 0 ? 100 : options.maxDepth;
-  const useBlob = _Blob && utils$1.isSpecCompliantForm(formData);
-  if (!utils$1.isFunction(visitor)) {
+  const a = t.metaTokens, o = t.visitor || u, s = t.dots, i = t.indexes, r = t.Blob || typeof Blob < "u" && Blob, p = t.maxDepth === void 0 ? 100 : t.maxDepth, l = r && m.isSpecCompliantForm(n);
+  if (!m.isFunction(o))
     throw new TypeError("visitor must be a function");
+  function c(x) {
+    if (x === null) return "";
+    if (m.isDate(x))
+      return x.toISOString();
+    if (m.isBoolean(x))
+      return x.toString();
+    if (!l && m.isBlob(x))
+      throw new g("Blob is not supported. Use a Buffer instead.");
+    return m.isArrayBuffer(x) || m.isTypedArray(x) ? l && typeof Blob == "function" ? new Blob([x]) : Buffer.from(x) : x;
   }
-  function convertValue(value) {
-    if (value === null) return "";
-    if (utils$1.isDate(value)) {
-      return value.toISOString();
-    }
-    if (utils$1.isBoolean(value)) {
-      return value.toString();
-    }
-    if (!useBlob && utils$1.isBlob(value)) {
-      throw new AxiosError$1("Blob is not supported. Use a Buffer instead.");
-    }
-    if (utils$1.isArrayBuffer(value) || utils$1.isTypedArray(value)) {
-      return useBlob && typeof Blob === "function" ? new Blob([value]) : Buffer.from(value);
-    }
-    return value;
-  }
-  function defaultVisitor(value, key, path2) {
-    let arr = value;
-    if (utils$1.isReactNative(formData) && utils$1.isReactNativeBlob(value)) {
-      formData.append(renderKey(path2, key, dots), convertValue(value));
-      return false;
-    }
-    if (value && !path2 && typeof value === "object") {
-      if (utils$1.endsWith(key, "{}")) {
-        key = metaTokens ? key : key.slice(0, -2);
-        value = JSON.stringify(value);
-      } else if (utils$1.isArray(value) && isFlatArray(value) || (utils$1.isFileList(value) || utils$1.endsWith(key, "[]")) && (arr = utils$1.toArray(value))) {
-        key = removeBrackets(key);
-        arr.forEach(function each(el, index) {
-          !(utils$1.isUndefined(el) || el === null) && formData.append(
+  function u(x, v, h) {
+    let w = x;
+    if (m.isReactNative(n) && m.isReactNativeBlob(x))
+      return n.append(ft(h, v, s), c(x)), !1;
+    if (x && !h && typeof x == "object") {
+      if (m.endsWith(v, "{}"))
+        v = a ? v : v.slice(0, -2), x = JSON.stringify(x);
+      else if (m.isArray(x) && Yc(x) || (m.isFileList(x) || m.endsWith(v, "[]")) && (w = m.toArray(x)))
+        return v = es(v), w.forEach(function(k, S) {
+          !(m.isUndefined(k) || k === null) && n.append(
             // eslint-disable-next-line no-nested-ternary
-            indexes === true ? renderKey([key], index, dots) : indexes === null ? key : key + "[]",
-            convertValue(el)
+            i === !0 ? ft([v], S, s) : i === null ? v : v + "[]",
+            c(k)
           );
-        });
-        return false;
-      }
+        }), !1;
     }
-    if (isVisitable(value)) {
-      return true;
-    }
-    formData.append(renderKey(path2, key, dots), convertValue(value));
-    return false;
+    return Pt(x) ? !0 : (n.append(ft(h, v, s), c(x)), !1);
   }
-  const stack = [];
-  const exposedHelpers = Object.assign(predicates, {
-    defaultVisitor,
-    convertValue,
-    isVisitable
+  const d = [], f = Object.assign(Zc, {
+    defaultVisitor: u,
+    convertValue: c,
+    isVisitable: Pt
   });
-  function build(value, path2, depth = 0) {
-    if (utils$1.isUndefined(value)) return;
-    if (depth > maxDepth) {
-      throw new AxiosError$1(
-        "Object is too deeply nested (" + depth + " levels). Max depth: " + maxDepth,
-        AxiosError$1.ERR_FORM_DATA_DEPTH_EXCEEDED
-      );
+  function b(x, v, h = 0) {
+    if (!m.isUndefined(x)) {
+      if (h > p)
+        throw new g(
+          "Object is too deeply nested (" + h + " levels). Max depth: " + p,
+          g.ERR_FORM_DATA_DEPTH_EXCEEDED
+        );
+      if (d.indexOf(x) !== -1)
+        throw Error("Circular reference detected in " + v.join("."));
+      d.push(x), m.forEach(x, function(_, k) {
+        (!(m.isUndefined(_) || _ === null) && o.call(n, _, m.isString(k) ? k.trim() : k, v, f)) === !0 && b(_, v ? v.concat(k) : [k], h + 1);
+      }), d.pop();
     }
-    if (stack.indexOf(value) !== -1) {
-      throw Error("Circular reference detected in " + path2.join("."));
-    }
-    stack.push(value);
-    utils$1.forEach(value, function each(el, key) {
-      const result = !(utils$1.isUndefined(el) || el === null) && visitor.call(formData, el, utils$1.isString(key) ? key.trim() : key, path2, exposedHelpers);
-      if (result === true) {
-        build(el, path2 ? path2.concat(key) : [key], depth + 1);
-      }
-    });
-    stack.pop();
   }
-  if (!utils$1.isObject(obj)) {
+  if (!m.isObject(e))
     throw new TypeError("data must be an object");
-  }
-  build(obj);
-  return formData;
+  return b(e), n;
 }
-function encode$1(str) {
-  const charMap = {
+function Wa(e) {
+  const n = {
     "!": "%21",
     "'": "%27",
     "(": "%28",
@@ -13352,54 +12423,42 @@ function encode$1(str) {
     "~": "%7E",
     "%20": "+"
   };
-  return encodeURIComponent(str).replace(/[!'()~]|%20/g, function replacer(match) {
-    return charMap[match];
+  return encodeURIComponent(e).replace(/[!'()~]|%20/g, function(a) {
+    return n[a];
   });
 }
-function AxiosURLSearchParams(params, options) {
-  this._pairs = [];
-  params && toFormData$1(params, this, options);
+function ns(e, n) {
+  this._pairs = [], e && zn(e, this, n);
 }
-const prototype = AxiosURLSearchParams.prototype;
-prototype.append = function append(name, value) {
-  this._pairs.push([name, value]);
+const ts = ns.prototype;
+ts.append = function(n, t) {
+  this._pairs.push([n, t]);
 };
-prototype.toString = function toString2(encoder) {
-  const _encode = encoder ? function(value) {
-    return encoder.call(this, value, encode$1);
-  } : encode$1;
-  return this._pairs.map(function each(pair) {
-    return _encode(pair[0]) + "=" + _encode(pair[1]);
+ts.toString = function(n) {
+  const t = n ? function(a) {
+    return n.call(this, a, Wa);
+  } : Wa;
+  return this._pairs.map(function(o) {
+    return t(o[0]) + "=" + t(o[1]);
   }, "").join("&");
 };
-function encode(val) {
-  return encodeURIComponent(val).replace(/%3A/gi, ":").replace(/%24/g, "$").replace(/%2C/gi, ",").replace(/%20/g, "+");
+function Qc(e) {
+  return encodeURIComponent(e).replace(/%3A/gi, ":").replace(/%24/g, "$").replace(/%2C/gi, ",").replace(/%20/g, "+");
 }
-function buildURL(url2, params, options) {
-  if (!params) {
-    return url2;
+function sa(e, n, t) {
+  if (!n)
+    return e;
+  const a = t && t.encode || Qc, o = m.isFunction(t) ? {
+    serialize: t
+  } : t, s = o && o.serialize;
+  let i;
+  if (s ? i = s(n, o) : i = m.isURLSearchParams(n) ? n.toString() : new ns(n, o).toString(a), i) {
+    const r = e.indexOf("#");
+    r !== -1 && (e = e.slice(0, r)), e += (e.indexOf("?") === -1 ? "?" : "&") + i;
   }
-  const _encode = options && options.encode || encode;
-  const _options = utils$1.isFunction(options) ? {
-    serialize: options
-  } : options;
-  const serializeFn = _options && _options.serialize;
-  let serializedParams;
-  if (serializeFn) {
-    serializedParams = serializeFn(params, _options);
-  } else {
-    serializedParams = utils$1.isURLSearchParams(params) ? params.toString() : new AxiosURLSearchParams(params, _options).toString(_encode);
-  }
-  if (serializedParams) {
-    const hashmarkIndex = url2.indexOf("#");
-    if (hashmarkIndex !== -1) {
-      url2 = url2.slice(0, hashmarkIndex);
-    }
-    url2 += (url2.indexOf("?") === -1 ? "?" : "&") + serializedParams;
-  }
-  return url2;
+  return e;
 }
-class InterceptorManager {
+class Ka {
   constructor() {
     this.handlers = [];
   }
@@ -13412,14 +12471,13 @@ class InterceptorManager {
    *
    * @return {Number} An ID used to remove interceptor later
    */
-  use(fulfilled, rejected, options) {
-    this.handlers.push({
-      fulfilled,
-      rejected,
-      synchronous: options ? options.synchronous : false,
-      runWhen: options ? options.runWhen : null
-    });
-    return this.handlers.length - 1;
+  use(n, t, a) {
+    return this.handlers.push({
+      fulfilled: n,
+      rejected: t,
+      synchronous: a ? a.synchronous : !1,
+      runWhen: a ? a.runWhen : null
+    }), this.handlers.length - 1;
   }
   /**
    * Remove an interceptor from the stack
@@ -13428,10 +12486,8 @@ class InterceptorManager {
    *
    * @returns {void}
    */
-  eject(id) {
-    if (this.handlers[id]) {
-      this.handlers[id] = null;
-    }
+  eject(n) {
+    this.handlers[n] && (this.handlers[n] = null);
   }
   /**
    * Clear all interceptors from the stack
@@ -13439,9 +12495,7 @@ class InterceptorManager {
    * @returns {void}
    */
   clear() {
-    if (this.handlers) {
-      this.handlers = [];
-    }
+    this.handlers && (this.handlers = []);
   }
   /**
    * Iterate over all the registered interceptors
@@ -13453,217 +12507,142 @@ class InterceptorManager {
    *
    * @returns {void}
    */
-  forEach(fn) {
-    utils$1.forEach(this.handlers, function forEachHandler(h) {
-      if (h !== null) {
-        fn(h);
-      }
+  forEach(n) {
+    m.forEach(this.handlers, function(a) {
+      a !== null && n(a);
     });
   }
 }
-const transitionalDefaults = {
-  silentJSONParsing: true,
-  forcedJSONParsing: true,
-  clarifyTimeoutError: false,
-  legacyInterceptorReqResOrdering: true
-};
-const URLSearchParams$1 = require$$5.URLSearchParams;
-const ALPHA = "abcdefghijklmnopqrstuvwxyz";
-const DIGIT = "0123456789";
-const ALPHABET = {
-  DIGIT,
-  ALPHA,
-  ALPHA_DIGIT: ALPHA + ALPHA.toUpperCase() + DIGIT
-};
-const generateString = (size = 16, alphabet = ALPHABET.ALPHA_DIGIT) => {
-  let str = "";
-  const { length } = alphabet;
-  const randomValues = new Uint32Array(size);
-  require$$8.randomFillSync(randomValues);
-  for (let i = 0; i < size; i++) {
-    str += alphabet[randomValues[i] % length];
-  }
-  return str;
-};
-const platform$1 = {
-  isNode: true,
+const qn = {
+  silentJSONParsing: !0,
+  forcedJSONParsing: !0,
+  clarifyTimeoutError: !1,
+  legacyInterceptorReqResOrdering: !0
+}, ep = Zt.URLSearchParams, xt = "abcdefghijklmnopqrstuvwxyz", Ga = "0123456789", as = {
+  DIGIT: Ga,
+  ALPHA: xt,
+  ALPHA_DIGIT: xt + xt.toUpperCase() + Ga
+}, np = (e = 16, n = as.ALPHA_DIGIT) => {
+  let t = "";
+  const { length: a } = n, o = new Uint32Array(e);
+  _o.randomFillSync(o);
+  for (let s = 0; s < e; s++)
+    t += n[o[s] % a];
+  return t;
+}, tp = {
+  isNode: !0,
   classes: {
-    URLSearchParams: URLSearchParams$1,
-    FormData: FormData$2,
-    Blob: typeof Blob !== "undefined" && Blob || null
+    URLSearchParams: ep,
+    FormData: oa,
+    Blob: typeof Blob < "u" && Blob || null
   },
-  ALPHABET,
-  generateString,
+  ALPHABET: as,
+  generateString: np,
   protocols: ["http", "https", "file", "data"]
-};
-const hasBrowserEnv = typeof window !== "undefined" && typeof document !== "undefined";
-const _navigator = typeof navigator === "object" && navigator || void 0;
-const hasStandardBrowserEnv = hasBrowserEnv && (!_navigator || ["ReactNative", "NativeScript", "NS"].indexOf(_navigator.product) < 0);
-const hasStandardBrowserWebWorkerEnv = (() => {
-  return typeof WorkerGlobalScope !== "undefined" && // eslint-disable-next-line no-undef
-  self instanceof WorkerGlobalScope && typeof self.importScripts === "function";
-})();
-const origin = hasBrowserEnv && window.location.href || "http://localhost";
-const utils = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+}, ia = typeof window < "u" && typeof document < "u", Lt = typeof navigator == "object" && navigator || void 0, ap = ia && (!Lt || ["ReactNative", "NativeScript", "NS"].indexOf(Lt.product) < 0), op = typeof WorkerGlobalScope < "u" && // eslint-disable-next-line no-undef
+self instanceof WorkerGlobalScope && typeof self.importScripts == "function", sp = ia && window.location.href || "http://localhost", ip = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
-  hasBrowserEnv,
-  hasStandardBrowserEnv,
-  hasStandardBrowserWebWorkerEnv,
-  navigator: _navigator,
-  origin
-}, Symbol.toStringTag, { value: "Module" }));
-const platform = {
-  ...utils,
-  ...platform$1
+  hasBrowserEnv: ia,
+  hasStandardBrowserEnv: ap,
+  hasStandardBrowserWebWorkerEnv: op,
+  navigator: Lt,
+  origin: sp
+}, Symbol.toStringTag, { value: "Module" })), H = {
+  ...ip,
+  ...tp
 };
-function toURLEncodedForm(data, options) {
-  return toFormData$1(data, new platform.classes.URLSearchParams(), {
-    visitor: function(value, key, path2, helpers) {
-      if (platform.isNode && utils$1.isBuffer(value)) {
-        this.append(key, value.toString("base64"));
-        return false;
-      }
-      return helpers.defaultVisitor.apply(this, arguments);
+function rp(e, n) {
+  return zn(e, new H.classes.URLSearchParams(), {
+    visitor: function(t, a, o, s) {
+      return H.isNode && m.isBuffer(t) ? (this.append(a, t.toString("base64")), !1) : s.defaultVisitor.apply(this, arguments);
     },
-    ...options
+    ...n
   });
 }
-function parsePropPath(name) {
-  return utils$1.matchAll(/\w+|\[(\w*)]/g, name).map((match) => {
-    return match[0] === "[]" ? "" : match[1] || match[0];
-  });
+function cp(e) {
+  return m.matchAll(/\w+|\[(\w*)]/g, e).map((n) => n[0] === "[]" ? "" : n[1] || n[0]);
 }
-function arrayToObject(arr) {
-  const obj = {};
-  const keys = Object.keys(arr);
-  let i;
-  const len = keys.length;
-  let key;
-  for (i = 0; i < len; i++) {
-    key = keys[i];
-    obj[key] = arr[key];
-  }
-  return obj;
+function pp(e) {
+  const n = {}, t = Object.keys(e);
+  let a;
+  const o = t.length;
+  let s;
+  for (a = 0; a < o; a++)
+    s = t[a], n[s] = e[s];
+  return n;
 }
-function formDataToJSON(formData) {
-  function buildPath(path2, value, target, index) {
-    let name = path2[index++];
-    if (name === "__proto__") return true;
-    const isNumericKey = Number.isFinite(+name);
-    const isLast = index >= path2.length;
-    name = !name && utils$1.isArray(target) ? target.length : name;
-    if (isLast) {
-      if (utils$1.hasOwnProp(target, name)) {
-        target[name] = utils$1.isArray(target[name]) ? target[name].concat(value) : [target[name], value];
-      } else {
-        target[name] = value;
-      }
-      return !isNumericKey;
-    }
-    if (!target[name] || !utils$1.isObject(target[name])) {
-      target[name] = [];
-    }
-    const result = buildPath(path2, value, target[name], index);
-    if (result && utils$1.isArray(target[name])) {
-      target[name] = arrayToObject(target[name]);
-    }
-    return !isNumericKey;
+function os(e) {
+  function n(t, a, o, s) {
+    let i = t[s++];
+    if (i === "__proto__") return !0;
+    const r = Number.isFinite(+i), p = s >= t.length;
+    return i = !i && m.isArray(o) ? o.length : i, p ? (m.hasOwnProp(o, i) ? o[i] = m.isArray(o[i]) ? o[i].concat(a) : [o[i], a] : o[i] = a, !r) : ((!o[i] || !m.isObject(o[i])) && (o[i] = []), n(t, a, o[i], s) && m.isArray(o[i]) && (o[i] = pp(o[i])), !r);
   }
-  if (utils$1.isFormData(formData) && utils$1.isFunction(formData.entries)) {
-    const obj = {};
-    utils$1.forEachEntry(formData, (name, value) => {
-      buildPath(parsePropPath(name), value, obj, 0);
-    });
-    return obj;
+  if (m.isFormData(e) && m.isFunction(e.entries)) {
+    const t = {};
+    return m.forEachEntry(e, (a, o) => {
+      n(cp(a), o, t, 0);
+    }), t;
   }
   return null;
 }
-const own = (obj, key) => obj != null && utils$1.hasOwnProp(obj, key) ? obj[key] : void 0;
-function stringifySafely(rawValue, parser, encoder) {
-  if (utils$1.isString(rawValue)) {
+const Ue = (e, n) => e != null && m.hasOwnProp(e, n) ? e[n] : void 0;
+function lp(e, n, t) {
+  if (m.isString(e))
     try {
-      (parser || JSON.parse)(rawValue);
-      return utils$1.trim(rawValue);
-    } catch (e) {
-      if (e.name !== "SyntaxError") {
-        throw e;
-      }
+      return (n || JSON.parse)(e), m.trim(e);
+    } catch (a) {
+      if (a.name !== "SyntaxError")
+        throw a;
     }
-  }
-  return (encoder || JSON.stringify)(rawValue);
+  return (t || JSON.stringify)(e);
 }
-const defaults = {
-  transitional: transitionalDefaults,
+const ln = {
+  transitional: qn,
   adapter: ["xhr", "http", "fetch"],
   transformRequest: [
-    function transformRequest(data, headers) {
-      const contentType = headers.getContentType() || "";
-      const hasJSONContentType = contentType.indexOf("application/json") > -1;
-      const isObjectPayload = utils$1.isObject(data);
-      if (isObjectPayload && utils$1.isHTMLForm(data)) {
-        data = new FormData(data);
-      }
-      const isFormData2 = utils$1.isFormData(data);
-      if (isFormData2) {
-        return hasJSONContentType ? JSON.stringify(formDataToJSON(data)) : data;
-      }
-      if (utils$1.isArrayBuffer(data) || utils$1.isBuffer(data) || utils$1.isStream(data) || utils$1.isFile(data) || utils$1.isBlob(data) || utils$1.isReadableStream(data)) {
-        return data;
-      }
-      if (utils$1.isArrayBufferView(data)) {
-        return data.buffer;
-      }
-      if (utils$1.isURLSearchParams(data)) {
-        headers.setContentType("application/x-www-form-urlencoded;charset=utf-8", false);
-        return data.toString();
-      }
-      let isFileList2;
-      if (isObjectPayload) {
-        const formSerializer = own(this, "formSerializer");
-        if (contentType.indexOf("application/x-www-form-urlencoded") > -1) {
-          return toURLEncodedForm(data, formSerializer).toString();
-        }
-        if ((isFileList2 = utils$1.isFileList(data)) || contentType.indexOf("multipart/form-data") > -1) {
-          const env = own(this, "env");
-          const _FormData = env && env.FormData;
-          return toFormData$1(
-            isFileList2 ? { "files[]": data } : data,
-            _FormData && new _FormData(),
-            formSerializer
+    function(n, t) {
+      const a = t.getContentType() || "", o = a.indexOf("application/json") > -1, s = m.isObject(n);
+      if (s && m.isHTMLForm(n) && (n = new FormData(n)), m.isFormData(n))
+        return o ? JSON.stringify(os(n)) : n;
+      if (m.isArrayBuffer(n) || m.isBuffer(n) || m.isStream(n) || m.isFile(n) || m.isBlob(n) || m.isReadableStream(n))
+        return n;
+      if (m.isArrayBufferView(n))
+        return n.buffer;
+      if (m.isURLSearchParams(n))
+        return t.setContentType("application/x-www-form-urlencoded;charset=utf-8", !1), n.toString();
+      let r;
+      if (s) {
+        const p = Ue(this, "formSerializer");
+        if (a.indexOf("application/x-www-form-urlencoded") > -1)
+          return rp(n, p).toString();
+        if ((r = m.isFileList(n)) || a.indexOf("multipart/form-data") > -1) {
+          const l = Ue(this, "env"), c = l && l.FormData;
+          return zn(
+            r ? { "files[]": n } : n,
+            c && new c(),
+            p
           );
         }
       }
-      if (isObjectPayload || hasJSONContentType) {
-        headers.setContentType("application/json", false);
-        return stringifySafely(data);
-      }
-      return data;
+      return s || o ? (t.setContentType("application/json", !1), lp(n)) : n;
     }
   ],
   transformResponse: [
-    function transformResponse(data) {
-      const transitional2 = own(this, "transitional") || defaults.transitional;
-      const forcedJSONParsing = transitional2 && transitional2.forcedJSONParsing;
-      const responseType = own(this, "responseType");
-      const JSONRequested = responseType === "json";
-      if (utils$1.isResponse(data) || utils$1.isReadableStream(data)) {
-        return data;
-      }
-      if (data && utils$1.isString(data) && (forcedJSONParsing && !responseType || JSONRequested)) {
-        const silentJSONParsing = transitional2 && transitional2.silentJSONParsing;
-        const strictJSONParsing = !silentJSONParsing && JSONRequested;
+    function(n) {
+      const t = Ue(this, "transitional") || ln.transitional, a = t && t.forcedJSONParsing, o = Ue(this, "responseType"), s = o === "json";
+      if (m.isResponse(n) || m.isReadableStream(n))
+        return n;
+      if (n && m.isString(n) && (a && !o || s)) {
+        const r = !(t && t.silentJSONParsing) && s;
         try {
-          return JSON.parse(data, own(this, "parseReviver"));
-        } catch (e) {
-          if (strictJSONParsing) {
-            if (e.name === "SyntaxError") {
-              throw AxiosError$1.from(e, AxiosError$1.ERR_BAD_RESPONSE, this, null, own(this, "response"));
-            }
-            throw e;
-          }
+          return JSON.parse(n, Ue(this, "parseReviver"));
+        } catch (p) {
+          if (r)
+            throw p.name === "SyntaxError" ? g.from(p, g.ERR_BAD_RESPONSE, this, null, Ue(this, "response")) : p;
         }
       }
-      return data;
+      return n;
     }
   ],
   /**
@@ -13676,11 +12655,11 @@ const defaults = {
   maxContentLength: -1,
   maxBodyLength: -1,
   env: {
-    FormData: platform.classes.FormData,
-    Blob: platform.classes.Blob
+    FormData: H.classes.FormData,
+    Blob: H.classes.Blob
   },
-  validateStatus: function validateStatus(status) {
-    return status >= 200 && status < 300;
+  validateStatus: function(n) {
+    return n >= 200 && n < 300;
   },
   headers: {
     common: {
@@ -13689,24 +12668,20 @@ const defaults = {
     }
   }
 };
-utils$1.forEach(["delete", "get", "head", "post", "put", "patch", "query"], (method) => {
-  defaults.headers[method] = {};
+m.forEach(["delete", "get", "head", "post", "put", "patch", "query"], (e) => {
+  ln.headers[e] = {};
 });
-function transformData(fns, response) {
-  const config = this || defaults;
-  const context = response || config;
-  const headers = AxiosHeaders$1.from(context.headers);
-  let data = context.data;
-  utils$1.forEach(fns, function transform(fn) {
-    data = fn.call(config, data, headers.normalize(), response ? response.status : void 0);
-  });
-  headers.normalize();
-  return data;
+function ht(e, n) {
+  const t = this || ln, a = n || t, o = Q.from(a.headers);
+  let s = a.data;
+  return m.forEach(e, function(r) {
+    s = r.call(t, s, o.normalize(), n ? n.status : void 0);
+  }), o.normalize(), s;
 }
-function isCancel$1(value) {
-  return !!(value && value.__CANCEL__);
+function ss(e) {
+  return !!(e && e.__CANCEL__);
 }
-let CanceledError$1 = class CanceledError extends AxiosError$1 {
+let Pe = class extends g {
   /**
    * A `CanceledError` is an object that is thrown when an operation is canceled.
    *
@@ -13716,43 +12691,31 @@ let CanceledError$1 = class CanceledError extends AxiosError$1 {
    *
    * @returns {CanceledError} The created error.
    */
-  constructor(message, config, request) {
-    super(message == null ? "canceled" : message, AxiosError$1.ERR_CANCELED, config, request);
-    this.name = "CanceledError";
-    this.__CANCEL__ = true;
+  constructor(n, t, a) {
+    super(n ?? "canceled", g.ERR_CANCELED, t, a), this.name = "CanceledError", this.__CANCEL__ = !0;
   }
 };
-function settle(resolve2, reject, response) {
-  const validateStatus2 = response.config.validateStatus;
-  if (!response.status || !validateStatus2 || validateStatus2(response.status)) {
-    resolve2(response);
-  } else {
-    reject(new AxiosError$1(
-      "Request failed with status code " + response.status,
-      response.status >= 400 && response.status < 500 ? AxiosError$1.ERR_BAD_REQUEST : AxiosError$1.ERR_BAD_RESPONSE,
-      response.config,
-      response.request,
-      response
-    ));
-  }
+function qe(e, n, t) {
+  const a = t.config.validateStatus;
+  !t.status || !a || a(t.status) ? e(t) : n(new g(
+    "Request failed with status code " + t.status,
+    t.status >= 400 && t.status < 500 ? g.ERR_BAD_REQUEST : g.ERR_BAD_RESPONSE,
+    t.config,
+    t.request,
+    t
+  ));
 }
-function isAbsoluteURL(url2) {
-  if (typeof url2 !== "string") {
-    return false;
-  }
-  return /^([a-z][a-z\d+\-.]*:)?\/\//i.test(url2);
+function up(e) {
+  return typeof e != "string" ? !1 : /^([a-z][a-z\d+\-.]*:)?\/\//i.test(e);
 }
-function combineURLs(baseURL, relativeURL) {
-  return relativeURL ? baseURL.replace(/\/?\/$/, "") + "/" + relativeURL.replace(/^\/+/, "") : baseURL;
+function dp(e, n) {
+  return n ? e.replace(/\/?\/$/, "") + "/" + n.replace(/^\/+/, "") : e;
 }
-function buildFullPath(baseURL, requestedURL, allowAbsoluteUrls) {
-  let isRelativeUrl = !isAbsoluteURL(requestedURL);
-  if (baseURL && (isRelativeUrl || allowAbsoluteUrls === false)) {
-    return combineURLs(baseURL, requestedURL);
-  }
-  return requestedURL;
+function ra(e, n, t) {
+  let a = !up(n);
+  return e && (a || t === !1) ? dp(e, n) : n;
 }
-var DEFAULT_PORTS$1 = {
+var mp = {
   ftp: 21,
   gopher: 70,
   http: 80,
@@ -13760,381 +12723,216 @@ var DEFAULT_PORTS$1 = {
   ws: 80,
   wss: 443
 };
-function parseUrl$1(urlString) {
+function fp(e) {
   try {
-    return new URL(urlString);
+    return new URL(e);
   } catch {
     return null;
   }
 }
-function getProxyForUrl(url2) {
-  var parsedUrl = (typeof url2 === "string" ? parseUrl$1(url2) : url2) || {};
-  var proto = parsedUrl.protocol;
-  var hostname = parsedUrl.host;
-  var port = parsedUrl.port;
-  if (typeof hostname !== "string" || !hostname || typeof proto !== "string") {
+function xp(e) {
+  var n = (typeof e == "string" ? fp(e) : e) || {}, t = n.protocol, a = n.host, o = n.port;
+  if (typeof a != "string" || !a || typeof t != "string" || (t = t.split(":", 1)[0], a = a.replace(/:\d*$/, ""), o = parseInt(o) || mp[t] || 0, !hp(a, o)))
     return "";
-  }
-  proto = proto.split(":", 1)[0];
-  hostname = hostname.replace(/:\d*$/, "");
-  port = parseInt(port) || DEFAULT_PORTS$1[proto] || 0;
-  if (!shouldProxy(hostname, port)) {
-    return "";
-  }
-  var proxy = getEnv(proto + "_proxy") || getEnv("all_proxy");
-  if (proxy && proxy.indexOf("://") === -1) {
-    proxy = proto + "://" + proxy;
-  }
-  return proxy;
+  var s = Nt(t + "_proxy") || Nt("all_proxy");
+  return s && s.indexOf("://") === -1 && (s = t + "://" + s), s;
 }
-function shouldProxy(hostname, port) {
-  var NO_PROXY = getEnv("no_proxy").toLowerCase();
-  if (!NO_PROXY) {
-    return true;
-  }
-  if (NO_PROXY === "*") {
-    return false;
-  }
-  return NO_PROXY.split(/[,\s]/).every(function(proxy) {
-    if (!proxy) {
-      return true;
-    }
-    var parsedProxy = proxy.match(/^(.+):(\d+)$/);
-    var parsedProxyHostname = parsedProxy ? parsedProxy[1] : proxy;
-    var parsedProxyPort = parsedProxy ? parseInt(parsedProxy[2]) : 0;
-    if (parsedProxyPort && parsedProxyPort !== port) {
-      return true;
-    }
-    if (!/^[.*]/.test(parsedProxyHostname)) {
-      return hostname !== parsedProxyHostname;
-    }
-    if (parsedProxyHostname.charAt(0) === "*") {
-      parsedProxyHostname = parsedProxyHostname.slice(1);
-    }
-    return !hostname.endsWith(parsedProxyHostname);
-  });
+function hp(e, n) {
+  var t = Nt("no_proxy").toLowerCase();
+  return t ? t === "*" ? !1 : t.split(/[,\s]/).every(function(a) {
+    if (!a)
+      return !0;
+    var o = a.match(/^(.+):(\d+)$/), s = o ? o[1] : a, i = o ? parseInt(o[2]) : 0;
+    return i && i !== n ? !0 : /^[.*]/.test(s) ? (s.charAt(0) === "*" && (s = s.slice(1)), !e.endsWith(s)) : e !== s;
+  }) : !0;
 }
-function getEnv(key) {
-  return process.env[key.toLowerCase()] || process.env[key.toUpperCase()] || "";
+function Nt(e) {
+  return process.env[e.toLowerCase()] || process.env[e.toUpperCase()] || "";
 }
-var followRedirects$1 = { exports: {} };
-var src = { exports: {} };
-var browser = { exports: {} };
-var ms;
-var hasRequiredMs;
-function requireMs() {
-  if (hasRequiredMs) return ms;
-  hasRequiredMs = 1;
-  var s = 1e3;
-  var m = s * 60;
-  var h = m * 60;
-  var d = h * 24;
-  var w = d * 7;
-  var y = d * 365.25;
-  ms = function(val, options) {
-    options = options || {};
-    var type2 = typeof val;
-    if (type2 === "string" && val.length > 0) {
-      return parse(val);
-    } else if (type2 === "number" && isFinite(val)) {
-      return options.long ? fmtLong(val) : fmtShort(val);
-    }
+var ca = { exports: {} }, xn = { exports: {} }, hn = { exports: {} }, vt, Ja;
+function vp() {
+  if (Ja) return vt;
+  Ja = 1;
+  var e = 1e3, n = e * 60, t = n * 60, a = t * 24, o = a * 7, s = a * 365.25;
+  vt = function(c, u) {
+    u = u || {};
+    var d = typeof c;
+    if (d === "string" && c.length > 0)
+      return i(c);
+    if (d === "number" && isFinite(c))
+      return u.long ? p(c) : r(c);
     throw new Error(
-      "val is not a non-empty string or a valid number. val=" + JSON.stringify(val)
+      "val is not a non-empty string or a valid number. val=" + JSON.stringify(c)
     );
   };
-  function parse(str) {
-    str = String(str);
-    if (str.length > 100) {
-      return;
-    }
-    var match = /^(-?(?:\d+)?\.?\d+) *(milliseconds?|msecs?|ms|seconds?|secs?|s|minutes?|mins?|m|hours?|hrs?|h|days?|d|weeks?|w|years?|yrs?|y)?$/i.exec(
-      str
-    );
-    if (!match) {
-      return;
-    }
-    var n = parseFloat(match[1]);
-    var type2 = (match[2] || "ms").toLowerCase();
-    switch (type2) {
-      case "years":
-      case "year":
-      case "yrs":
-      case "yr":
-      case "y":
-        return n * y;
-      case "weeks":
-      case "week":
-      case "w":
-        return n * w;
-      case "days":
-      case "day":
-      case "d":
-        return n * d;
-      case "hours":
-      case "hour":
-      case "hrs":
-      case "hr":
-      case "h":
-        return n * h;
-      case "minutes":
-      case "minute":
-      case "mins":
-      case "min":
-      case "m":
-        return n * m;
-      case "seconds":
-      case "second":
-      case "secs":
-      case "sec":
-      case "s":
-        return n * s;
-      case "milliseconds":
-      case "millisecond":
-      case "msecs":
-      case "msec":
-      case "ms":
-        return n;
-      default:
-        return void 0;
+  function i(c) {
+    if (c = String(c), !(c.length > 100)) {
+      var u = /^(-?(?:\d+)?\.?\d+) *(milliseconds?|msecs?|ms|seconds?|secs?|s|minutes?|mins?|m|hours?|hrs?|h|days?|d|weeks?|w|years?|yrs?|y)?$/i.exec(
+        c
+      );
+      if (u) {
+        var d = parseFloat(u[1]), f = (u[2] || "ms").toLowerCase();
+        switch (f) {
+          case "years":
+          case "year":
+          case "yrs":
+          case "yr":
+          case "y":
+            return d * s;
+          case "weeks":
+          case "week":
+          case "w":
+            return d * o;
+          case "days":
+          case "day":
+          case "d":
+            return d * a;
+          case "hours":
+          case "hour":
+          case "hrs":
+          case "hr":
+          case "h":
+            return d * t;
+          case "minutes":
+          case "minute":
+          case "mins":
+          case "min":
+          case "m":
+            return d * n;
+          case "seconds":
+          case "second":
+          case "secs":
+          case "sec":
+          case "s":
+            return d * e;
+          case "milliseconds":
+          case "millisecond":
+          case "msecs":
+          case "msec":
+          case "ms":
+            return d;
+          default:
+            return;
+        }
+      }
     }
   }
-  function fmtShort(ms2) {
-    var msAbs = Math.abs(ms2);
-    if (msAbs >= d) {
-      return Math.round(ms2 / d) + "d";
-    }
-    if (msAbs >= h) {
-      return Math.round(ms2 / h) + "h";
-    }
-    if (msAbs >= m) {
-      return Math.round(ms2 / m) + "m";
-    }
-    if (msAbs >= s) {
-      return Math.round(ms2 / s) + "s";
-    }
-    return ms2 + "ms";
+  function r(c) {
+    var u = Math.abs(c);
+    return u >= a ? Math.round(c / a) + "d" : u >= t ? Math.round(c / t) + "h" : u >= n ? Math.round(c / n) + "m" : u >= e ? Math.round(c / e) + "s" : c + "ms";
   }
-  function fmtLong(ms2) {
-    var msAbs = Math.abs(ms2);
-    if (msAbs >= d) {
-      return plural(ms2, msAbs, d, "day");
-    }
-    if (msAbs >= h) {
-      return plural(ms2, msAbs, h, "hour");
-    }
-    if (msAbs >= m) {
-      return plural(ms2, msAbs, m, "minute");
-    }
-    if (msAbs >= s) {
-      return plural(ms2, msAbs, s, "second");
-    }
-    return ms2 + " ms";
+  function p(c) {
+    var u = Math.abs(c);
+    return u >= a ? l(c, u, a, "day") : u >= t ? l(c, u, t, "hour") : u >= n ? l(c, u, n, "minute") : u >= e ? l(c, u, e, "second") : c + " ms";
   }
-  function plural(ms2, msAbs, n, name) {
-    var isPlural = msAbs >= n * 1.5;
-    return Math.round(ms2 / n) + " " + name + (isPlural ? "s" : "");
+  function l(c, u, d, f) {
+    var b = u >= d * 1.5;
+    return Math.round(c / d) + " " + f + (b ? "s" : "");
   }
-  return ms;
+  return vt;
 }
-var common;
-var hasRequiredCommon;
-function requireCommon() {
-  if (hasRequiredCommon) return common;
-  hasRequiredCommon = 1;
-  function setup(env) {
-    createDebug.debug = createDebug;
-    createDebug.default = createDebug;
-    createDebug.coerce = coerce;
-    createDebug.disable = disable;
-    createDebug.enable = enable;
-    createDebug.enabled = enabled;
-    createDebug.humanize = requireMs();
-    createDebug.destroy = destroy2;
-    Object.keys(env).forEach((key) => {
-      createDebug[key] = env[key];
-    });
-    createDebug.names = [];
-    createDebug.skips = [];
-    createDebug.formatters = {};
-    function selectColor(namespace) {
-      let hash = 0;
-      for (let i = 0; i < namespace.length; i++) {
-        hash = (hash << 5) - hash + namespace.charCodeAt(i);
-        hash |= 0;
-      }
-      return createDebug.colors[Math.abs(hash) % createDebug.colors.length];
+var bt, Va;
+function is() {
+  if (Va) return bt;
+  Va = 1;
+  function e(n) {
+    a.debug = a, a.default = a, a.coerce = l, a.disable = r, a.enable = s, a.enabled = p, a.humanize = vp(), a.destroy = c, Object.keys(n).forEach((u) => {
+      a[u] = n[u];
+    }), a.names = [], a.skips = [], a.formatters = {};
+    function t(u) {
+      let d = 0;
+      for (let f = 0; f < u.length; f++)
+        d = (d << 5) - d + u.charCodeAt(f), d |= 0;
+      return a.colors[Math.abs(d) % a.colors.length];
     }
-    createDebug.selectColor = selectColor;
-    function createDebug(namespace) {
-      let prevTime;
-      let enableOverride = null;
-      let namespacesCache;
-      let enabledCache;
-      function debug2(...args) {
-        if (!debug2.enabled) {
+    a.selectColor = t;
+    function a(u) {
+      let d, f = null, b, x;
+      function v(...h) {
+        if (!v.enabled)
           return;
-        }
-        const self2 = debug2;
-        const curr = Number(/* @__PURE__ */ new Date());
-        const ms2 = curr - (prevTime || curr);
-        self2.diff = ms2;
-        self2.prev = prevTime;
-        self2.curr = curr;
-        prevTime = curr;
-        args[0] = createDebug.coerce(args[0]);
-        if (typeof args[0] !== "string") {
-          args.unshift("%O");
-        }
-        let index = 0;
-        args[0] = args[0].replace(/%([a-zA-Z%])/g, (match, format) => {
-          if (match === "%%") {
+        const w = v, _ = Number(/* @__PURE__ */ new Date()), k = _ - (d || _);
+        w.diff = k, w.prev = d, w.curr = _, d = _, h[0] = a.coerce(h[0]), typeof h[0] != "string" && h.unshift("%O");
+        let S = 0;
+        h[0] = h[0].replace(/%([a-zA-Z%])/g, (j, D) => {
+          if (j === "%%")
             return "%";
+          S++;
+          const q = a.formatters[D];
+          if (typeof q == "function") {
+            const A = h[S];
+            j = q.call(w, A), h.splice(S, 1), S--;
           }
-          index++;
-          const formatter = createDebug.formatters[format];
-          if (typeof formatter === "function") {
-            const val = args[index];
-            match = formatter.call(self2, val);
-            args.splice(index, 1);
-            index--;
-          }
-          return match;
-        });
-        createDebug.formatArgs.call(self2, args);
-        const logFn = self2.log || createDebug.log;
-        logFn.apply(self2, args);
+          return j;
+        }), a.formatArgs.call(w, h), (w.log || a.log).apply(w, h);
       }
-      debug2.namespace = namespace;
-      debug2.useColors = createDebug.useColors();
-      debug2.color = createDebug.selectColor(namespace);
-      debug2.extend = extend2;
-      debug2.destroy = createDebug.destroy;
-      Object.defineProperty(debug2, "enabled", {
-        enumerable: true,
-        configurable: false,
-        get: () => {
-          if (enableOverride !== null) {
-            return enableOverride;
-          }
-          if (namespacesCache !== createDebug.namespaces) {
-            namespacesCache = createDebug.namespaces;
-            enabledCache = createDebug.enabled(namespace);
-          }
-          return enabledCache;
-        },
-        set: (v) => {
-          enableOverride = v;
+      return v.namespace = u, v.useColors = a.useColors(), v.color = a.selectColor(u), v.extend = o, v.destroy = a.destroy, Object.defineProperty(v, "enabled", {
+        enumerable: !0,
+        configurable: !1,
+        get: () => f !== null ? f : (b !== a.namespaces && (b = a.namespaces, x = a.enabled(u)), x),
+        set: (h) => {
+          f = h;
         }
-      });
-      if (typeof createDebug.init === "function") {
-        createDebug.init(debug2);
-      }
-      return debug2;
+      }), typeof a.init == "function" && a.init(v), v;
     }
-    function extend2(namespace, delimiter) {
-      const newDebug = createDebug(this.namespace + (typeof delimiter === "undefined" ? ":" : delimiter) + namespace);
-      newDebug.log = this.log;
-      return newDebug;
+    function o(u, d) {
+      const f = a(this.namespace + (typeof d > "u" ? ":" : d) + u);
+      return f.log = this.log, f;
     }
-    function enable(namespaces) {
-      createDebug.save(namespaces);
-      createDebug.namespaces = namespaces;
-      createDebug.names = [];
-      createDebug.skips = [];
-      const split = (typeof namespaces === "string" ? namespaces : "").trim().replace(/\s+/g, ",").split(",").filter(Boolean);
-      for (const ns of split) {
-        if (ns[0] === "-") {
-          createDebug.skips.push(ns.slice(1));
-        } else {
-          createDebug.names.push(ns);
-        }
-      }
+    function s(u) {
+      a.save(u), a.namespaces = u, a.names = [], a.skips = [];
+      const d = (typeof u == "string" ? u : "").trim().replace(/\s+/g, ",").split(",").filter(Boolean);
+      for (const f of d)
+        f[0] === "-" ? a.skips.push(f.slice(1)) : a.names.push(f);
     }
-    function matchesTemplate(search, template) {
-      let searchIndex = 0;
-      let templateIndex = 0;
-      let starIndex = -1;
-      let matchIndex = 0;
-      while (searchIndex < search.length) {
-        if (templateIndex < template.length && (template[templateIndex] === search[searchIndex] || template[templateIndex] === "*")) {
-          if (template[templateIndex] === "*") {
-            starIndex = templateIndex;
-            matchIndex = searchIndex;
-            templateIndex++;
-          } else {
-            searchIndex++;
-            templateIndex++;
-          }
-        } else if (starIndex !== -1) {
-          templateIndex = starIndex + 1;
-          matchIndex++;
-          searchIndex = matchIndex;
-        } else {
-          return false;
-        }
-      }
-      while (templateIndex < template.length && template[templateIndex] === "*") {
-        templateIndex++;
-      }
-      return templateIndex === template.length;
+    function i(u, d) {
+      let f = 0, b = 0, x = -1, v = 0;
+      for (; f < u.length; )
+        if (b < d.length && (d[b] === u[f] || d[b] === "*"))
+          d[b] === "*" ? (x = b, v = f, b++) : (f++, b++);
+        else if (x !== -1)
+          b = x + 1, v++, f = v;
+        else
+          return !1;
+      for (; b < d.length && d[b] === "*"; )
+        b++;
+      return b === d.length;
     }
-    function disable() {
-      const namespaces = [
-        ...createDebug.names,
-        ...createDebug.skips.map((namespace) => "-" + namespace)
+    function r() {
+      const u = [
+        ...a.names,
+        ...a.skips.map((d) => "-" + d)
       ].join(",");
-      createDebug.enable("");
-      return namespaces;
+      return a.enable(""), u;
     }
-    function enabled(name) {
-      for (const skip of createDebug.skips) {
-        if (matchesTemplate(name, skip)) {
-          return false;
-        }
-      }
-      for (const ns of createDebug.names) {
-        if (matchesTemplate(name, ns)) {
-          return true;
-        }
-      }
-      return false;
+    function p(u) {
+      for (const d of a.skips)
+        if (i(u, d))
+          return !1;
+      for (const d of a.names)
+        if (i(u, d))
+          return !0;
+      return !1;
     }
-    function coerce(val) {
-      if (val instanceof Error) {
-        return val.stack || val.message;
-      }
-      return val;
+    function l(u) {
+      return u instanceof Error ? u.stack || u.message : u;
     }
-    function destroy2() {
+    function c() {
       console.warn("Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`.");
     }
-    createDebug.enable(createDebug.load());
-    return createDebug;
+    return a.enable(a.load()), a;
   }
-  common = setup;
-  return common;
+  return bt = e, bt;
 }
-var hasRequiredBrowser;
-function requireBrowser() {
-  if (hasRequiredBrowser) return browser.exports;
-  hasRequiredBrowser = 1;
-  (function(module, exports) {
-    exports.formatArgs = formatArgs;
-    exports.save = save;
-    exports.load = load;
-    exports.useColors = useColors;
-    exports.storage = localstorage();
-    exports.destroy = /* @__PURE__ */ (() => {
-      let warned = false;
+var Xa;
+function bp() {
+  return Xa || (Xa = 1, function(e, n) {
+    n.formatArgs = a, n.save = o, n.load = s, n.useColors = t, n.storage = i(), n.destroy = /* @__PURE__ */ (() => {
+      let p = !1;
       return () => {
-        if (!warned) {
-          warned = true;
-          console.warn("Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`.");
-        }
+        p || (p = !0, console.warn("Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`."));
       };
-    })();
-    exports.colors = [
+    })(), n.colors = [
       "#0000CC",
       "#0000FF",
       "#0033CC",
@@ -14212,425 +13010,294 @@ function requireBrowser() {
       "#FFCC00",
       "#FFCC33"
     ];
-    function useColors() {
-      if (typeof window !== "undefined" && window.process && (window.process.type === "renderer" || window.process.__nwjs)) {
-        return true;
-      }
-      if (typeof navigator !== "undefined" && navigator.userAgent && navigator.userAgent.toLowerCase().match(/(edge|trident)\/(\d+)/)) {
-        return false;
-      }
-      let m;
-      return typeof document !== "undefined" && document.documentElement && document.documentElement.style && document.documentElement.style.WebkitAppearance || // Is firebug? http://stackoverflow.com/a/398120/376773
-      typeof window !== "undefined" && window.console && (window.console.firebug || window.console.exception && window.console.table) || // Is firefox >= v31?
+    function t() {
+      if (typeof window < "u" && window.process && (window.process.type === "renderer" || window.process.__nwjs))
+        return !0;
+      if (typeof navigator < "u" && navigator.userAgent && navigator.userAgent.toLowerCase().match(/(edge|trident)\/(\d+)/))
+        return !1;
+      let p;
+      return typeof document < "u" && document.documentElement && document.documentElement.style && document.documentElement.style.WebkitAppearance || // Is firebug? http://stackoverflow.com/a/398120/376773
+      typeof window < "u" && window.console && (window.console.firebug || window.console.exception && window.console.table) || // Is firefox >= v31?
       // https://developer.mozilla.org/en-US/docs/Tools/Web_Console#Styling_messages
-      typeof navigator !== "undefined" && navigator.userAgent && (m = navigator.userAgent.toLowerCase().match(/firefox\/(\d+)/)) && parseInt(m[1], 10) >= 31 || // Double check webkit in userAgent just in case we are in a worker
-      typeof navigator !== "undefined" && navigator.userAgent && navigator.userAgent.toLowerCase().match(/applewebkit\/(\d+)/);
+      typeof navigator < "u" && navigator.userAgent && (p = navigator.userAgent.toLowerCase().match(/firefox\/(\d+)/)) && parseInt(p[1], 10) >= 31 || // Double check webkit in userAgent just in case we are in a worker
+      typeof navigator < "u" && navigator.userAgent && navigator.userAgent.toLowerCase().match(/applewebkit\/(\d+)/);
     }
-    function formatArgs(args) {
-      args[0] = (this.useColors ? "%c" : "") + this.namespace + (this.useColors ? " %c" : " ") + args[0] + (this.useColors ? "%c " : " ") + "+" + module.exports.humanize(this.diff);
-      if (!this.useColors) {
+    function a(p) {
+      if (p[0] = (this.useColors ? "%c" : "") + this.namespace + (this.useColors ? " %c" : " ") + p[0] + (this.useColors ? "%c " : " ") + "+" + e.exports.humanize(this.diff), !this.useColors)
         return;
-      }
-      const c = "color: " + this.color;
-      args.splice(1, 0, c, "color: inherit");
-      let index = 0;
-      let lastC = 0;
-      args[0].replace(/%[a-zA-Z%]/g, (match) => {
-        if (match === "%%") {
-          return;
-        }
-        index++;
-        if (match === "%c") {
-          lastC = index;
-        }
-      });
-      args.splice(lastC, 0, c);
+      const l = "color: " + this.color;
+      p.splice(1, 0, l, "color: inherit");
+      let c = 0, u = 0;
+      p[0].replace(/%[a-zA-Z%]/g, (d) => {
+        d !== "%%" && (c++, d === "%c" && (u = c));
+      }), p.splice(u, 0, l);
     }
-    exports.log = console.debug || console.log || (() => {
+    n.log = console.debug || console.log || (() => {
     });
-    function save(namespaces) {
+    function o(p) {
       try {
-        if (namespaces) {
-          exports.storage.setItem("debug", namespaces);
-        } else {
-          exports.storage.removeItem("debug");
-        }
-      } catch (error) {
+        p ? n.storage.setItem("debug", p) : n.storage.removeItem("debug");
+      } catch {
       }
     }
-    function load() {
-      let r;
+    function s() {
+      let p;
       try {
-        r = exports.storage.getItem("debug") || exports.storage.getItem("DEBUG");
-      } catch (error) {
+        p = n.storage.getItem("debug") || n.storage.getItem("DEBUG");
+      } catch {
       }
-      if (!r && typeof process !== "undefined" && "env" in process) {
-        r = process.env.DEBUG;
-      }
-      return r;
+      return !p && typeof process < "u" && "env" in process && (p = process.env.DEBUG), p;
     }
-    function localstorage() {
+    function i() {
       try {
         return localStorage;
-      } catch (error) {
+      } catch {
       }
     }
-    module.exports = requireCommon()(exports);
-    const { formatters } = module.exports;
-    formatters.j = function(v) {
+    e.exports = is()(n);
+    const { formatters: r } = e.exports;
+    r.j = function(p) {
       try {
-        return JSON.stringify(v);
-      } catch (error) {
-        return "[UnexpectedJSONParseError]: " + error.message;
+        return JSON.stringify(p);
+      } catch (l) {
+        return "[UnexpectedJSONParseError]: " + l.message;
       }
     };
-  })(browser, browser.exports);
-  return browser.exports;
+  }(hn, hn.exports)), hn.exports;
 }
-var node = { exports: {} };
-var hasFlag;
-var hasRequiredHasFlag;
-function requireHasFlag() {
-  if (hasRequiredHasFlag) return hasFlag;
-  hasRequiredHasFlag = 1;
-  hasFlag = (flag, argv = process.argv) => {
-    const prefix = flag.startsWith("-") ? "" : flag.length === 1 ? "-" : "--";
-    const position = argv.indexOf(prefix + flag);
-    const terminatorPosition = argv.indexOf("--");
-    return position !== -1 && (terminatorPosition === -1 || position < terminatorPosition);
-  };
-  return hasFlag;
+var vn = { exports: {} }, gt, Ya;
+function gp() {
+  return Ya || (Ya = 1, gt = (e, n = process.argv) => {
+    const t = e.startsWith("-") ? "" : e.length === 1 ? "-" : "--", a = n.indexOf(t + e), o = n.indexOf("--");
+    return a !== -1 && (o === -1 || a < o);
+  }), gt;
 }
-var supportsColor_1;
-var hasRequiredSupportsColor;
-function requireSupportsColor() {
-  if (hasRequiredSupportsColor) return supportsColor_1;
-  hasRequiredSupportsColor = 1;
-  const os = require$$0$1;
-  const tty = require$$1$2;
-  const hasFlag2 = requireHasFlag();
-  const { env } = process;
-  let forceColor;
-  if (hasFlag2("no-color") || hasFlag2("no-colors") || hasFlag2("color=false") || hasFlag2("color=never")) {
-    forceColor = 0;
-  } else if (hasFlag2("color") || hasFlag2("colors") || hasFlag2("color=true") || hasFlag2("color=always")) {
-    forceColor = 1;
-  }
-  if ("FORCE_COLOR" in env) {
-    if (env.FORCE_COLOR === "true") {
-      forceColor = 1;
-    } else if (env.FORCE_COLOR === "false") {
-      forceColor = 0;
-    } else {
-      forceColor = env.FORCE_COLOR.length === 0 ? 1 : Math.min(parseInt(env.FORCE_COLOR, 10), 3);
-    }
-  }
-  function translateLevel(level) {
-    if (level === 0) {
-      return false;
-    }
-    return {
-      level,
-      hasBasic: true,
-      has256: level >= 2,
-      has16m: level >= 3
+var yt, Za;
+function yp() {
+  if (Za) return yt;
+  Za = 1;
+  const e = Hs, n = So, t = gp(), { env: a } = process;
+  let o;
+  t("no-color") || t("no-colors") || t("color=false") || t("color=never") ? o = 0 : (t("color") || t("colors") || t("color=true") || t("color=always")) && (o = 1), "FORCE_COLOR" in a && (a.FORCE_COLOR === "true" ? o = 1 : a.FORCE_COLOR === "false" ? o = 0 : o = a.FORCE_COLOR.length === 0 ? 1 : Math.min(parseInt(a.FORCE_COLOR, 10), 3));
+  function s(p) {
+    return p === 0 ? !1 : {
+      level: p,
+      hasBasic: !0,
+      has256: p >= 2,
+      has16m: p >= 3
     };
   }
-  function supportsColor(haveStream, streamIsTTY) {
-    if (forceColor === 0) {
+  function i(p, l) {
+    if (o === 0)
       return 0;
-    }
-    if (hasFlag2("color=16m") || hasFlag2("color=full") || hasFlag2("color=truecolor")) {
+    if (t("color=16m") || t("color=full") || t("color=truecolor"))
       return 3;
-    }
-    if (hasFlag2("color=256")) {
+    if (t("color=256"))
       return 2;
-    }
-    if (haveStream && !streamIsTTY && forceColor === void 0) {
+    if (p && !l && o === void 0)
       return 0;
-    }
-    const min2 = forceColor || 0;
-    if (env.TERM === "dumb") {
-      return min2;
-    }
+    const c = o || 0;
+    if (a.TERM === "dumb")
+      return c;
     if (process.platform === "win32") {
-      const osRelease = os.release().split(".");
-      if (Number(osRelease[0]) >= 10 && Number(osRelease[2]) >= 10586) {
-        return Number(osRelease[2]) >= 14931 ? 3 : 2;
-      }
-      return 1;
+      const u = e.release().split(".");
+      return Number(u[0]) >= 10 && Number(u[2]) >= 10586 ? Number(u[2]) >= 14931 ? 3 : 2 : 1;
     }
-    if ("CI" in env) {
-      if (["TRAVIS", "CIRCLECI", "APPVEYOR", "GITLAB_CI", "GITHUB_ACTIONS", "BUILDKITE"].some((sign3) => sign3 in env) || env.CI_NAME === "codeship") {
-        return 1;
-      }
-      return min2;
-    }
-    if ("TEAMCITY_VERSION" in env) {
-      return /^(9\.(0*[1-9]\d*)\.|\d{2,}\.)/.test(env.TEAMCITY_VERSION) ? 1 : 0;
-    }
-    if (env.COLORTERM === "truecolor") {
+    if ("CI" in a)
+      return ["TRAVIS", "CIRCLECI", "APPVEYOR", "GITLAB_CI", "GITHUB_ACTIONS", "BUILDKITE"].some((u) => u in a) || a.CI_NAME === "codeship" ? 1 : c;
+    if ("TEAMCITY_VERSION" in a)
+      return /^(9\.(0*[1-9]\d*)\.|\d{2,}\.)/.test(a.TEAMCITY_VERSION) ? 1 : 0;
+    if (a.COLORTERM === "truecolor")
       return 3;
-    }
-    if ("TERM_PROGRAM" in env) {
-      const version = parseInt((env.TERM_PROGRAM_VERSION || "").split(".")[0], 10);
-      switch (env.TERM_PROGRAM) {
+    if ("TERM_PROGRAM" in a) {
+      const u = parseInt((a.TERM_PROGRAM_VERSION || "").split(".")[0], 10);
+      switch (a.TERM_PROGRAM) {
         case "iTerm.app":
-          return version >= 3 ? 3 : 2;
+          return u >= 3 ? 3 : 2;
         case "Apple_Terminal":
           return 2;
       }
     }
-    if (/-256(color)?$/i.test(env.TERM)) {
-      return 2;
-    }
-    if (/^screen|^xterm|^vt100|^vt220|^rxvt|color|ansi|cygwin|linux/i.test(env.TERM)) {
-      return 1;
-    }
-    if ("COLORTERM" in env) {
-      return 1;
-    }
-    return min2;
+    return /-256(color)?$/i.test(a.TERM) ? 2 : /^screen|^xterm|^vt100|^vt220|^rxvt|color|ansi|cygwin|linux/i.test(a.TERM) || "COLORTERM" in a ? 1 : c;
   }
-  function getSupportLevel(stream2) {
-    const level = supportsColor(stream2, stream2 && stream2.isTTY);
-    return translateLevel(level);
+  function r(p) {
+    const l = i(p, p && p.isTTY);
+    return s(l);
   }
-  supportsColor_1 = {
-    supportsColor: getSupportLevel,
-    stdout: translateLevel(supportsColor(true, tty.isatty(1))),
-    stderr: translateLevel(supportsColor(true, tty.isatty(2)))
-  };
-  return supportsColor_1;
+  return yt = {
+    supportsColor: r,
+    stdout: s(i(!0, n.isatty(1))),
+    stderr: s(i(!0, n.isatty(2)))
+  }, yt;
 }
-var hasRequiredNode;
-function requireNode() {
-  if (hasRequiredNode) return node.exports;
-  hasRequiredNode = 1;
-  (function(module, exports) {
-    const tty = require$$1$2;
-    const util2 = require$$1;
-    exports.init = init;
-    exports.log = log;
-    exports.formatArgs = formatArgs;
-    exports.save = save;
-    exports.load = load;
-    exports.useColors = useColors;
-    exports.destroy = util2.deprecate(
+var Qa;
+function wp() {
+  return Qa || (Qa = 1, function(e, n) {
+    const t = So, a = De;
+    n.init = c, n.log = r, n.formatArgs = s, n.save = p, n.load = l, n.useColors = o, n.destroy = a.deprecate(
       () => {
       },
       "Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`."
-    );
-    exports.colors = [6, 2, 3, 4, 5, 1];
+    ), n.colors = [6, 2, 3, 4, 5, 1];
     try {
-      const supportsColor = requireSupportsColor();
-      if (supportsColor && (supportsColor.stderr || supportsColor).level >= 2) {
-        exports.colors = [
-          20,
-          21,
-          26,
-          27,
-          32,
-          33,
-          38,
-          39,
-          40,
-          41,
-          42,
-          43,
-          44,
-          45,
-          56,
-          57,
-          62,
-          63,
-          68,
-          69,
-          74,
-          75,
-          76,
-          77,
-          78,
-          79,
-          80,
-          81,
-          92,
-          93,
-          98,
-          99,
-          112,
-          113,
-          128,
-          129,
-          134,
-          135,
-          148,
-          149,
-          160,
-          161,
-          162,
-          163,
-          164,
-          165,
-          166,
-          167,
-          168,
-          169,
-          170,
-          171,
-          172,
-          173,
-          178,
-          179,
-          184,
-          185,
-          196,
-          197,
-          198,
-          199,
-          200,
-          201,
-          202,
-          203,
-          204,
-          205,
-          206,
-          207,
-          208,
-          209,
-          214,
-          215,
-          220,
-          221
-        ];
-      }
-    } catch (error) {
+      const d = yp();
+      d && (d.stderr || d).level >= 2 && (n.colors = [
+        20,
+        21,
+        26,
+        27,
+        32,
+        33,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        56,
+        57,
+        62,
+        63,
+        68,
+        69,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        81,
+        92,
+        93,
+        98,
+        99,
+        112,
+        113,
+        128,
+        129,
+        134,
+        135,
+        148,
+        149,
+        160,
+        161,
+        162,
+        163,
+        164,
+        165,
+        166,
+        167,
+        168,
+        169,
+        170,
+        171,
+        172,
+        173,
+        178,
+        179,
+        184,
+        185,
+        196,
+        197,
+        198,
+        199,
+        200,
+        201,
+        202,
+        203,
+        204,
+        205,
+        206,
+        207,
+        208,
+        209,
+        214,
+        215,
+        220,
+        221
+      ]);
+    } catch {
     }
-    exports.inspectOpts = Object.keys(process.env).filter((key) => {
-      return /^debug_/i.test(key);
-    }).reduce((obj, key) => {
-      const prop = key.substring(6).toLowerCase().replace(/_([a-z])/g, (_, k) => {
-        return k.toUpperCase();
-      });
-      let val = process.env[key];
-      if (/^(yes|on|true|enabled)$/i.test(val)) {
-        val = true;
-      } else if (/^(no|off|false|disabled)$/i.test(val)) {
-        val = false;
-      } else if (val === "null") {
-        val = null;
-      } else {
-        val = Number(val);
-      }
-      obj[prop] = val;
-      return obj;
+    n.inspectOpts = Object.keys(process.env).filter((d) => /^debug_/i.test(d)).reduce((d, f) => {
+      const b = f.substring(6).toLowerCase().replace(/_([a-z])/g, (v, h) => h.toUpperCase());
+      let x = process.env[f];
+      return /^(yes|on|true|enabled)$/i.test(x) ? x = !0 : /^(no|off|false|disabled)$/i.test(x) ? x = !1 : x === "null" ? x = null : x = Number(x), d[b] = x, d;
     }, {});
-    function useColors() {
-      return "colors" in exports.inspectOpts ? Boolean(exports.inspectOpts.colors) : tty.isatty(process.stderr.fd);
+    function o() {
+      return "colors" in n.inspectOpts ? !!n.inspectOpts.colors : t.isatty(process.stderr.fd);
     }
-    function formatArgs(args) {
-      const { namespace: name, useColors: useColors2 } = this;
-      if (useColors2) {
-        const c = this.color;
-        const colorCode = "\x1B[3" + (c < 8 ? c : "8;5;" + c);
-        const prefix = `  ${colorCode};1m${name} \x1B[0m`;
-        args[0] = prefix + args[0].split("\n").join("\n" + prefix);
-        args.push(colorCode + "m+" + module.exports.humanize(this.diff) + "\x1B[0m");
-      } else {
-        args[0] = getDate() + name + " " + args[0];
-      }
+    function s(d) {
+      const { namespace: f, useColors: b } = this;
+      if (b) {
+        const x = this.color, v = "\x1B[3" + (x < 8 ? x : "8;5;" + x), h = `  ${v};1m${f} \x1B[0m`;
+        d[0] = h + d[0].split(`
+`).join(`
+` + h), d.push(v + "m+" + e.exports.humanize(this.diff) + "\x1B[0m");
+      } else
+        d[0] = i() + f + " " + d[0];
     }
-    function getDate() {
-      if (exports.inspectOpts.hideDate) {
-        return "";
-      }
-      return (/* @__PURE__ */ new Date()).toISOString() + " ";
+    function i() {
+      return n.inspectOpts.hideDate ? "" : (/* @__PURE__ */ new Date()).toISOString() + " ";
     }
-    function log(...args) {
-      return process.stderr.write(util2.formatWithOptions(exports.inspectOpts, ...args) + "\n");
+    function r(...d) {
+      return process.stderr.write(a.formatWithOptions(n.inspectOpts, ...d) + `
+`);
     }
-    function save(namespaces) {
-      if (namespaces) {
-        process.env.DEBUG = namespaces;
-      } else {
-        delete process.env.DEBUG;
-      }
+    function p(d) {
+      d ? process.env.DEBUG = d : delete process.env.DEBUG;
     }
-    function load() {
+    function l() {
       return process.env.DEBUG;
     }
-    function init(debug2) {
-      debug2.inspectOpts = {};
-      const keys = Object.keys(exports.inspectOpts);
-      for (let i = 0; i < keys.length; i++) {
-        debug2.inspectOpts[keys[i]] = exports.inspectOpts[keys[i]];
-      }
+    function c(d) {
+      d.inspectOpts = {};
+      const f = Object.keys(n.inspectOpts);
+      for (let b = 0; b < f.length; b++)
+        d.inspectOpts[f[b]] = n.inspectOpts[f[b]];
     }
-    module.exports = requireCommon()(exports);
-    const { formatters } = module.exports;
-    formatters.o = function(v) {
-      this.inspectOpts.colors = this.useColors;
-      return util2.inspect(v, this.inspectOpts).split("\n").map((str) => str.trim()).join(" ");
+    e.exports = is()(n);
+    const { formatters: u } = e.exports;
+    u.o = function(d) {
+      return this.inspectOpts.colors = this.useColors, a.inspect(d, this.inspectOpts).split(`
+`).map((f) => f.trim()).join(" ");
+    }, u.O = function(d) {
+      return this.inspectOpts.colors = this.useColors, a.inspect(d, this.inspectOpts);
     };
-    formatters.O = function(v) {
-      this.inspectOpts.colors = this.useColors;
-      return util2.inspect(v, this.inspectOpts);
-    };
-  })(node, node.exports);
-  return node.exports;
+  }(vn, vn.exports)), vn.exports;
 }
-var hasRequiredSrc;
-function requireSrc() {
-  if (hasRequiredSrc) return src.exports;
-  hasRequiredSrc = 1;
-  if (typeof process === "undefined" || process.type === "renderer" || process.browser === true || process.__nwjs) {
-    src.exports = requireBrowser();
-  } else {
-    src.exports = requireNode();
-  }
-  return src.exports;
+var eo;
+function kp() {
+  return eo || (eo = 1, typeof process > "u" || process.type === "renderer" || process.browser === !0 || process.__nwjs ? xn.exports = bp() : xn.exports = wp()), xn.exports;
 }
-var debug$1;
-var debug_1 = function() {
-  if (!debug$1) {
+var Ze, _p = function() {
+  if (!Ze) {
     try {
-      debug$1 = requireSrc()("follow-redirects");
-    } catch (error) {
+      Ze = kp()("follow-redirects");
+    } catch {
     }
-    if (typeof debug$1 !== "function") {
-      debug$1 = function() {
-      };
-    }
+    typeof Ze != "function" && (Ze = function() {
+    });
   }
-  debug$1.apply(null, arguments);
-};
-var url = require$$5;
-var URL$1 = url.URL;
-var http = require$$3;
-var https = require$$4;
-var Writable = stream.Writable;
-var assert = require$$4$1;
-var debug = debug_1;
-(function detectUnsupportedEnvironment() {
-  var looksLikeNode = typeof process !== "undefined";
-  var looksLikeBrowser = typeof window !== "undefined" && typeof document !== "undefined";
-  var looksLikeV8 = isFunction$1(Error.captureStackTrace);
-  if (!looksLikeNode && (looksLikeBrowser || !looksLikeV8)) {
-    console.warn("The follow-redirects package should be excluded from browser builds.");
-  }
+  Ze.apply(null, arguments);
+}, un = Zt, nn = un.URL, Ep = Xt, Sp = Yt, pa = te.Writable, la = Ms, rs = _p;
+(function() {
+  var n = typeof process < "u", t = typeof window < "u" && typeof document < "u", a = Le(Error.captureStackTrace);
+  !n && (t || !a) && console.warn("The follow-redirects package should be excluded from browser builds.");
 })();
-var useNativeURL = false;
+var ua = !1;
 try {
-  assert(new URL$1(""));
-} catch (error) {
-  useNativeURL = error.code === "ERR_INVALID_URL";
+  la(new nn(""));
+} catch (e) {
+  ua = e.code === "ERR_INVALID_URL";
 }
-var sensitiveHeaders = [
+var Rp = [
   "Authorization",
   "Proxy-Authorization",
   "Cookie"
-];
-var preservedUrlFields = [
+], Ap = [
   "auth",
   "host",
   "hostname",
@@ -14642,512 +13309,310 @@ var preservedUrlFields = [
   "query",
   "search",
   "hash"
-];
-var events = ["abort", "aborted", "connect", "error", "socket", "timeout"];
-var eventHandlers = /* @__PURE__ */ Object.create(null);
-events.forEach(function(event) {
-  eventHandlers[event] = function(arg1, arg2, arg3) {
-    this._redirectable.emit(event, arg1, arg2, arg3);
+], da = ["abort", "aborted", "connect", "error", "socket", "timeout"], ma = /* @__PURE__ */ Object.create(null);
+da.forEach(function(e) {
+  ma[e] = function(n, t, a) {
+    this._redirectable.emit(e, n, t, a);
   };
 });
-var InvalidUrlError = createErrorType(
+var Dt = dn(
   "ERR_INVALID_URL",
   "Invalid URL",
   TypeError
-);
-var RedirectionError = createErrorType(
+), It = dn(
   "ERR_FR_REDIRECTION_FAILURE",
   "Redirected request failed"
-);
-var TooManyRedirectsError = createErrorType(
+), Tp = dn(
   "ERR_FR_TOO_MANY_REDIRECTS",
   "Maximum number of redirects exceeded",
-  RedirectionError
-);
-var MaxBodyLengthExceededError = createErrorType(
+  It
+), Cp = dn(
   "ERR_FR_MAX_BODY_LENGTH_EXCEEDED",
   "Request body larger than maxBodyLength limit"
-);
-var WriteAfterEndError = createErrorType(
+), Op = dn(
   "ERR_STREAM_WRITE_AFTER_END",
   "write after end"
-);
-var destroy = Writable.prototype.destroy || noop;
-function RedirectableRequest(options, responseCallback) {
-  Writable.call(this);
-  this._sanitizeOptions(options);
-  this._options = options;
-  this._ended = false;
-  this._ending = false;
-  this._redirectCount = 0;
-  this._redirects = [];
-  this._requestBodyLength = 0;
-  this._requestBodyBuffers = [];
-  if (responseCallback) {
-    this.on("response", responseCallback);
-  }
-  var self2 = this;
-  this._onNativeResponse = function(response) {
+), jp = pa.prototype.destroy || ps;
+function pe(e, n) {
+  pa.call(this), this._sanitizeOptions(e), this._options = e, this._ended = !1, this._ending = !1, this._redirectCount = 0, this._redirects = [], this._requestBodyLength = 0, this._requestBodyBuffers = [], n && this.on("response", n);
+  var t = this;
+  this._onNativeResponse = function(a) {
     try {
-      self2._processResponse(response);
-    } catch (cause) {
-      self2.emit("error", cause instanceof RedirectionError ? cause : new RedirectionError({ cause }));
+      t._processResponse(a);
+    } catch (o) {
+      t.emit("error", o instanceof It ? o : new It({ cause: o }));
     }
-  };
-  this._headerFilter = new RegExp("^(?:" + sensitiveHeaders.concat(options.sensitiveHeaders).map(escapeRegex).join("|") + ")$", "i");
-  this._performRequest();
+  }, this._headerFilter = new RegExp("^(?:" + Rp.concat(e.sensitiveHeaders).map(Fp).join("|") + ")$", "i"), this._performRequest();
 }
-RedirectableRequest.prototype = Object.create(Writable.prototype);
-RedirectableRequest.prototype.abort = function() {
-  destroyRequest(this._currentRequest);
-  this._currentRequest.abort();
-  this.emit("abort");
+pe.prototype = Object.create(pa.prototype);
+pe.prototype.abort = function() {
+  xa(this._currentRequest), this._currentRequest.abort(), this.emit("abort");
 };
-RedirectableRequest.prototype.destroy = function(error) {
-  destroyRequest(this._currentRequest, error);
-  destroy.call(this, error);
-  return this;
+pe.prototype.destroy = function(e) {
+  return xa(this._currentRequest, e), jp.call(this, e), this;
 };
-RedirectableRequest.prototype.write = function(data, encoding, callback) {
-  if (this._ending) {
-    throw new WriteAfterEndError();
-  }
-  if (!isString(data) && !isBuffer(data)) {
+pe.prototype.write = function(e, n, t) {
+  if (this._ending)
+    throw new Op();
+  if (!Oe(e) && !Dp(e))
     throw new TypeError("data should be a string, Buffer or Uint8Array");
-  }
-  if (isFunction$1(encoding)) {
-    callback = encoding;
-    encoding = null;
-  }
-  if (data.length === 0) {
-    if (callback) {
-      callback();
-    }
+  if (Le(n) && (t = n, n = null), e.length === 0) {
+    t && t();
     return;
   }
-  if (this._requestBodyLength + data.length <= this._options.maxBodyLength) {
-    this._requestBodyLength += data.length;
-    this._requestBodyBuffers.push({ data, encoding });
-    this._currentRequest.write(data, encoding, callback);
-  } else {
-    this.emit("error", new MaxBodyLengthExceededError());
-    this.abort();
+  this._requestBodyLength + e.length <= this._options.maxBodyLength ? (this._requestBodyLength += e.length, this._requestBodyBuffers.push({ data: e, encoding: n }), this._currentRequest.write(e, n, t)) : (this.emit("error", new Cp()), this.abort());
+};
+pe.prototype.end = function(e, n, t) {
+  if (Le(e) ? (t = e, e = n = null) : Le(n) && (t = n, n = null), !e)
+    this._ended = this._ending = !0, this._currentRequest.end(null, null, t);
+  else {
+    var a = this, o = this._currentRequest;
+    this.write(e, n, function() {
+      a._ended = !0, o.end(null, null, t);
+    }), this._ending = !0;
   }
 };
-RedirectableRequest.prototype.end = function(data, encoding, callback) {
-  if (isFunction$1(data)) {
-    callback = data;
-    data = encoding = null;
-  } else if (isFunction$1(encoding)) {
-    callback = encoding;
-    encoding = null;
-  }
-  if (!data) {
-    this._ended = this._ending = true;
-    this._currentRequest.end(null, null, callback);
-  } else {
-    var self2 = this;
-    var currentRequest = this._currentRequest;
-    this.write(data, encoding, function() {
-      self2._ended = true;
-      currentRequest.end(null, null, callback);
-    });
-    this._ending = true;
-  }
+pe.prototype.setHeader = function(e, n) {
+  this._options.headers[e] = n, this._currentRequest.setHeader(e, n);
 };
-RedirectableRequest.prototype.setHeader = function(name, value) {
-  this._options.headers[name] = value;
-  this._currentRequest.setHeader(name, value);
+pe.prototype.removeHeader = function(e) {
+  delete this._options.headers[e], this._currentRequest.removeHeader(e);
 };
-RedirectableRequest.prototype.removeHeader = function(name) {
-  delete this._options.headers[name];
-  this._currentRequest.removeHeader(name);
-};
-RedirectableRequest.prototype.setTimeout = function(msecs, callback) {
-  var self2 = this;
-  function destroyOnTimeout(socket) {
-    socket.setTimeout(msecs);
-    socket.removeListener("timeout", socket.destroy);
-    socket.addListener("timeout", socket.destroy);
+pe.prototype.setTimeout = function(e, n) {
+  var t = this;
+  function a(i) {
+    i.setTimeout(e), i.removeListener("timeout", i.destroy), i.addListener("timeout", i.destroy);
   }
-  function startTimer(socket) {
-    if (self2._timeout) {
-      clearTimeout(self2._timeout);
-    }
-    self2._timeout = setTimeout(function() {
-      self2.emit("timeout");
-      clearTimer();
-    }, msecs);
-    destroyOnTimeout(socket);
+  function o(i) {
+    t._timeout && clearTimeout(t._timeout), t._timeout = setTimeout(function() {
+      t.emit("timeout"), s();
+    }, e), a(i);
   }
-  function clearTimer() {
-    if (self2._timeout) {
-      clearTimeout(self2._timeout);
-      self2._timeout = null;
-    }
-    self2.removeListener("abort", clearTimer);
-    self2.removeListener("error", clearTimer);
-    self2.removeListener("response", clearTimer);
-    self2.removeListener("close", clearTimer);
-    if (callback) {
-      self2.removeListener("timeout", callback);
-    }
-    if (!self2.socket) {
-      self2._currentRequest.removeListener("socket", startTimer);
-    }
+  function s() {
+    t._timeout && (clearTimeout(t._timeout), t._timeout = null), t.removeListener("abort", s), t.removeListener("error", s), t.removeListener("response", s), t.removeListener("close", s), n && t.removeListener("timeout", n), t.socket || t._currentRequest.removeListener("socket", o);
   }
-  if (callback) {
-    this.on("timeout", callback);
-  }
-  if (this.socket) {
-    startTimer(this.socket);
-  } else {
-    this._currentRequest.once("socket", startTimer);
-  }
-  this.on("socket", destroyOnTimeout);
-  this.on("abort", clearTimer);
-  this.on("error", clearTimer);
-  this.on("response", clearTimer);
-  this.on("close", clearTimer);
-  return this;
+  return n && this.on("timeout", n), this.socket ? o(this.socket) : this._currentRequest.once("socket", o), this.on("socket", a), this.on("abort", s), this.on("error", s), this.on("response", s), this.on("close", s), this;
 };
 [
   "flushHeaders",
   "getHeader",
   "setNoDelay",
   "setSocketKeepAlive"
-].forEach(function(method) {
-  RedirectableRequest.prototype[method] = function(a, b) {
-    return this._currentRequest[method](a, b);
+].forEach(function(e) {
+  pe.prototype[e] = function(n, t) {
+    return this._currentRequest[e](n, t);
   };
 });
-["aborted", "connection", "socket"].forEach(function(property) {
-  Object.defineProperty(RedirectableRequest.prototype, property, {
+["aborted", "connection", "socket"].forEach(function(e) {
+  Object.defineProperty(pe.prototype, e, {
     get: function() {
-      return this._currentRequest[property];
+      return this._currentRequest[e];
     }
   });
 });
-RedirectableRequest.prototype._sanitizeOptions = function(options) {
-  if (!options.headers) {
-    options.headers = {};
-  }
-  if (!isArray(options.sensitiveHeaders)) {
-    options.sensitiveHeaders = [];
-  }
-  if (options.host) {
-    if (!options.hostname) {
-      options.hostname = options.host;
-    }
-    delete options.host;
-  }
-  if (!options.pathname && options.path) {
-    var searchPos = options.path.indexOf("?");
-    if (searchPos < 0) {
-      options.pathname = options.path;
-    } else {
-      options.pathname = options.path.substring(0, searchPos);
-      options.search = options.path.substring(searchPos);
-    }
+pe.prototype._sanitizeOptions = function(e) {
+  if (e.headers || (e.headers = {}), Np(e.sensitiveHeaders) || (e.sensitiveHeaders = []), e.host && (e.hostname || (e.hostname = e.host), delete e.host), !e.pathname && e.path) {
+    var n = e.path.indexOf("?");
+    n < 0 ? e.pathname = e.path : (e.pathname = e.path.substring(0, n), e.search = e.path.substring(n));
   }
 };
-RedirectableRequest.prototype._performRequest = function() {
-  var protocol = this._options.protocol;
-  var nativeProtocol = this._options.nativeProtocols[protocol];
-  if (!nativeProtocol) {
-    throw new TypeError("Unsupported protocol " + protocol);
-  }
+pe.prototype._performRequest = function() {
+  var e = this._options.protocol, n = this._options.nativeProtocols[e];
+  if (!n)
+    throw new TypeError("Unsupported protocol " + e);
   if (this._options.agents) {
-    var scheme = protocol.slice(0, -1);
-    this._options.agent = this._options.agents[scheme];
+    var t = e.slice(0, -1);
+    this._options.agent = this._options.agents[t];
   }
-  var request = this._currentRequest = nativeProtocol.request(this._options, this._onNativeResponse);
-  request._redirectable = this;
-  for (var event of events) {
-    request.on(event, eventHandlers[event]);
-  }
-  this._currentUrl = /^\//.test(this._options.path) ? url.format(this._options) : (
+  var a = this._currentRequest = n.request(this._options, this._onNativeResponse);
+  a._redirectable = this;
+  for (var o of da)
+    a.on(o, ma[o]);
+  if (this._currentUrl = /^\//.test(this._options.path) ? un.format(this._options) : (
     // When making a request to a proxy, […]
     // a client MUST send the target URI in absolute-form […].
     this._options.path
-  );
-  if (this._isRedirect) {
-    var i = 0;
-    var self2 = this;
-    var buffers = this._requestBodyBuffers;
-    (function writeNext(error) {
-      if (request === self2._currentRequest) {
-        if (error) {
-          self2.emit("error", error);
-        } else if (i < buffers.length) {
-          var buffer = buffers[i++];
-          if (!request.finished) {
-            request.write(buffer.data, buffer.encoding, writeNext);
-          }
-        } else if (self2._ended) {
-          request.end();
-        }
-      }
+  ), this._isRedirect) {
+    var s = 0, i = this, r = this._requestBodyBuffers;
+    (function p(l) {
+      if (a === i._currentRequest)
+        if (l)
+          i.emit("error", l);
+        else if (s < r.length) {
+          var c = r[s++];
+          a.finished || a.write(c.data, c.encoding, p);
+        } else i._ended && a.end();
     })();
   }
 };
-RedirectableRequest.prototype._processResponse = function(response) {
-  var statusCode = response.statusCode;
-  if (this._options.trackRedirects) {
-    this._redirects.push({
-      url: this._currentUrl,
-      headers: response.headers,
-      statusCode
-    });
-  }
-  var location = response.headers.location;
-  if (!location || this._options.followRedirects === false || statusCode < 300 || statusCode >= 400) {
-    response.responseUrl = this._currentUrl;
-    response.redirects = this._redirects;
-    this.emit("response", response);
-    this._requestBodyBuffers = [];
+pe.prototype._processResponse = function(e) {
+  var n = e.statusCode;
+  this._options.trackRedirects && this._redirects.push({
+    url: this._currentUrl,
+    headers: e.headers,
+    statusCode: n
+  });
+  var t = e.headers.location;
+  if (!t || this._options.followRedirects === !1 || n < 300 || n >= 400) {
+    e.responseUrl = this._currentUrl, e.redirects = this._redirects, this.emit("response", e), this._requestBodyBuffers = [];
     return;
   }
-  destroyRequest(this._currentRequest);
-  response.destroy();
-  if (++this._redirectCount > this._options.maxRedirects) {
-    throw new TooManyRedirectsError();
-  }
-  var requestHeaders;
-  var beforeRedirect = this._options.beforeRedirect;
-  if (beforeRedirect) {
-    requestHeaders = Object.assign({
-      // The Host header was set by nativeProtocol.request
-      Host: response.req.getHeader("host")
-    }, this._options.headers);
-  }
-  var method = this._options.method;
-  if ((statusCode === 301 || statusCode === 302) && this._options.method === "POST" || // RFC7231§6.4.4: The 303 (See Other) status code indicates that
+  if (xa(this._currentRequest), e.destroy(), ++this._redirectCount > this._options.maxRedirects)
+    throw new Tp();
+  var a, o = this._options.beforeRedirect;
+  o && (a = Object.assign({
+    // The Host header was set by nativeProtocol.request
+    Host: e.req.getHeader("host")
+  }, this._options.headers));
+  var s = this._options.method;
+  ((n === 301 || n === 302) && this._options.method === "POST" || // RFC7231§6.4.4: The 303 (See Other) status code indicates that
   // the server is redirecting the user agent to a different resource […]
   // A user agent can perform a retrieval request targeting that URI
   // (a GET or HEAD request if using HTTP) […]
-  statusCode === 303 && !/^(?:GET|HEAD)$/.test(this._options.method)) {
-    this._options.method = "GET";
-    this._requestBodyBuffers = [];
-    removeMatchingHeaders(/^content-/i, this._options.headers);
-  }
-  var currentHostHeader = removeMatchingHeaders(/^host$/i, this._options.headers);
-  var currentUrlParts = parseUrl(this._currentUrl);
-  var currentHost = currentHostHeader || currentUrlParts.host;
-  var currentUrl = /^\w+:/.test(location) ? this._currentUrl : url.format(Object.assign(currentUrlParts, { host: currentHost }));
-  var redirectUrl = resolveUrl(location, currentUrl);
-  debug("redirecting to", redirectUrl.href);
-  this._isRedirect = true;
-  spreadUrlObject(redirectUrl, this._options);
-  if (redirectUrl.protocol !== currentUrlParts.protocol && redirectUrl.protocol !== "https:" || redirectUrl.host !== currentHost && !isSubdomain(redirectUrl.host, currentHost)) {
-    removeMatchingHeaders(this._headerFilter, this._options.headers);
-  }
-  if (isFunction$1(beforeRedirect)) {
-    var responseDetails = {
-      headers: response.headers,
-      statusCode
+  n === 303 && !/^(?:GET|HEAD)$/.test(this._options.method)) && (this._options.method = "GET", this._requestBodyBuffers = [], wt(/^content-/i, this._options.headers));
+  var i = wt(/^host$/i, this._options.headers), r = fa(this._currentUrl), p = i || r.host, l = /^\w+:/.test(t) ? this._currentUrl : un.format(Object.assign(r, { host: p })), c = Pp(t, l);
+  if (rs("redirecting to", c.href), this._isRedirect = !0, Ft(c, this._options), (c.protocol !== r.protocol && c.protocol !== "https:" || c.host !== p && !Lp(c.host, p)) && wt(this._headerFilter, this._options.headers), Le(o)) {
+    var u = {
+      headers: e.headers,
+      statusCode: n
+    }, d = {
+      url: l,
+      method: s,
+      headers: a
     };
-    var requestDetails = {
-      url: currentUrl,
-      method,
-      headers: requestHeaders
-    };
-    beforeRedirect(this._options, responseDetails, requestDetails);
-    this._sanitizeOptions(this._options);
+    o(this._options, u, d), this._sanitizeOptions(this._options);
   }
   this._performRequest();
 };
-function wrap(protocols) {
-  var exports = {
+function cs(e) {
+  var n = {
     maxRedirects: 21,
-    maxBodyLength: 10 * 1024 * 1024
-  };
-  var nativeProtocols = {};
-  Object.keys(protocols).forEach(function(scheme) {
-    var protocol = scheme + ":";
-    var nativeProtocol = nativeProtocols[protocol] = protocols[scheme];
-    var wrappedProtocol = exports[scheme] = Object.create(nativeProtocol);
-    function request(input, options, callback) {
-      if (isURL(input)) {
-        input = spreadUrlObject(input);
-      } else if (isString(input)) {
-        input = spreadUrlObject(parseUrl(input));
-      } else {
-        callback = options;
-        options = validateUrl(input);
-        input = { protocol };
-      }
-      if (isFunction$1(options)) {
-        callback = options;
-        options = null;
-      }
-      options = Object.assign({
-        maxRedirects: exports.maxRedirects,
-        maxBodyLength: exports.maxBodyLength
-      }, input, options);
-      options.nativeProtocols = nativeProtocols;
-      if (!isString(options.host) && !isString(options.hostname)) {
-        options.hostname = "::1";
-      }
-      assert.equal(options.protocol, protocol, "protocol mismatch");
-      debug("options", options);
-      return new RedirectableRequest(options, callback);
+    maxBodyLength: 10485760
+  }, t = {};
+  return Object.keys(e).forEach(function(a) {
+    var o = a + ":", s = t[o] = e[a], i = n[a] = Object.create(s);
+    function r(l, c, u) {
+      return Ip(l) ? l = Ft(l) : Oe(l) ? l = Ft(fa(l)) : (u = c, c = ls(l), l = { protocol: o }), Le(c) && (u = c, c = null), c = Object.assign({
+        maxRedirects: n.maxRedirects,
+        maxBodyLength: n.maxBodyLength
+      }, l, c), c.nativeProtocols = t, !Oe(c.host) && !Oe(c.hostname) && (c.hostname = "::1"), la.equal(c.protocol, o, "protocol mismatch"), rs("options", c), new pe(c, u);
     }
-    function get2(input, options, callback) {
-      var wrappedRequest = wrappedProtocol.request(input, options, callback);
-      wrappedRequest.end();
-      return wrappedRequest;
+    function p(l, c, u) {
+      var d = i.request(l, c, u);
+      return d.end(), d;
     }
-    Object.defineProperties(wrappedProtocol, {
-      request: { value: request, configurable: true, enumerable: true, writable: true },
-      get: { value: get2, configurable: true, enumerable: true, writable: true }
+    Object.defineProperties(i, {
+      request: { value: r, configurable: !0, enumerable: !0, writable: !0 },
+      get: { value: p, configurable: !0, enumerable: !0, writable: !0 }
     });
-  });
-  return exports;
+  }), n;
 }
-function noop() {
+function ps() {
 }
-function parseUrl(input) {
-  var parsed;
-  if (useNativeURL) {
-    parsed = new URL$1(input);
-  } else {
-    parsed = validateUrl(url.parse(input));
-    if (!isString(parsed.protocol)) {
-      throw new InvalidUrlError({ input });
-    }
-  }
-  return parsed;
+function fa(e) {
+  var n;
+  if (ua)
+    n = new nn(e);
+  else if (n = ls(un.parse(e)), !Oe(n.protocol))
+    throw new Dt({ input: e });
+  return n;
 }
-function resolveUrl(relative, base) {
-  return useNativeURL ? new URL$1(relative, base) : parseUrl(url.resolve(base, relative));
+function Pp(e, n) {
+  return ua ? new nn(e, n) : fa(un.resolve(n, e));
 }
-function validateUrl(input) {
-  if (/^\[/.test(input.hostname) && !/^\[[:0-9a-f]+\]$/i.test(input.hostname)) {
-    throw new InvalidUrlError({ input: input.href || input });
-  }
-  if (/^\[/.test(input.host) && !/^\[[:0-9a-f]+\](:\d+)?$/i.test(input.host)) {
-    throw new InvalidUrlError({ input: input.href || input });
-  }
-  return input;
+function ls(e) {
+  if (/^\[/.test(e.hostname) && !/^\[[:0-9a-f]+\]$/i.test(e.hostname))
+    throw new Dt({ input: e.href || e });
+  if (/^\[/.test(e.host) && !/^\[[:0-9a-f]+\](:\d+)?$/i.test(e.host))
+    throw new Dt({ input: e.href || e });
+  return e;
 }
-function spreadUrlObject(urlObject, target) {
-  var spread2 = target || {};
-  for (var key of preservedUrlFields) {
-    spread2[key] = urlObject[key];
-  }
-  if (spread2.hostname.startsWith("[")) {
-    spread2.hostname = spread2.hostname.slice(1, -1);
-  }
-  if (spread2.port !== "") {
-    spread2.port = Number(spread2.port);
-  }
-  spread2.path = spread2.search ? spread2.pathname + spread2.search : spread2.pathname;
-  return spread2;
+function Ft(e, n) {
+  var t = n || {};
+  for (var a of Ap)
+    t[a] = e[a];
+  return t.hostname.startsWith("[") && (t.hostname = t.hostname.slice(1, -1)), t.port !== "" && (t.port = Number(t.port)), t.path = t.search ? t.pathname + t.search : t.pathname, t;
 }
-function removeMatchingHeaders(regex, headers) {
-  var lastValue;
-  for (var header in headers) {
-    if (regex.test(header)) {
-      lastValue = headers[header];
-      delete headers[header];
-    }
-  }
-  return lastValue === null || typeof lastValue === "undefined" ? void 0 : String(lastValue).trim();
+function wt(e, n) {
+  var t;
+  for (var a in n)
+    e.test(a) && (t = n[a], delete n[a]);
+  return t === null || typeof t > "u" ? void 0 : String(t).trim();
 }
-function createErrorType(code, message, baseClass) {
-  function CustomError(properties) {
-    if (isFunction$1(Error.captureStackTrace)) {
-      Error.captureStackTrace(this, this.constructor);
-    }
-    Object.assign(this, properties || {});
-    this.code = code;
-    this.message = this.cause ? message + ": " + this.cause.message : message;
+function dn(e, n, t) {
+  function a(o) {
+    Le(Error.captureStackTrace) && Error.captureStackTrace(this, this.constructor), Object.assign(this, o || {}), this.code = e, this.message = this.cause ? n + ": " + this.cause.message : n;
   }
-  CustomError.prototype = new (baseClass || Error)();
-  Object.defineProperties(CustomError.prototype, {
+  return a.prototype = new (t || Error)(), Object.defineProperties(a.prototype, {
     constructor: {
-      value: CustomError,
-      enumerable: false
+      value: a,
+      enumerable: !1
     },
     name: {
-      value: "Error [" + code + "]",
-      enumerable: false
+      value: "Error [" + e + "]",
+      enumerable: !1
     }
-  });
-  return CustomError;
+  }), a;
 }
-function destroyRequest(request, error) {
-  for (var event of events) {
-    request.removeListener(event, eventHandlers[event]);
-  }
-  request.on("error", noop);
-  request.destroy(error);
+function xa(e, n) {
+  for (var t of da)
+    e.removeListener(t, ma[t]);
+  e.on("error", ps), e.destroy(n);
 }
-function isSubdomain(subdomain, domain) {
-  assert(isString(subdomain) && isString(domain));
-  var dot = subdomain.length - domain.length - 1;
-  return dot > 0 && subdomain[dot] === "." && subdomain.endsWith(domain);
+function Lp(e, n) {
+  la(Oe(e) && Oe(n));
+  var t = e.length - n.length - 1;
+  return t > 0 && e[t] === "." && e.endsWith(n);
 }
-function isArray(value) {
-  return value instanceof Array;
+function Np(e) {
+  return e instanceof Array;
 }
-function isString(value) {
-  return typeof value === "string" || value instanceof String;
+function Oe(e) {
+  return typeof e == "string" || e instanceof String;
 }
-function isFunction$1(value) {
-  return typeof value === "function";
+function Le(e) {
+  return typeof e == "function";
 }
-function isBuffer(value) {
-  return typeof value === "object" && "length" in value;
+function Dp(e) {
+  return typeof e == "object" && "length" in e;
 }
-function isURL(value) {
-  return URL$1 && value instanceof URL$1;
+function Ip(e) {
+  return nn && e instanceof nn;
 }
-function escapeRegex(regex) {
-  return regex.replace(/[\]\\/()*+?.$]/g, "\\$&");
+function Fp(e) {
+  return e.replace(/[\]\\/()*+?.$]/g, "\\$&");
 }
-followRedirects$1.exports = wrap({ http, https });
-followRedirects$1.exports.wrap = wrap;
-var followRedirectsExports = followRedirects$1.exports;
-const followRedirects = /* @__PURE__ */ getDefaultExportFromCjs(followRedirectsExports);
-const VERSION$1 = "1.16.0";
-function parseProtocol(url2) {
-  const match = /^([-+\w]{1,25}):(?:\/\/)?/.exec(url2);
-  return match && match[1] || "";
+ca.exports = cs({ http: Ep, https: Sp });
+ca.exports.wrap = cs;
+var Up = ca.exports;
+const Bp = /* @__PURE__ */ Do(Up), tn = "1.16.0";
+function us(e) {
+  const n = /^([-+\w]{1,25}):(?:\/\/)?/.exec(e);
+  return n && n[1] || "";
 }
-const DATA_URL_PATTERN = /^(?:([^;]+);)?(?:[^;]+;)?(base64|),([\s\S]*)$/;
-function fromDataURI(uri2, asBlob, options) {
-  const _Blob = options && options.Blob || platform.classes.Blob;
-  const protocol = parseProtocol(uri2);
-  if (asBlob === void 0 && _Blob) {
-    asBlob = true;
-  }
-  if (protocol === "data") {
-    uri2 = protocol.length ? uri2.slice(protocol.length + 1) : uri2;
-    const match = DATA_URL_PATTERN.exec(uri2);
-    if (!match) {
-      throw new AxiosError$1("Invalid URL", AxiosError$1.ERR_INVALID_URL);
+const zp = /^(?:([^;]+);)?(?:[^;]+;)?(base64|),([\s\S]*)$/;
+function qp(e, n, t) {
+  const a = t && t.Blob || H.classes.Blob, o = us(e);
+  if (n === void 0 && a && (n = !0), o === "data") {
+    e = o.length ? e.slice(o.length + 1) : e;
+    const s = zp.exec(e);
+    if (!s)
+      throw new g("Invalid URL", g.ERR_INVALID_URL);
+    const i = s[1], r = s[2], p = s[3], l = Buffer.from(decodeURIComponent(p), r ? "base64" : "utf8");
+    if (n) {
+      if (!a)
+        throw new g("Blob is not supported", g.ERR_NOT_SUPPORT);
+      return new a([l], { type: i });
     }
-    const mime2 = match[1];
-    const isBase64 = match[2];
-    const body = match[3];
-    const buffer = Buffer.from(decodeURIComponent(body), isBase64 ? "base64" : "utf8");
-    if (asBlob) {
-      if (!_Blob) {
-        throw new AxiosError$1("Blob is not supported", AxiosError$1.ERR_NOT_SUPPORT);
-      }
-      return new _Blob([buffer], { type: mime2 });
-    }
-    return buffer;
+    return l;
   }
-  throw new AxiosError$1("Unsupported protocol " + protocol, AxiosError$1.ERR_NOT_SUPPORT);
+  throw new g("Unsupported protocol " + o, g.ERR_NOT_SUPPORT);
 }
-const kInternals = Symbol("internals");
-class AxiosTransformStream extends stream.Transform {
-  constructor(options) {
-    options = utils$1.toFlatObject(
-      options,
+const kt = Symbol("internals");
+class no extends te.Transform {
+  constructor(n) {
+    n = m.toFlatObject(
+      n,
       {
         maxRate: 0,
         chunkSize: 64 * 1024,
@@ -15157,1415 +13622,908 @@ class AxiosTransformStream extends stream.Transform {
         samplesCount: 15
       },
       null,
-      (prop, source) => {
-        return !utils$1.isUndefined(source[prop]);
-      }
-    );
-    super({
-      readableHighWaterMark: options.chunkSize
+      (a, o) => !m.isUndefined(o[a])
+    ), super({
+      readableHighWaterMark: n.chunkSize
     });
-    const internals = this[kInternals] = {
-      timeWindow: options.timeWindow,
-      chunkSize: options.chunkSize,
-      maxRate: options.maxRate,
-      minChunkSize: options.minChunkSize,
+    const t = this[kt] = {
+      timeWindow: n.timeWindow,
+      chunkSize: n.chunkSize,
+      maxRate: n.maxRate,
+      minChunkSize: n.minChunkSize,
       bytesSeen: 0,
-      isCaptured: false,
+      isCaptured: !1,
       notifiedBytesLoaded: 0,
       ts: Date.now(),
       bytes: 0,
       onReadCallback: null
     };
-    this.on("newListener", (event) => {
-      if (event === "progress") {
-        if (!internals.isCaptured) {
-          internals.isCaptured = true;
-        }
-      }
+    this.on("newListener", (a) => {
+      a === "progress" && (t.isCaptured || (t.isCaptured = !0));
     });
   }
-  _read(size) {
-    const internals = this[kInternals];
-    if (internals.onReadCallback) {
-      internals.onReadCallback();
-    }
-    return super._read(size);
+  _read(n) {
+    const t = this[kt];
+    return t.onReadCallback && t.onReadCallback(), super._read(n);
   }
-  _transform(chunk, encoding, callback) {
-    const internals = this[kInternals];
-    const maxRate = internals.maxRate;
-    const readableHighWaterMark = this.readableHighWaterMark;
-    const timeWindow = internals.timeWindow;
-    const divider = 1e3 / timeWindow;
-    const bytesThreshold = maxRate / divider;
-    const minChunkSize = internals.minChunkSize !== false ? Math.max(internals.minChunkSize, bytesThreshold * 0.01) : 0;
-    const pushChunk = (_chunk, _callback) => {
-      const bytes = Buffer.byteLength(_chunk);
-      internals.bytesSeen += bytes;
-      internals.bytes += bytes;
-      internals.isCaptured && this.emit("progress", internals.bytesSeen);
-      if (this.push(_chunk)) {
-        process.nextTick(_callback);
-      } else {
-        internals.onReadCallback = () => {
-          internals.onReadCallback = null;
-          process.nextTick(_callback);
-        };
+  _transform(n, t, a) {
+    const o = this[kt], s = o.maxRate, i = this.readableHighWaterMark, r = o.timeWindow, p = 1e3 / r, l = s / p, c = o.minChunkSize !== !1 ? Math.max(o.minChunkSize, l * 0.01) : 0, u = (f, b) => {
+      const x = Buffer.byteLength(f);
+      o.bytesSeen += x, o.bytes += x, o.isCaptured && this.emit("progress", o.bytesSeen), this.push(f) ? process.nextTick(b) : o.onReadCallback = () => {
+        o.onReadCallback = null, process.nextTick(b);
+      };
+    }, d = (f, b) => {
+      const x = Buffer.byteLength(f);
+      let v = null, h = i, w, _ = 0;
+      if (s) {
+        const k = Date.now();
+        (!o.ts || (_ = k - o.ts) >= r) && (o.ts = k, w = l - o.bytes, o.bytes = w < 0 ? -w : 0, _ = 0), w = l - o.bytes;
       }
-    };
-    const transformChunk = (_chunk, _callback) => {
-      const chunkSize = Buffer.byteLength(_chunk);
-      let chunkRemainder = null;
-      let maxChunkSize = readableHighWaterMark;
-      let bytesLeft;
-      let passed = 0;
-      if (maxRate) {
-        const now = Date.now();
-        if (!internals.ts || (passed = now - internals.ts) >= timeWindow) {
-          internals.ts = now;
-          bytesLeft = bytesThreshold - internals.bytes;
-          internals.bytes = bytesLeft < 0 ? -bytesLeft : 0;
-          passed = 0;
-        }
-        bytesLeft = bytesThreshold - internals.bytes;
-      }
-      if (maxRate) {
-        if (bytesLeft <= 0) {
+      if (s) {
+        if (w <= 0)
           return setTimeout(() => {
-            _callback(null, _chunk);
-          }, timeWindow - passed);
-        }
-        if (bytesLeft < maxChunkSize) {
-          maxChunkSize = bytesLeft;
-        }
+            b(null, f);
+          }, r - _);
+        w < h && (h = w);
       }
-      if (maxChunkSize && chunkSize > maxChunkSize && chunkSize - maxChunkSize > minChunkSize) {
-        chunkRemainder = _chunk.subarray(maxChunkSize);
-        _chunk = _chunk.subarray(0, maxChunkSize);
-      }
-      pushChunk(
-        _chunk,
-        chunkRemainder ? () => {
-          process.nextTick(_callback, null, chunkRemainder);
-        } : _callback
+      h && x > h && x - h > c && (v = f.subarray(h), f = f.subarray(0, h)), u(
+        f,
+        v ? () => {
+          process.nextTick(b, null, v);
+        } : b
       );
     };
-    transformChunk(chunk, function transformNextChunk(err, _chunk) {
-      if (err) {
-        return callback(err);
-      }
-      if (_chunk) {
-        transformChunk(_chunk, transformNextChunk);
-      } else {
-        callback(null);
-      }
+    d(n, function f(b, x) {
+      if (b)
+        return a(b);
+      x ? d(x, f) : a(null);
     });
   }
 }
-const { asyncIterator } = Symbol;
-const readBlob = async function* (blob) {
-  if (blob.stream) {
-    yield* blob.stream();
-  } else if (blob.arrayBuffer) {
-    yield await blob.arrayBuffer();
-  } else if (blob[asyncIterator]) {
-    yield* blob[asyncIterator]();
-  } else {
-    yield blob;
-  }
-};
-const BOUNDARY_ALPHABET = platform.ALPHABET.ALPHA_DIGIT + "-_";
-const textEncoder = typeof TextEncoder === "function" ? new TextEncoder() : new require$$1.TextEncoder();
-const CRLF = "\r\n";
-const CRLF_BYTES = textEncoder.encode(CRLF);
-const CRLF_BYTES_COUNT = 2;
-class FormDataPart {
-  constructor(name, value) {
-    const { escapeName } = this.constructor;
-    const isStringValue = utils$1.isString(value);
-    let headers = `Content-Disposition: form-data; name="${escapeName(name)}"${!isStringValue && value.name ? `; filename="${escapeName(value.name)}"` : ""}${CRLF}`;
-    if (isStringValue) {
-      value = textEncoder.encode(String(value).replace(/\r?\n|\r\n?/g, CRLF));
-    } else {
-      const safeType = String(value.type || "application/octet-stream").replace(/[\r\n]/g, "");
-      headers += `Content-Type: ${safeType}${CRLF}`;
+const { asyncIterator: to } = Symbol, ds = async function* (e) {
+  e.stream ? yield* e.stream() : e.arrayBuffer ? yield await e.arrayBuffer() : e[to] ? yield* e[to]() : yield e;
+}, $p = H.ALPHABET.ALPHA_DIGIT + "-_", an = typeof TextEncoder == "function" ? new TextEncoder() : new De.TextEncoder(), Te = `\r
+`, Mp = an.encode(Te), Hp = 2;
+class Wp {
+  constructor(n, t) {
+    const { escapeName: a } = this.constructor, o = m.isString(t);
+    let s = `Content-Disposition: form-data; name="${a(n)}"${!o && t.name ? `; filename="${a(t.name)}"` : ""}${Te}`;
+    if (o)
+      t = an.encode(String(t).replace(/\r?\n|\r\n?/g, Te));
+    else {
+      const i = String(t.type || "application/octet-stream").replace(/[\r\n]/g, "");
+      s += `Content-Type: ${i}${Te}`;
     }
-    this.headers = textEncoder.encode(headers + CRLF);
-    this.contentLength = isStringValue ? value.byteLength : value.size;
-    this.size = this.headers.byteLength + this.contentLength + CRLF_BYTES_COUNT;
-    this.name = name;
-    this.value = value;
+    this.headers = an.encode(s + Te), this.contentLength = o ? t.byteLength : t.size, this.size = this.headers.byteLength + this.contentLength + Hp, this.name = n, this.value = t;
   }
   async *encode() {
     yield this.headers;
-    const { value } = this;
-    if (utils$1.isTypedArray(value)) {
-      yield value;
-    } else {
-      yield* readBlob(value);
-    }
-    yield CRLF_BYTES;
+    const { value: n } = this;
+    m.isTypedArray(n) ? yield n : yield* ds(n), yield Mp;
   }
-  static escapeName(name) {
-    return String(name).replace(
+  static escapeName(n) {
+    return String(n).replace(
       /[\r\n"]/g,
-      (match) => ({
+      (t) => ({
         "\r": "%0D",
         "\n": "%0A",
         '"': "%22"
-      })[match]
+      })[t]
     );
   }
 }
-const formDataToStream = (form, headersHandler, options) => {
+const Kp = (e, n, t) => {
   const {
-    tag = "form-data-boundary",
-    size = 25,
-    boundary = tag + "-" + platform.generateString(size, BOUNDARY_ALPHABET)
-  } = options || {};
-  if (!utils$1.isFormData(form)) {
+    tag: a = "form-data-boundary",
+    size: o = 25,
+    boundary: s = a + "-" + H.generateString(o, $p)
+  } = t || {};
+  if (!m.isFormData(e))
     throw TypeError("FormData instance required");
-  }
-  if (boundary.length < 1 || boundary.length > 70) {
+  if (s.length < 1 || s.length > 70)
     throw Error("boundary must be 1-70 characters long");
-  }
-  const boundaryBytes = textEncoder.encode("--" + boundary + CRLF);
-  const footerBytes = textEncoder.encode("--" + boundary + "--" + CRLF);
-  let contentLength = footerBytes.byteLength;
-  const parts = Array.from(form.entries()).map(([name, value]) => {
-    const part = new FormDataPart(name, value);
-    contentLength += part.size;
-    return part;
+  const i = an.encode("--" + s + Te), r = an.encode("--" + s + "--" + Te);
+  let p = r.byteLength;
+  const l = Array.from(e.entries()).map(([u, d]) => {
+    const f = new Wp(u, d);
+    return p += f.size, f;
   });
-  contentLength += boundaryBytes.byteLength * parts.length;
-  contentLength = utils$1.toFiniteNumber(contentLength);
-  const computedHeaders = {
-    "Content-Type": `multipart/form-data; boundary=${boundary}`
+  p += i.byteLength * l.length, p = m.toFiniteNumber(p);
+  const c = {
+    "Content-Type": `multipart/form-data; boundary=${s}`
   };
-  if (Number.isFinite(contentLength)) {
-    computedHeaders["Content-Length"] = contentLength;
-  }
-  headersHandler && headersHandler(computedHeaders);
-  return Readable.from(
+  return Number.isFinite(p) && (c["Content-Length"] = p), n && n(c), qs.from(
     async function* () {
-      for (const part of parts) {
-        yield boundaryBytes;
-        yield* part.encode();
-      }
-      yield footerBytes;
+      for (const u of l)
+        yield i, yield* u.encode();
+      yield r;
     }()
   );
 };
-class ZlibHeaderTransformStream extends stream.Transform {
-  __transform(chunk, encoding, callback) {
-    this.push(chunk);
-    callback();
+class Gp extends te.Transform {
+  __transform(n, t, a) {
+    this.push(n), a();
   }
-  _transform(chunk, encoding, callback) {
-    if (chunk.length !== 0) {
-      this._transform = this.__transform;
-      if (chunk[0] !== 120) {
-        const header = Buffer.alloc(2);
-        header[0] = 120;
-        header[1] = 156;
-        this.push(header, encoding);
-      }
+  _transform(n, t, a) {
+    if (n.length !== 0 && (this._transform = this.__transform, n[0] !== 120)) {
+      const o = Buffer.alloc(2);
+      o[0] = 120, o[1] = 156, this.push(o, t);
     }
-    this.__transform(chunk, encoding, callback);
+    this.__transform(n, t, a);
   }
 }
-const callbackify = (fn, reducer) => {
-  return utils$1.isAsyncFn(fn) ? function(...args) {
-    const cb = args.pop();
-    fn.apply(this, args).then((value) => {
-      try {
-        reducer ? cb(null, ...reducer(value)) : cb(null, value);
-      } catch (err) {
-        cb(err);
-      }
-    }, cb);
-  } : fn;
-};
-const LOOPBACK_HOSTNAMES = /* @__PURE__ */ new Set(["localhost"]);
-const isIPv4Loopback = (host) => {
-  const parts = host.split(".");
-  if (parts.length !== 4) return false;
-  if (parts[0] !== "127") return false;
-  return parts.every((p) => /^\d+$/.test(p) && Number(p) >= 0 && Number(p) <= 255);
-};
-const isIPv6Loopback = (host) => {
-  if (host === "::1") return true;
-  const v4MappedDotted = host.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/i);
-  if (v4MappedDotted) return isIPv4Loopback(v4MappedDotted[1]);
-  const v4MappedHex = host.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/i);
-  if (v4MappedHex) {
-    const high = parseInt(v4MappedHex[1], 16);
-    return high >= 32512 && high <= 32767;
-  }
-  const groups = host.split(":");
-  if (groups.length === 8) {
-    for (let i = 0; i < 7; i++) {
-      if (!/^0+$/.test(groups[i])) return false;
+const Jp = (e, n) => m.isAsyncFn(e) ? function(...t) {
+  const a = t.pop();
+  e.apply(this, t).then((o) => {
+    try {
+      n ? a(null, ...n(o)) : a(null, o);
+    } catch (s) {
+      a(s);
     }
-    return /^0*1$/.test(groups[7]);
+  }, a);
+} : e, Vp = /* @__PURE__ */ new Set(["localhost"]), ms = (e) => {
+  const n = e.split(".");
+  return n.length !== 4 || n[0] !== "127" ? !1 : n.every((t) => /^\d+$/.test(t) && Number(t) >= 0 && Number(t) <= 255);
+}, Xp = (e) => {
+  if (e === "::1") return !0;
+  const n = e.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/i);
+  if (n) return ms(n[1]);
+  const t = e.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/i);
+  if (t) {
+    const o = parseInt(t[1], 16);
+    return o >= 32512 && o <= 32767;
   }
-  return false;
-};
-const isLoopback = (host) => {
-  if (!host) return false;
-  if (LOOPBACK_HOSTNAMES.has(host)) return true;
-  if (isIPv4Loopback(host)) return true;
-  return isIPv6Loopback(host);
-};
-const DEFAULT_PORTS = {
+  const a = e.split(":");
+  if (a.length === 8) {
+    for (let o = 0; o < 7; o++)
+      if (!/^0+$/.test(a[o])) return !1;
+    return /^0*1$/.test(a[7]);
+  }
+  return !1;
+}, ao = (e) => e ? Vp.has(e) || ms(e) ? !0 : Xp(e) : !1, Yp = {
   http: 80,
   https: 443,
   ws: 80,
   wss: 443,
   ftp: 21
-};
-const parseNoProxyEntry = (entry) => {
-  let entryHost = entry;
-  let entryPort = 0;
-  if (entryHost.charAt(0) === "[") {
-    const bracketIndex = entryHost.indexOf("]");
-    if (bracketIndex !== -1) {
-      const host = entryHost.slice(1, bracketIndex);
-      const rest = entryHost.slice(bracketIndex + 1);
-      if (rest.charAt(0) === ":" && /^\d+$/.test(rest.slice(1))) {
-        entryPort = Number.parseInt(rest.slice(1), 10);
-      }
-      return [host, entryPort];
+}, Zp = (e) => {
+  let n = e, t = 0;
+  if (n.charAt(0) === "[") {
+    const s = n.indexOf("]");
+    if (s !== -1) {
+      const i = n.slice(1, s), r = n.slice(s + 1);
+      return r.charAt(0) === ":" && /^\d+$/.test(r.slice(1)) && (t = Number.parseInt(r.slice(1), 10)), [i, t];
     }
   }
-  const firstColon = entryHost.indexOf(":");
-  const lastColon = entryHost.lastIndexOf(":");
-  if (firstColon !== -1 && firstColon === lastColon && /^\d+$/.test(entryHost.slice(lastColon + 1))) {
-    entryPort = Number.parseInt(entryHost.slice(lastColon + 1), 10);
-    entryHost = entryHost.slice(0, lastColon);
+  const a = n.indexOf(":"), o = n.lastIndexOf(":");
+  return a !== -1 && a === o && /^\d+$/.test(n.slice(o + 1)) && (t = Number.parseInt(n.slice(o + 1), 10), n = n.slice(0, o)), [n, t];
+}, Qp = /^(?:::|(?:0{1,4}:){1,4}:|(?:0{1,4}:){5})ffff:(\d+\.\d+\.\d+\.\d+)$/i, el = /^(?:::|(?:0{1,4}:){1,4}:|(?:0{1,4}:){5})ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/i, nl = (e) => {
+  if (typeof e != "string" || e.indexOf(":") === -1) return e;
+  const n = e.match(Qp);
+  if (n) return n[1];
+  const t = e.match(el);
+  if (t) {
+    const a = parseInt(t[1], 16), o = parseInt(t[2], 16);
+    return `${a >> 8}.${a & 255}.${o >> 8}.${o & 255}`;
   }
-  return [entryHost, entryPort];
-};
-const IPV4_MAPPED_DOTTED_RE = /^(?:::|(?:0{1,4}:){1,4}:|(?:0{1,4}:){5})ffff:(\d+\.\d+\.\d+\.\d+)$/i;
-const IPV4_MAPPED_HEX_RE = /^(?:::|(?:0{1,4}:){1,4}:|(?:0{1,4}:){5})ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/i;
-const unmapIPv4MappedIPv6 = (host) => {
-  if (typeof host !== "string" || host.indexOf(":") === -1) return host;
-  const dotted = host.match(IPV4_MAPPED_DOTTED_RE);
-  if (dotted) return dotted[1];
-  const hex = host.match(IPV4_MAPPED_HEX_RE);
-  if (hex) {
-    const high = parseInt(hex[1], 16);
-    const low = parseInt(hex[2], 16);
-    return `${high >> 8}.${high & 255}.${low >> 8}.${low & 255}`;
-  }
-  return host;
-};
-const normalizeNoProxyHost = (hostname) => {
-  if (!hostname) {
-    return hostname;
-  }
-  if (hostname.charAt(0) === "[" && hostname.charAt(hostname.length - 1) === "]") {
-    hostname = hostname.slice(1, -1);
-  }
-  return unmapIPv4MappedIPv6(hostname.replace(/\.+$/, ""));
-};
-function shouldBypassProxy(location) {
-  let parsed;
+  return e;
+}, oo = (e) => e && (e.charAt(0) === "[" && e.charAt(e.length - 1) === "]" && (e = e.slice(1, -1)), nl(e.replace(/\.+$/, "")));
+function tl(e) {
+  let n;
   try {
-    parsed = new URL(location);
-  } catch (_err) {
-    return false;
+    n = new URL(e);
+  } catch {
+    return !1;
   }
-  const noProxy = (process.env.no_proxy || process.env.NO_PROXY || "").toLowerCase();
-  if (!noProxy) {
-    return false;
-  }
-  if (noProxy === "*") {
-    return true;
-  }
-  const port = Number.parseInt(parsed.port, 10) || DEFAULT_PORTS[parsed.protocol.split(":", 1)[0]] || 0;
-  const hostname = normalizeNoProxyHost(parsed.hostname.toLowerCase());
-  return noProxy.split(/[\s,]+/).some((entry) => {
-    if (!entry) {
-      return false;
-    }
-    let [entryHost, entryPort] = parseNoProxyEntry(entry);
-    entryHost = normalizeNoProxyHost(entryHost);
-    if (!entryHost) {
-      return false;
-    }
-    if (entryPort && entryPort !== port) {
-      return false;
-    }
-    if (entryHost.charAt(0) === "*") {
-      entryHost = entryHost.slice(1);
-    }
-    if (entryHost.charAt(0) === ".") {
-      return hostname.endsWith(entryHost);
-    }
-    return hostname === entryHost || isLoopback(hostname) && isLoopback(entryHost);
+  const t = (process.env.no_proxy || process.env.NO_PROXY || "").toLowerCase();
+  if (!t)
+    return !1;
+  if (t === "*")
+    return !0;
+  const a = Number.parseInt(n.port, 10) || Yp[n.protocol.split(":", 1)[0]] || 0, o = oo(n.hostname.toLowerCase());
+  return t.split(/[\s,]+/).some((s) => {
+    if (!s)
+      return !1;
+    let [i, r] = Zp(s);
+    return i = oo(i), !i || r && r !== a ? !1 : (i.charAt(0) === "*" && (i = i.slice(1)), i.charAt(0) === "." ? o.endsWith(i) : o === i || ao(o) && ao(i));
   });
 }
-function speedometer(samplesCount, min2) {
-  samplesCount = samplesCount || 10;
-  const bytes = new Array(samplesCount);
-  const timestamps = new Array(samplesCount);
-  let head = 0;
-  let tail = 0;
-  let firstSampleTS;
-  min2 = min2 !== void 0 ? min2 : 1e3;
-  return function push(chunkLength) {
-    const now = Date.now();
-    const startedAt = timestamps[tail];
-    if (!firstSampleTS) {
-      firstSampleTS = now;
-    }
-    bytes[head] = chunkLength;
-    timestamps[head] = now;
-    let i = tail;
-    let bytesCount = 0;
-    while (i !== head) {
-      bytesCount += bytes[i++];
-      i = i % samplesCount;
-    }
-    head = (head + 1) % samplesCount;
-    if (head === tail) {
-      tail = (tail + 1) % samplesCount;
-    }
-    if (now - firstSampleTS < min2) {
+function al(e, n) {
+  e = e || 10;
+  const t = new Array(e), a = new Array(e);
+  let o = 0, s = 0, i;
+  return n = n !== void 0 ? n : 1e3, function(p) {
+    const l = Date.now(), c = a[s];
+    i || (i = l), t[o] = p, a[o] = l;
+    let u = s, d = 0;
+    for (; u !== o; )
+      d += t[u++], u = u % e;
+    if (o = (o + 1) % e, o === s && (s = (s + 1) % e), l - i < n)
       return;
-    }
-    const passed = startedAt && now - startedAt;
-    return passed ? Math.round(bytesCount * 1e3 / passed) : void 0;
+    const f = c && l - c;
+    return f ? Math.round(d * 1e3 / f) : void 0;
   };
 }
-function throttle(fn, freq) {
-  let timestamp = 0;
-  let threshold = 1e3 / freq;
-  let lastArgs;
-  let timer;
-  const invoke = (args, now = Date.now()) => {
-    timestamp = now;
-    lastArgs = null;
-    if (timer) {
-      clearTimeout(timer);
-      timer = null;
-    }
-    fn(...args);
+function ol(e, n) {
+  let t = 0, a = 1e3 / n, o, s;
+  const i = (l, c = Date.now()) => {
+    t = c, o = null, s && (clearTimeout(s), s = null), e(...l);
   };
-  const throttled = (...args) => {
-    const now = Date.now();
-    const passed = now - timestamp;
-    if (passed >= threshold) {
-      invoke(args, now);
-    } else {
-      lastArgs = args;
-      if (!timer) {
-        timer = setTimeout(() => {
-          timer = null;
-          invoke(lastArgs);
-        }, threshold - passed);
-      }
-    }
-  };
-  const flush = () => lastArgs && invoke(lastArgs);
-  return [throttled, flush];
+  return [(...l) => {
+    const c = Date.now(), u = c - t;
+    u >= a ? i(l, c) : (o = l, s || (s = setTimeout(() => {
+      s = null, i(o);
+    }, a - u)));
+  }, () => o && i(o)];
 }
-const progressEventReducer = (listener, isDownloadStream, freq = 3) => {
-  let bytesNotified = 0;
-  const _speedometer = speedometer(50, 250);
-  return throttle((e) => {
-    const rawLoaded = e.loaded;
-    const total = e.lengthComputable ? e.total : void 0;
-    const loaded = total != null ? Math.min(rawLoaded, total) : rawLoaded;
-    const progressBytes = Math.max(0, loaded - bytesNotified);
-    const rate = _speedometer(progressBytes);
-    bytesNotified = Math.max(bytesNotified, loaded);
-    const data = {
-      loaded,
-      total,
-      progress: total ? loaded / total : void 0,
-      bytes: progressBytes,
-      rate: rate ? rate : void 0,
-      estimated: rate && total ? (total - loaded) / rate : void 0,
-      event: e,
-      lengthComputable: total != null,
-      [isDownloadStream ? "download" : "upload"]: true
+const Je = (e, n, t = 3) => {
+  let a = 0;
+  const o = al(50, 250);
+  return ol((s) => {
+    const i = s.loaded, r = s.lengthComputable ? s.total : void 0, p = r != null ? Math.min(i, r) : i, l = Math.max(0, p - a), c = o(l);
+    a = Math.max(a, p);
+    const u = {
+      loaded: p,
+      total: r,
+      progress: r ? p / r : void 0,
+      bytes: l,
+      rate: c || void 0,
+      estimated: c && r ? (r - p) / c : void 0,
+      event: s,
+      lengthComputable: r != null,
+      [n ? "download" : "upload"]: !0
     };
-    listener(data);
-  }, freq);
-};
-const progressEventDecorator = (total, throttled) => {
-  const lengthComputable = total != null;
+    e(u);
+  }, t);
+}, Cn = (e, n) => {
+  const t = e != null;
   return [
-    (loaded) => throttled[0]({
-      lengthComputable,
-      total,
-      loaded
+    (a) => n[0]({
+      lengthComputable: t,
+      total: e,
+      loaded: a
     }),
-    throttled[1]
+    n[1]
   ];
-};
-const asyncDecorator = (fn) => (...args) => utils$1.asap(() => fn(...args));
-function estimateDataURLDecodedBytes(url2) {
-  if (!url2 || typeof url2 !== "string") return 0;
-  if (!url2.startsWith("data:")) return 0;
-  const comma = url2.indexOf(",");
-  if (comma < 0) return 0;
-  const meta = url2.slice(5, comma);
-  const body = url2.slice(comma + 1);
-  const isBase64 = /;base64/i.test(meta);
-  if (isBase64) {
-    let effectiveLen = body.length;
-    const len = body.length;
-    for (let i = 0; i < len; i++) {
-      if (body.charCodeAt(i) === 37 && i + 2 < len) {
-        const a = body.charCodeAt(i + 1);
-        const b = body.charCodeAt(i + 2);
-        const isHex = (a >= 48 && a <= 57 || a >= 65 && a <= 70 || a >= 97 && a <= 102) && (b >= 48 && b <= 57 || b >= 65 && b <= 70 || b >= 97 && b <= 102);
-        if (isHex) {
-          effectiveLen -= 2;
-          i += 2;
-        }
+}, On = (e) => (...n) => m.asap(() => e(...n));
+function fs(e) {
+  if (!e || typeof e != "string" || !e.startsWith("data:")) return 0;
+  const n = e.indexOf(",");
+  if (n < 0) return 0;
+  const t = e.slice(5, n), a = e.slice(n + 1);
+  if (/;base64/i.test(t)) {
+    let i = a.length;
+    const r = a.length;
+    for (let f = 0; f < r; f++)
+      if (a.charCodeAt(f) === 37 && f + 2 < r) {
+        const b = a.charCodeAt(f + 1), x = a.charCodeAt(f + 2);
+        (b >= 48 && b <= 57 || b >= 65 && b <= 70 || b >= 97 && b <= 102) && (x >= 48 && x <= 57 || x >= 65 && x <= 70 || x >= 97 && x <= 102) && (i -= 2, f += 2);
       }
-    }
-    let pad = 0;
-    let idx = len - 1;
-    const tailIsPct3D = (j) => j >= 2 && body.charCodeAt(j - 2) === 37 && // '%'
-    body.charCodeAt(j - 1) === 51 && // '3'
-    (body.charCodeAt(j) === 68 || body.charCodeAt(j) === 100);
-    if (idx >= 0) {
-      if (body.charCodeAt(idx) === 61) {
-        pad++;
-        idx--;
-      } else if (tailIsPct3D(idx)) {
-        pad++;
-        idx -= 3;
-      }
-    }
-    if (pad === 1 && idx >= 0) {
-      if (body.charCodeAt(idx) === 61) {
-        pad++;
-      } else if (tailIsPct3D(idx)) {
-        pad++;
-      }
-    }
-    const groups = Math.floor(effectiveLen / 4);
-    const bytes2 = groups * 3 - (pad || 0);
-    return bytes2 > 0 ? bytes2 : 0;
+    let p = 0, l = r - 1;
+    const c = (f) => f >= 2 && a.charCodeAt(f - 2) === 37 && // '%'
+    a.charCodeAt(f - 1) === 51 && // '3'
+    (a.charCodeAt(f) === 68 || a.charCodeAt(f) === 100);
+    l >= 0 && (a.charCodeAt(l) === 61 ? (p++, l--) : c(l) && (p++, l -= 3)), p === 1 && l >= 0 && (a.charCodeAt(l) === 61 || c(l)) && p++;
+    const d = Math.floor(i / 4) * 3 - (p || 0);
+    return d > 0 ? d : 0;
   }
-  if (typeof Buffer !== "undefined" && typeof Buffer.byteLength === "function") {
-    return Buffer.byteLength(body, "utf8");
+  if (typeof Buffer < "u" && typeof Buffer.byteLength == "function")
+    return Buffer.byteLength(a, "utf8");
+  let s = 0;
+  for (let i = 0, r = a.length; i < r; i++) {
+    const p = a.charCodeAt(i);
+    if (p < 128)
+      s += 1;
+    else if (p < 2048)
+      s += 2;
+    else if (p >= 55296 && p <= 56319 && i + 1 < r) {
+      const l = a.charCodeAt(i + 1);
+      l >= 56320 && l <= 57343 ? (s += 4, i++) : s += 3;
+    } else
+      s += 3;
   }
-  let bytes = 0;
-  for (let i = 0, len = body.length; i < len; i++) {
-    const c = body.charCodeAt(i);
-    if (c < 128) {
-      bytes += 1;
-    } else if (c < 2048) {
-      bytes += 2;
-    } else if (c >= 55296 && c <= 56319 && i + 1 < len) {
-      const next = body.charCodeAt(i + 1);
-      if (next >= 56320 && next <= 57343) {
-        bytes += 4;
-        i++;
-      } else {
-        bytes += 3;
-      }
-    } else {
-      bytes += 3;
-    }
-  }
-  return bytes;
+  return s;
 }
-const zlibOptions = {
-  flush: zlib.constants.Z_SYNC_FLUSH,
-  finishFlush: zlib.constants.Z_SYNC_FLUSH
-};
-const brotliOptions = {
-  flush: zlib.constants.BROTLI_OPERATION_FLUSH,
-  finishFlush: zlib.constants.BROTLI_OPERATION_FLUSH
-};
-const isBrotliSupported = utils$1.isFunction(zlib.createBrotliDecompress);
-const { http: httpFollow, https: httpsFollow } = followRedirects;
-const isHttps = /https:?/;
-const FORM_DATA_CONTENT_HEADERS$1 = ["content-type", "content-length"];
-function setFormDataHeaders$1(headers, formHeaders, policy) {
-  if (policy !== "content-only") {
-    headers.set(formHeaders);
+const so = {
+  flush: Se.constants.Z_SYNC_FLUSH,
+  finishFlush: Se.constants.Z_SYNC_FLUSH
+}, sl = {
+  flush: Se.constants.BROTLI_OPERATION_FLUSH,
+  finishFlush: Se.constants.BROTLI_OPERATION_FLUSH
+}, io = m.isFunction(Se.createBrotliDecompress), { http: il, https: rl } = Bp, cl = /https:?/, pl = ["content-type", "content-length"];
+function ll(e, n, t) {
+  if (t !== "content-only") {
+    e.set(n);
     return;
   }
-  Object.entries(formHeaders).forEach(([key, val]) => {
-    if (FORM_DATA_CONTENT_HEADERS$1.includes(key.toLowerCase())) {
-      headers.set(key, val);
-    }
+  Object.entries(n).forEach(([a, o]) => {
+    pl.includes(a.toLowerCase()) && e.set(a, o);
   });
 }
-const kAxiosSocketListener = Symbol("axios.http.socketListener");
-const kAxiosCurrentReq = Symbol("axios.http.currentReq");
-const supportedProtocols = platform.protocols.map((protocol) => {
-  return protocol + ":";
-});
-const decodeURIComponentSafe = (value) => {
-  if (!utils$1.isString(value)) {
-    return value;
-  }
+const ro = Symbol("axios.http.socketListener"), bn = Symbol("axios.http.currentReq"), co = H.protocols.map((e) => e + ":"), po = (e) => {
+  if (!m.isString(e))
+    return e;
   try {
-    return decodeURIComponent(value);
-  } catch (error) {
-    return value;
+    return decodeURIComponent(e);
+  } catch {
+    return e;
   }
-};
-const flushOnFinish = (stream2, [throttled, flush]) => {
-  stream2.on("end", flush).on("error", flush);
-  return throttled;
-};
-class Http2Sessions {
+}, lo = (e, [n, t]) => (e.on("end", t).on("error", t), n);
+class ul {
   constructor() {
     this.sessions = /* @__PURE__ */ Object.create(null);
   }
-  getSession(authority, options) {
-    options = Object.assign(
+  getSession(n, t) {
+    t = Object.assign(
       {
         sessionTimeout: 1e3
       },
-      options
+      t
     );
-    let authoritySessions = this.sessions[authority];
-    if (authoritySessions) {
-      let len = authoritySessions.length;
-      for (let i = 0; i < len; i++) {
-        const [sessionHandle, sessionOptions] = authoritySessions[i];
-        if (!sessionHandle.destroyed && !sessionHandle.closed && require$$1.isDeepStrictEqual(sessionOptions, options)) {
-          return sessionHandle;
-        }
+    let a = this.sessions[n];
+    if (a) {
+      let c = a.length;
+      for (let u = 0; u < c; u++) {
+        const [d, f] = a[u];
+        if (!d.destroyed && !d.closed && De.isDeepStrictEqual(f, t))
+          return d;
       }
     }
-    const session2 = http2.connect(authority, options);
-    let removed;
-    const removeSession = () => {
-      if (removed) {
+    const o = Eo.connect(n, t);
+    let s;
+    const i = () => {
+      if (s)
         return;
-      }
-      removed = true;
-      let entries = authoritySessions, len = entries.length, i = len;
-      while (i--) {
-        if (entries[i][0] === session2) {
-          if (len === 1) {
-            delete this.sessions[authority];
-          } else {
-            entries.splice(i, 1);
-          }
-          if (!session2.closed) {
-            session2.close();
-          }
+      s = !0;
+      let c = a, u = c.length, d = u;
+      for (; d--; )
+        if (c[d][0] === o) {
+          u === 1 ? delete this.sessions[n] : c.splice(d, 1), o.closed || o.close();
           return;
         }
-      }
-    };
-    const originalRequestFn = session2.request;
-    const { sessionTimeout } = options;
-    if (sessionTimeout != null) {
-      let timer;
-      let streamsCount = 0;
-      session2.request = function() {
-        const stream2 = originalRequestFn.apply(this, arguments);
-        streamsCount++;
-        if (timer) {
-          clearTimeout(timer);
-          timer = null;
-        }
-        stream2.once("close", () => {
-          if (!--streamsCount) {
-            timer = setTimeout(() => {
-              timer = null;
-              removeSession();
-            }, sessionTimeout);
-          }
-        });
-        return stream2;
+    }, r = o.request, { sessionTimeout: p } = t;
+    if (p != null) {
+      let c, u = 0;
+      o.request = function() {
+        const d = r.apply(this, arguments);
+        return u++, c && (clearTimeout(c), c = null), d.once("close", () => {
+          --u || (c = setTimeout(() => {
+            c = null, i();
+          }, p));
+        }), d;
       };
     }
-    session2.once("close", removeSession);
-    let entry = [session2, options];
-    authoritySessions ? authoritySessions.push(entry) : authoritySessions = this.sessions[authority] = [entry];
-    return session2;
+    o.once("close", i);
+    let l = [o, t];
+    return a ? a.push(l) : a = this.sessions[n] = [l], o;
   }
 }
-const http2Sessions = new Http2Sessions();
-function dispatchBeforeRedirect(options, responseDetails, requestDetails) {
-  if (options.beforeRedirects.proxy) {
-    options.beforeRedirects.proxy(options);
-  }
-  if (options.beforeRedirects.config) {
-    options.beforeRedirects.config(options, responseDetails, requestDetails);
-  }
+const dl = new ul();
+function ml(e, n, t) {
+  e.beforeRedirects.proxy && e.beforeRedirects.proxy(e), e.beforeRedirects.config && e.beforeRedirects.config(e, n, t);
 }
-function setProxy(options, configProxy, location, isRedirect) {
-  let proxy = configProxy;
-  if (!proxy && proxy !== false) {
-    const proxyUrl = getProxyForUrl(location);
-    if (proxyUrl) {
-      if (!shouldBypassProxy(location)) {
-        proxy = new URL(proxyUrl);
-      }
-    }
+function xs(e, n, t, a) {
+  let o = n;
+  if (!o && o !== !1) {
+    const s = xp(t);
+    s && (tl(t) || (o = new URL(s)));
   }
-  if (isRedirect && options.headers) {
-    for (const name of Object.keys(options.headers)) {
-      if (name.toLowerCase() === "proxy-authorization") {
-        delete options.headers[name];
-      }
+  if (a && e.headers)
+    for (const s of Object.keys(e.headers))
+      s.toLowerCase() === "proxy-authorization" && delete e.headers[s];
+  if (o) {
+    const s = o instanceof URL, i = (f) => s || m.hasOwnProp(o, f) ? o[f] : void 0, r = i("username"), p = i("password");
+    let l = m.hasOwnProp(o, "auth") ? o.auth : void 0;
+    if (r && (l = (r || "") + ":" + (p || "")), l) {
+      const f = typeof l == "object", b = f && m.hasOwnProp(l, "username") ? l.username : void 0, x = f && m.hasOwnProp(l, "password") ? l.password : void 0;
+      if (!!(b || x))
+        l = (b || "") + ":" + (x || "");
+      else if (f)
+        throw new g("Invalid proxy authorization", g.ERR_BAD_OPTION, { proxy: o });
+      const h = Buffer.from(l, "utf8").toString("base64");
+      e.headers["Proxy-Authorization"] = "Basic " + h;
     }
-  }
-  if (proxy) {
-    const isProxyURL = proxy instanceof URL;
-    const readProxyField = (key) => isProxyURL || utils$1.hasOwnProp(proxy, key) ? proxy[key] : void 0;
-    const proxyUsername = readProxyField("username");
-    const proxyPassword = readProxyField("password");
-    let proxyAuth = utils$1.hasOwnProp(proxy, "auth") ? proxy.auth : void 0;
-    if (proxyUsername) {
-      proxyAuth = (proxyUsername || "") + ":" + (proxyPassword || "");
-    }
-    if (proxyAuth) {
-      const authIsObject = typeof proxyAuth === "object";
-      const authUsername = authIsObject && utils$1.hasOwnProp(proxyAuth, "username") ? proxyAuth.username : void 0;
-      const authPassword = authIsObject && utils$1.hasOwnProp(proxyAuth, "password") ? proxyAuth.password : void 0;
-      const validProxyAuth = Boolean(authUsername || authPassword);
-      if (validProxyAuth) {
-        proxyAuth = (authUsername || "") + ":" + (authPassword || "");
-      } else if (authIsObject) {
-        throw new AxiosError$1("Invalid proxy authorization", AxiosError$1.ERR_BAD_OPTION, { proxy });
-      }
-      const base64 = Buffer.from(proxyAuth, "utf8").toString("base64");
-      options.headers["Proxy-Authorization"] = "Basic " + base64;
-    }
-    let hasUserHostHeader = false;
-    for (const name of Object.keys(options.headers)) {
-      if (name.toLowerCase() === "host") {
-        hasUserHostHeader = true;
+    let c = !1;
+    for (const f of Object.keys(e.headers))
+      if (f.toLowerCase() === "host") {
+        c = !0;
         break;
       }
-    }
-    if (!hasUserHostHeader) {
-      options.headers.host = options.hostname + (options.port ? ":" + options.port : "");
-    }
-    const proxyHost = readProxyField("hostname") || readProxyField("host");
-    options.hostname = proxyHost;
-    options.host = proxyHost;
-    options.port = readProxyField("port");
-    options.path = location;
-    const proxyProtocol = readProxyField("protocol");
-    if (proxyProtocol) {
-      options.protocol = proxyProtocol.includes(":") ? proxyProtocol : `${proxyProtocol}:`;
-    }
+    c || (e.headers.host = e.hostname + (e.port ? ":" + e.port : ""));
+    const u = i("hostname") || i("host");
+    e.hostname = u, e.host = u, e.port = i("port"), e.path = t;
+    const d = i("protocol");
+    d && (e.protocol = d.includes(":") ? d : `${d}:`);
   }
-  options.beforeRedirects.proxy = function beforeRedirect(redirectOptions) {
-    setProxy(redirectOptions, configProxy, redirectOptions.href, true);
+  e.beforeRedirects.proxy = function(i) {
+    xs(i, n, i.href, !0);
   };
 }
-const isHttpAdapterSupported = typeof process !== "undefined" && utils$1.kindOf(process) === "process";
-const wrapAsync = (asyncExecutor) => {
-  return new Promise((resolve2, reject) => {
-    let onDone;
-    let isDone;
-    const done = (value, isRejected) => {
-      if (isDone) return;
-      isDone = true;
-      onDone && onDone(value, isRejected);
-    };
-    const _resolve = (value) => {
-      done(value);
-      resolve2(value);
-    };
-    const _reject = (reason) => {
-      done(reason, true);
-      reject(reason);
-    };
-    asyncExecutor(_resolve, _reject, (onDoneHandler) => onDone = onDoneHandler).catch(_reject);
-  });
-};
-const resolveFamily = ({ address, family }) => {
-  if (!utils$1.isString(address)) {
-    throw TypeError("address must be a string");
-  }
-  return {
-    address,
-    family: family || (address.indexOf(".") < 0 ? 6 : 4)
+const fl = typeof process < "u" && m.kindOf(process) === "process", xl = (e) => new Promise((n, t) => {
+  let a, o;
+  const s = (p, l) => {
+    o || (o = !0, a && a(p, l));
+  }, i = (p) => {
+    s(p), n(p);
+  }, r = (p) => {
+    s(p, !0), t(p);
   };
-};
-const buildAddressEntry = (address, family) => resolveFamily(utils$1.isObject(address) ? address : { address, family });
-const http2Transport = {
-  request(options, cb) {
-    const authority = options.protocol + "//" + options.hostname + ":" + (options.port || (options.protocol === "https:" ? 443 : 80));
-    const { http2Options, headers } = options;
-    const session2 = http2Sessions.getSession(authority, http2Options);
-    const { HTTP2_HEADER_SCHEME, HTTP2_HEADER_METHOD, HTTP2_HEADER_PATH, HTTP2_HEADER_STATUS } = http2.constants;
-    const http2Headers = {
-      [HTTP2_HEADER_SCHEME]: options.protocol.replace(":", ""),
-      [HTTP2_HEADER_METHOD]: options.method,
-      [HTTP2_HEADER_PATH]: options.path
+  e(i, r, (p) => a = p).catch(r);
+}), hl = ({ address: e, family: n }) => {
+  if (!m.isString(e))
+    throw TypeError("address must be a string");
+  return {
+    address: e,
+    family: n || (e.indexOf(".") < 0 ? 6 : 4)
+  };
+}, uo = (e, n) => hl(m.isObject(e) ? e : { address: e, family: n }), vl = {
+  request(e, n) {
+    const t = e.protocol + "//" + e.hostname + ":" + (e.port || (e.protocol === "https:" ? 443 : 80)), { http2Options: a, headers: o } = e, s = dl.getSession(t, a), { HTTP2_HEADER_SCHEME: i, HTTP2_HEADER_METHOD: r, HTTP2_HEADER_PATH: p, HTTP2_HEADER_STATUS: l } = Eo.constants, c = {
+      [i]: e.protocol.replace(":", ""),
+      [r]: e.method,
+      [p]: e.path
     };
-    utils$1.forEach(headers, (header, name) => {
-      name.charAt(0) !== ":" && (http2Headers[name] = header);
+    m.forEach(o, (d, f) => {
+      f.charAt(0) !== ":" && (c[f] = d);
     });
-    const req = session2.request(http2Headers);
-    req.once("response", (responseHeaders) => {
-      const response = req;
-      responseHeaders = Object.assign({}, responseHeaders);
-      const status = responseHeaders[HTTP2_HEADER_STATUS];
-      delete responseHeaders[HTTP2_HEADER_STATUS];
-      response.headers = responseHeaders;
-      response.statusCode = +status;
-      cb(response);
-    });
-    return req;
+    const u = s.request(c);
+    return u.once("response", (d) => {
+      const f = u;
+      d = Object.assign({}, d);
+      const b = d[l];
+      delete d[l], f.headers = d, f.statusCode = +b, n(f);
+    }), u;
   }
-};
-const httpAdapter = isHttpAdapterSupported && function httpAdapter2(config) {
-  return wrapAsync(async function dispatchHttpRequest(resolve$1, reject, onDone) {
-    const own2 = (key) => utils$1.hasOwnProp(config, key) ? config[key] : void 0;
-    let data = own2("data");
-    let lookup = own2("lookup");
-    let family = own2("family");
-    let httpVersion = own2("httpVersion");
-    if (httpVersion === void 0) httpVersion = 1;
-    let http2Options = own2("http2Options");
-    const responseType = own2("responseType");
-    const responseEncoding = own2("responseEncoding");
-    const method = config.method.toUpperCase();
-    let isDone;
-    let rejected = false;
-    let req;
-    let connectPhaseTimer;
-    httpVersion = +httpVersion;
-    if (Number.isNaN(httpVersion)) {
-      throw TypeError(`Invalid protocol version: '${config.httpVersion}' is not a number`);
-    }
-    if (httpVersion !== 1 && httpVersion !== 2) {
-      throw TypeError(`Unsupported protocol version '${httpVersion}'`);
-    }
-    const isHttp2 = httpVersion === 2;
-    if (lookup) {
-      const _lookup = callbackify(lookup, (value) => utils$1.isArray(value) ? value : [value]);
-      lookup = (hostname, opt, cb) => {
-        _lookup(hostname, opt, (err, arg0, arg1) => {
-          if (err) {
-            return cb(err);
-          }
-          const addresses = utils$1.isArray(arg0) ? arg0.map((addr) => buildAddressEntry(addr)) : [buildAddressEntry(arg0, arg1)];
-          opt.all ? cb(err, addresses) : cb(err, addresses[0].address, addresses[0].family);
+}, bl = fl && function(n) {
+  return xl(async function(a, o, s) {
+    const i = (E) => m.hasOwnProp(n, E) ? n[E] : void 0;
+    let r = i("data"), p = i("lookup"), l = i("family"), c = i("httpVersion");
+    c === void 0 && (c = 1);
+    let u = i("http2Options");
+    const d = i("responseType"), f = i("responseEncoding"), b = n.method.toUpperCase();
+    let x, v = !1, h, w;
+    if (c = +c, Number.isNaN(c))
+      throw TypeError(`Invalid protocol version: '${n.httpVersion}' is not a number`);
+    if (c !== 1 && c !== 2)
+      throw TypeError(`Unsupported protocol version '${c}'`);
+    const _ = c === 2;
+    if (p) {
+      const E = Jp(p, (y) => m.isArray(y) ? y : [y]);
+      p = (y, P, z) => {
+        E(y, P, (L, J, ne) => {
+          if (L)
+            return z(L);
+          const I = m.isArray(J) ? J.map((we) => uo(we)) : [uo(J, ne)];
+          P.all ? z(L, I) : z(L, I[0].address, I[0].family);
         });
       };
     }
-    const abortEmitter = new EventEmitter();
-    function abort2(reason) {
+    const k = new Ws();
+    function S(E) {
       try {
-        abortEmitter.emit(
+        k.emit(
           "abort",
-          !reason || reason.type ? new CanceledError$1(null, config, req) : reason
+          !E || E.type ? new Pe(null, n, h) : E
         );
-      } catch (err) {
-        console.warn("emit error", err);
+      } catch (y) {
+        console.warn("emit error", y);
       }
     }
-    function clearConnectPhaseTimer() {
-      if (connectPhaseTimer) {
-        clearTimeout(connectPhaseTimer);
-        connectPhaseTimer = null;
-      }
+    function R() {
+      w && (clearTimeout(w), w = null);
     }
-    function createTimeoutError() {
-      let timeoutErrorMessage = config.timeout ? "timeout of " + config.timeout + "ms exceeded" : "timeout exceeded";
-      const transitional2 = config.transitional || transitionalDefaults;
-      if (config.timeoutErrorMessage) {
-        timeoutErrorMessage = config.timeoutErrorMessage;
-      }
-      return new AxiosError$1(
-        timeoutErrorMessage,
-        transitional2.clarifyTimeoutError ? AxiosError$1.ETIMEDOUT : AxiosError$1.ECONNABORTED,
-        config,
-        req
+    function j() {
+      let E = n.timeout ? "timeout of " + n.timeout + "ms exceeded" : "timeout exceeded";
+      const y = n.transitional || qn;
+      return n.timeoutErrorMessage && (E = n.timeoutErrorMessage), new g(
+        E,
+        y.clarifyTimeoutError ? g.ETIMEDOUT : g.ECONNABORTED,
+        n,
+        h
       );
     }
-    abortEmitter.once("abort", reject);
-    const onFinished = () => {
-      clearConnectPhaseTimer();
-      if (config.cancelToken) {
-        config.cancelToken.unsubscribe(abort2);
-      }
-      if (config.signal) {
-        config.signal.removeEventListener("abort", abort2);
-      }
-      abortEmitter.removeAllListeners();
+    k.once("abort", o);
+    const D = () => {
+      R(), n.cancelToken && n.cancelToken.unsubscribe(S), n.signal && n.signal.removeEventListener("abort", S), k.removeAllListeners();
     };
-    if (config.cancelToken || config.signal) {
-      config.cancelToken && config.cancelToken.subscribe(abort2);
-      if (config.signal) {
-        config.signal.aborted ? abort2() : config.signal.addEventListener("abort", abort2);
-      }
-    }
-    onDone((response, isRejected) => {
-      isDone = true;
-      clearConnectPhaseTimer();
-      if (isRejected) {
-        rejected = true;
-        onFinished();
+    (n.cancelToken || n.signal) && (n.cancelToken && n.cancelToken.subscribe(S), n.signal && (n.signal.aborted ? S() : n.signal.addEventListener("abort", S))), s((E, y) => {
+      if (x = !0, R(), y) {
+        v = !0, D();
         return;
       }
-      const { data: data2 } = response;
-      if (data2 instanceof stream.Readable || data2 instanceof stream.Duplex) {
-        const offListeners = stream.finished(data2, () => {
-          offListeners();
-          onFinished();
+      const { data: P } = E;
+      if (P instanceof te.Readable || P instanceof te.Duplex) {
+        const z = te.finished(P, () => {
+          z(), D();
         });
-      } else {
-        onFinished();
-      }
+      } else
+        D();
     });
-    const fullPath = buildFullPath(config.baseURL, config.url, config.allowAbsoluteUrls);
-    const parsed = new URL(fullPath, platform.hasBrowserEnv ? platform.origin : void 0);
-    const protocol = parsed.protocol || supportedProtocols[0];
-    if (protocol === "data:") {
-      if (config.maxContentLength > -1) {
-        const dataUrl = String(config.url || fullPath || "");
-        const estimated = estimateDataURLDecodedBytes(dataUrl);
-        if (estimated > config.maxContentLength) {
-          return reject(
-            new AxiosError$1(
-              "maxContentLength size of " + config.maxContentLength + " exceeded",
-              AxiosError$1.ERR_BAD_RESPONSE,
-              config
+    const q = ra(n.baseURL, n.url, n.allowAbsoluteUrls), A = new URL(q, H.hasBrowserEnv ? H.origin : void 0), ae = A.protocol || co[0];
+    if (ae === "data:") {
+      if (n.maxContentLength > -1) {
+        const y = String(n.url || q || "");
+        if (fs(y) > n.maxContentLength)
+          return o(
+            new g(
+              "maxContentLength size of " + n.maxContentLength + " exceeded",
+              g.ERR_BAD_RESPONSE,
+              n
             )
           );
-        }
       }
-      let convertedData;
-      if (method !== "GET") {
-        return settle(resolve$1, reject, {
+      let E;
+      if (b !== "GET")
+        return qe(a, o, {
           status: 405,
           statusText: "method not allowed",
           headers: {},
-          config
+          config: n
         });
-      }
       try {
-        convertedData = fromDataURI(config.url, responseType === "blob", {
-          Blob: config.env && config.env.Blob
+        E = qp(n.url, d === "blob", {
+          Blob: n.env && n.env.Blob
         });
-      } catch (err) {
-        throw AxiosError$1.from(err, AxiosError$1.ERR_BAD_REQUEST, config);
+      } catch (y) {
+        throw g.from(y, g.ERR_BAD_REQUEST, n);
       }
-      if (responseType === "text") {
-        convertedData = convertedData.toString(responseEncoding);
-        if (!responseEncoding || responseEncoding === "utf8") {
-          convertedData = utils$1.stripBOM(convertedData);
-        }
-      } else if (responseType === "stream") {
-        convertedData = stream.Readable.from(convertedData);
-      }
-      return settle(resolve$1, reject, {
-        data: convertedData,
+      return d === "text" ? (E = E.toString(f), (!f || f === "utf8") && (E = m.stripBOM(E))) : d === "stream" && (E = te.Readable.from(E)), qe(a, o, {
+        data: E,
         status: 200,
         statusText: "OK",
-        headers: new AxiosHeaders$1(),
-        config
+        headers: new Q(),
+        config: n
       });
     }
-    if (supportedProtocols.indexOf(protocol) === -1) {
-      return reject(
-        new AxiosError$1("Unsupported protocol " + protocol, AxiosError$1.ERR_BAD_REQUEST, config)
+    if (co.indexOf(ae) === -1)
+      return o(
+        new g("Unsupported protocol " + ae, g.ERR_BAD_REQUEST, n)
       );
-    }
-    const headers = AxiosHeaders$1.from(config.headers).normalize();
-    headers.set("User-Agent", "axios/" + VERSION$1, false);
-    const { onUploadProgress, onDownloadProgress } = config;
-    const maxRate = config.maxRate;
-    let maxUploadRate = void 0;
-    let maxDownloadRate = void 0;
-    if (utils$1.isSpecCompliantForm(data)) {
-      const userBoundary = headers.getContentType(/boundary=([-_\w\d]{10,70})/i);
-      data = formDataToStream(
-        data,
-        (formHeaders) => {
-          headers.set(formHeaders);
+    const K = Q.from(n.headers).normalize();
+    K.set("User-Agent", "axios/" + tn, !1);
+    const { onUploadProgress: _e, onDownloadProgress: ee } = n, xe = n.maxRate;
+    let oe, de;
+    if (m.isSpecCompliantForm(r)) {
+      const E = K.getContentType(/boundary=([-_\w\d]{10,70})/i);
+      r = Kp(
+        r,
+        (y) => {
+          K.set(y);
         },
         {
-          tag: `axios-${VERSION$1}-boundary`,
-          boundary: userBoundary && userBoundary[1] || void 0
+          tag: `axios-${tn}-boundary`,
+          boundary: E && E[1] || void 0
         }
       );
-    } else if (utils$1.isFormData(data) && utils$1.isFunction(data.getHeaders) && data.getHeaders !== Object.prototype.getHeaders) {
-      setFormDataHeaders$1(headers, data.getHeaders(), own2("formDataHeaderPolicy"));
-      if (!headers.hasContentLength()) {
+    } else if (m.isFormData(r) && m.isFunction(r.getHeaders) && r.getHeaders !== Object.prototype.getHeaders) {
+      if (ll(K, r.getHeaders(), i("formDataHeaderPolicy")), !K.hasContentLength())
         try {
-          const knownLength = await require$$1.promisify(data.getLength).call(data);
-          Number.isFinite(knownLength) && knownLength >= 0 && headers.setContentLength(knownLength);
-        } catch (e) {
+          const E = await De.promisify(r.getLength).call(r);
+          Number.isFinite(E) && E >= 0 && K.setContentLength(E);
+        } catch {
         }
-      }
-    } else if (utils$1.isBlob(data) || utils$1.isFile(data)) {
-      data.size && headers.setContentType(data.type || "application/octet-stream");
-      headers.setContentLength(data.size || 0);
-      data = stream.Readable.from(readBlob(data));
-    } else if (data && !utils$1.isStream(data)) {
-      if (Buffer.isBuffer(data)) ;
-      else if (utils$1.isArrayBuffer(data)) {
-        data = Buffer.from(new Uint8Array(data));
-      } else if (utils$1.isString(data)) {
-        data = Buffer.from(data, "utf-8");
-      } else {
-        return reject(
-          new AxiosError$1(
+    } else if (m.isBlob(r) || m.isFile(r))
+      r.size && K.setContentType(r.type || "application/octet-stream"), K.setContentLength(r.size || 0), r = te.Readable.from(ds(r));
+    else if (r && !m.isStream(r)) {
+      if (!Buffer.isBuffer(r)) if (m.isArrayBuffer(r))
+        r = Buffer.from(new Uint8Array(r));
+      else if (m.isString(r))
+        r = Buffer.from(r, "utf-8");
+      else
+        return o(
+          new g(
             "Data after transformation must be a string, an ArrayBuffer, a Buffer, or a Stream",
-            AxiosError$1.ERR_BAD_REQUEST,
-            config
+            g.ERR_BAD_REQUEST,
+            n
           )
         );
-      }
-      headers.setContentLength(data.length, false);
-      if (config.maxBodyLength > -1 && data.length > config.maxBodyLength) {
-        return reject(
-          new AxiosError$1(
+      if (K.setContentLength(r.length, !1), n.maxBodyLength > -1 && r.length > n.maxBodyLength)
+        return o(
+          new g(
             "Request body larger than maxBodyLength limit",
-            AxiosError$1.ERR_BAD_REQUEST,
-            config
+            g.ERR_BAD_REQUEST,
+            n
           )
         );
-      }
     }
-    const contentLength = utils$1.toFiniteNumber(headers.getContentLength());
-    if (utils$1.isArray(maxRate)) {
-      maxUploadRate = maxRate[0];
-      maxDownloadRate = maxRate[1];
-    } else {
-      maxUploadRate = maxDownloadRate = maxRate;
-    }
-    if (data && (onUploadProgress || maxUploadRate)) {
-      if (!utils$1.isStream(data)) {
-        data = stream.Readable.from(data, { objectMode: false });
-      }
-      data = stream.pipeline(
-        [
-          data,
-          new AxiosTransformStream({
-            maxRate: utils$1.toFiniteNumber(maxUploadRate)
-          })
-        ],
-        utils$1.noop
-      );
-      onUploadProgress && data.on(
-        "progress",
-        flushOnFinish(
-          data,
-          progressEventDecorator(
-            contentLength,
-            progressEventReducer(asyncDecorator(onUploadProgress), false, 3)
-          )
+    const ye = m.toFiniteNumber(K.getContentLength());
+    m.isArray(xe) ? (oe = xe[0], de = xe[1]) : oe = de = xe, r && (_e || oe) && (m.isStream(r) || (r = te.Readable.from(r, { objectMode: !1 })), r = te.pipeline(
+      [
+        r,
+        new no({
+          maxRate: m.toFiniteNumber(oe)
+        })
+      ],
+      m.noop
+    ), _e && r.on(
+      "progress",
+      lo(
+        r,
+        Cn(
+          ye,
+          Je(On(_e), !1, 3)
         )
-      );
+      )
+    ));
+    let V;
+    const $ = i("auth");
+    if ($) {
+      const E = $.username || "", y = $.password || "";
+      V = E + ":" + y;
     }
-    let auth = void 0;
-    const configAuth = own2("auth");
-    if (configAuth) {
-      const username = configAuth.username || "";
-      const password = configAuth.password || "";
-      auth = username + ":" + password;
+    if (!V && A.username) {
+      const E = po(A.username), y = po(A.password);
+      V = E + ":" + y;
     }
-    if (!auth && parsed.username) {
-      const urlUsername = decodeURIComponentSafe(parsed.username);
-      const urlPassword = decodeURIComponentSafe(parsed.password);
-      auth = urlUsername + ":" + urlPassword;
-    }
-    auth && headers.delete("authorization");
-    let path2;
+    V && K.delete("authorization");
+    let re;
     try {
-      path2 = buildURL(
-        parsed.pathname + parsed.search,
-        config.params,
-        config.paramsSerializer
+      re = sa(
+        A.pathname + A.search,
+        n.params,
+        n.paramsSerializer
       ).replace(/^\?/, "");
-    } catch (err) {
-      const customErr = new Error(err.message);
-      customErr.config = config;
-      customErr.url = config.url;
-      customErr.exists = true;
-      return reject(customErr);
+    } catch (E) {
+      const y = new Error(E.message);
+      return y.config = n, y.url = n.url, y.exists = !0, o(y);
     }
-    headers.set(
+    K.set(
       "Accept-Encoding",
-      "gzip, compress, deflate" + (isBrotliSupported ? ", br" : ""),
-      false
+      "gzip, compress, deflate" + (io ? ", br" : ""),
+      !1
     );
-    const options = Object.assign(/* @__PURE__ */ Object.create(null), {
-      path: path2,
-      method,
-      headers: headers.toJSON(),
-      agents: { http: config.httpAgent, https: config.httpsAgent },
-      auth,
-      protocol,
-      family,
-      beforeRedirect: dispatchBeforeRedirect,
+    const G = Object.assign(/* @__PURE__ */ Object.create(null), {
+      path: re,
+      method: b,
+      headers: K.toJSON(),
+      agents: { http: n.httpAgent, https: n.httpsAgent },
+      auth: V,
+      protocol: ae,
+      family: l,
+      beforeRedirect: ml,
       beforeRedirects: /* @__PURE__ */ Object.create(null),
-      http2Options
+      http2Options: u
     });
-    !utils$1.isUndefined(lookup) && (options.lookup = lookup);
-    if (config.socketPath) {
-      if (typeof config.socketPath !== "string") {
-        return reject(
-          new AxiosError$1("socketPath must be a string", AxiosError$1.ERR_BAD_OPTION_VALUE, config)
+    if (!m.isUndefined(p) && (G.lookup = p), n.socketPath) {
+      if (typeof n.socketPath != "string")
+        return o(
+          new g("socketPath must be a string", g.ERR_BAD_OPTION_VALUE, n)
         );
-      }
-      if (config.allowedSocketPaths != null) {
-        const allowed = Array.isArray(config.allowedSocketPaths) ? config.allowedSocketPaths : [config.allowedSocketPaths];
-        const resolvedSocket = resolve(config.socketPath);
-        const isAllowed = allowed.some(
-          (entry) => typeof entry === "string" && resolve(entry) === resolvedSocket
-        );
-        if (!isAllowed) {
-          return reject(
-            new AxiosError$1(
-              `socketPath "${config.socketPath}" is not permitted by allowedSocketPaths`,
-              AxiosError$1.ERR_BAD_OPTION_VALUE,
-              config
+      if (n.allowedSocketPaths != null) {
+        const E = Array.isArray(n.allowedSocketPaths) ? n.allowedSocketPaths : [n.allowedSocketPaths], y = ya(n.socketPath);
+        if (!E.some(
+          (z) => typeof z == "string" && ya(z) === y
+        ))
+          return o(
+            new g(
+              `socketPath "${n.socketPath}" is not permitted by allowedSocketPaths`,
+              g.ERR_BAD_OPTION_VALUE,
+              n
             )
           );
-        }
       }
-      options.socketPath = config.socketPath;
-    } else {
-      options.hostname = parsed.hostname.startsWith("[") ? parsed.hostname.slice(1, -1) : parsed.hostname;
-      options.port = parsed.port;
-      setProxy(
-        options,
-        config.proxy,
-        protocol + "//" + parsed.hostname + (parsed.port ? ":" + parsed.port : "") + options.path
+      G.socketPath = n.socketPath;
+    } else
+      G.hostname = A.hostname.startsWith("[") ? A.hostname.slice(1, -1) : A.hostname, G.port = A.port, xs(
+        G,
+        n.proxy,
+        ae + "//" + A.hostname + (A.port ? ":" + A.port : "") + G.path
       );
-    }
-    let transport;
-    let isNativeTransport = false;
-    const isHttpsRequest = isHttps.test(options.protocol);
-    options.agent = isHttpsRequest ? config.httpsAgent : config.httpAgent;
-    if (isHttp2) {
-      transport = http2Transport;
-    } else {
-      const configTransport = own2("transport");
-      if (configTransport) {
-        transport = configTransport;
-      } else if (config.maxRedirects === 0) {
-        transport = isHttpsRequest ? require$$4 : require$$3;
-        isNativeTransport = true;
-      } else {
-        if (config.maxRedirects) {
-          options.maxRedirects = config.maxRedirects;
-        }
-        const configBeforeRedirect = own2("beforeRedirect");
-        if (configBeforeRedirect) {
-          options.beforeRedirects.config = configBeforeRedirect;
-        }
-        transport = isHttpsRequest ? httpsFollow : httpFollow;
+    let U, se = !1;
+    const Y = cl.test(G.protocol);
+    if (G.agent = Y ? n.httpsAgent : n.httpAgent, _)
+      U = vl;
+    else {
+      const E = i("transport");
+      if (E)
+        U = E;
+      else if (n.maxRedirects === 0)
+        U = Y ? Yt : Xt, se = !0;
+      else {
+        n.maxRedirects && (G.maxRedirects = n.maxRedirects);
+        const y = i("beforeRedirect");
+        y && (G.beforeRedirects.config = y), U = Y ? rl : il;
       }
     }
-    if (config.maxBodyLength > -1) {
-      options.maxBodyLength = config.maxBodyLength;
-    } else {
-      options.maxBodyLength = Infinity;
-    }
-    options.insecureHTTPParser = Boolean(own2("insecureHTTPParser"));
-    req = transport.request(options, function handleResponse(res) {
-      clearConnectPhaseTimer();
-      if (req.destroyed) return;
-      const streams = [res];
-      const responseLength = utils$1.toFiniteNumber(res.headers["content-length"]);
-      if (onDownloadProgress || maxDownloadRate) {
-        const transformStream = new AxiosTransformStream({
-          maxRate: utils$1.toFiniteNumber(maxDownloadRate)
+    n.maxBodyLength > -1 ? G.maxBodyLength = n.maxBodyLength : G.maxBodyLength = 1 / 0, G.insecureHTTPParser = !!i("insecureHTTPParser"), h = U.request(G, function(y) {
+      if (R(), h.destroyed) return;
+      const P = [y], z = m.toFiniteNumber(y.headers["content-length"]);
+      if (ee || de) {
+        const I = new no({
+          maxRate: m.toFiniteNumber(de)
         });
-        onDownloadProgress && transformStream.on(
+        ee && I.on(
           "progress",
-          flushOnFinish(
-            transformStream,
-            progressEventDecorator(
-              responseLength,
-              progressEventReducer(asyncDecorator(onDownloadProgress), true, 3)
+          lo(
+            I,
+            Cn(
+              z,
+              Je(On(ee), !0, 3)
             )
           )
-        );
-        streams.push(transformStream);
+        ), P.push(I);
       }
-      let responseStream = res;
-      const lastRequest = res.req || req;
-      if (config.decompress !== false && res.headers["content-encoding"]) {
-        if (method === "HEAD" || res.statusCode === 204) {
-          delete res.headers["content-encoding"];
-        }
-        switch ((res.headers["content-encoding"] || "").toLowerCase()) {
+      let L = y;
+      const J = y.req || h;
+      if (n.decompress !== !1 && y.headers["content-encoding"])
+        switch ((b === "HEAD" || y.statusCode === 204) && delete y.headers["content-encoding"], (y.headers["content-encoding"] || "").toLowerCase()) {
           case "gzip":
           case "x-gzip":
           case "compress":
           case "x-compress":
-            streams.push(zlib.createUnzip(zlibOptions));
-            delete res.headers["content-encoding"];
+            P.push(Se.createUnzip(so)), delete y.headers["content-encoding"];
             break;
           case "deflate":
-            streams.push(new ZlibHeaderTransformStream());
-            streams.push(zlib.createUnzip(zlibOptions));
-            delete res.headers["content-encoding"];
+            P.push(new Gp()), P.push(Se.createUnzip(so)), delete y.headers["content-encoding"];
             break;
           case "br":
-            if (isBrotliSupported) {
-              streams.push(zlib.createBrotliDecompress(brotliOptions));
-              delete res.headers["content-encoding"];
-            }
+            io && (P.push(Se.createBrotliDecompress(sl)), delete y.headers["content-encoding"]);
         }
-      }
-      responseStream = streams.length > 1 ? stream.pipeline(streams, utils$1.noop) : streams[0];
-      const response = {
-        status: res.statusCode,
-        statusText: res.statusMessage,
-        headers: new AxiosHeaders$1(res.headers),
-        config,
-        request: lastRequest
+      L = P.length > 1 ? te.pipeline(P, m.noop) : P[0];
+      const ne = {
+        status: y.statusCode,
+        statusText: y.statusMessage,
+        headers: new Q(y.headers),
+        config: n,
+        request: J
       };
-      if (responseType === "stream") {
-        if (config.maxContentLength > -1) {
-          const limit = config.maxContentLength;
-          const source = responseStream;
-          async function* enforceMaxContentLength() {
-            let totalResponseBytes = 0;
-            for await (const chunk of source) {
-              totalResponseBytes += chunk.length;
-              if (totalResponseBytes > limit) {
-                throw new AxiosError$1(
-                  "maxContentLength size of " + limit + " exceeded",
-                  AxiosError$1.ERR_BAD_RESPONSE,
-                  config,
-                  lastRequest
+      if (d === "stream") {
+        if (n.maxContentLength > -1) {
+          const I = n.maxContentLength, we = L;
+          async function* Ee() {
+            let M = 0;
+            for await (const Ie of we) {
+              if (M += Ie.length, M > I)
+                throw new g(
+                  "maxContentLength size of " + I + " exceeded",
+                  g.ERR_BAD_RESPONSE,
+                  n,
+                  J
                 );
-              }
-              yield chunk;
+              yield Ie;
             }
           }
-          responseStream = stream.Readable.from(enforceMaxContentLength(), {
-            objectMode: false
+          L = te.Readable.from(Ee(), {
+            objectMode: !1
           });
         }
-        response.data = responseStream;
-        settle(resolve$1, reject, response);
+        ne.data = L, qe(a, o, ne);
       } else {
-        const responseBuffer = [];
-        let totalResponseBytes = 0;
-        responseStream.on("data", function handleStreamData(chunk) {
-          responseBuffer.push(chunk);
-          totalResponseBytes += chunk.length;
-          if (config.maxContentLength > -1 && totalResponseBytes > config.maxContentLength) {
-            rejected = true;
-            responseStream.destroy();
-            abort2(
-              new AxiosError$1(
-                "maxContentLength size of " + config.maxContentLength + " exceeded",
-                AxiosError$1.ERR_BAD_RESPONSE,
-                config,
-                lastRequest
-              )
-            );
-          }
-        });
-        responseStream.on("aborted", function handlerStreamAborted() {
-          if (rejected) {
+        const I = [];
+        let we = 0;
+        L.on("data", function(M) {
+          I.push(M), we += M.length, n.maxContentLength > -1 && we > n.maxContentLength && (v = !0, L.destroy(), S(
+            new g(
+              "maxContentLength size of " + n.maxContentLength + " exceeded",
+              g.ERR_BAD_RESPONSE,
+              n,
+              J
+            )
+          ));
+        }), L.on("aborted", function() {
+          if (v)
             return;
-          }
-          const err = new AxiosError$1(
+          const M = new g(
             "stream has been aborted",
-            AxiosError$1.ERR_BAD_RESPONSE,
-            config,
-            lastRequest,
-            response
+            g.ERR_BAD_RESPONSE,
+            n,
+            J,
+            ne
           );
-          responseStream.destroy(err);
-          reject(err);
-        });
-        responseStream.on("error", function handleStreamError(err) {
-          if (rejected) return;
-          reject(AxiosError$1.from(err, null, config, lastRequest, response));
-        });
-        responseStream.on("end", function handleStreamEnd() {
+          L.destroy(M), o(M);
+        }), L.on("error", function(M) {
+          v || o(g.from(M, null, n, J, ne));
+        }), L.on("end", function() {
           try {
-            let responseData = responseBuffer.length === 1 ? responseBuffer[0] : Buffer.concat(responseBuffer);
-            if (responseType !== "arraybuffer") {
-              responseData = responseData.toString(responseEncoding);
-              if (!responseEncoding || responseEncoding === "utf8") {
-                responseData = utils$1.stripBOM(responseData);
-              }
-            }
-            response.data = responseData;
-          } catch (err) {
-            return reject(AxiosError$1.from(err, null, config, response.request, response));
+            let M = I.length === 1 ? I[0] : Buffer.concat(I);
+            d !== "arraybuffer" && (M = M.toString(f), (!f || f === "utf8") && (M = m.stripBOM(M))), ne.data = M;
+          } catch (M) {
+            return o(g.from(M, null, n, ne.request, ne));
           }
-          settle(resolve$1, reject, response);
+          qe(a, o, ne);
         });
       }
-      abortEmitter.once("abort", (err) => {
-        if (!responseStream.destroyed) {
-          responseStream.emit("error", err);
-          responseStream.destroy();
-        }
+      k.once("abort", (I) => {
+        L.destroyed || (L.emit("error", I), L.destroy());
       });
+    }), k.once("abort", (E) => {
+      h.close ? h.close() : h.destroy(E);
+    }), h.on("error", function(y) {
+      o(g.from(y, null, n, h));
     });
-    abortEmitter.once("abort", (err) => {
-      if (req.close) {
-        req.close();
-      } else {
-        req.destroy(err);
-      }
-    });
-    req.on("error", function handleRequestError(err) {
-      reject(AxiosError$1.from(err, null, config, req));
-    });
-    const boundSockets = /* @__PURE__ */ new Set();
-    req.on("socket", function handleRequestSocket(socket) {
-      socket.setKeepAlive(true, 1e3 * 60);
-      if (!socket[kAxiosSocketListener]) {
-        socket.on("error", function handleSocketError(err) {
-          const current = socket[kAxiosCurrentReq];
-          if (current && !current.destroyed) {
-            current.destroy(err);
-          }
-        });
-        socket[kAxiosSocketListener] = true;
-      }
-      socket[kAxiosCurrentReq] = req;
-      boundSockets.add(socket);
-    });
-    req.once("close", function clearCurrentReq() {
-      clearConnectPhaseTimer();
-      for (const socket of boundSockets) {
-        if (socket[kAxiosCurrentReq] === req) {
-          socket[kAxiosCurrentReq] = null;
-        }
-      }
-      boundSockets.clear();
-    });
-    if (config.timeout) {
-      const timeout = parseInt(config.timeout, 10);
-      if (Number.isNaN(timeout)) {
-        abort2(
-          new AxiosError$1(
+    const he = /* @__PURE__ */ new Set();
+    if (h.on("socket", function(y) {
+      y.setKeepAlive(!0, 1e3 * 60), y[ro] || (y.on("error", function(z) {
+        const L = y[bn];
+        L && !L.destroyed && L.destroy(z);
+      }), y[ro] = !0), y[bn] = h, he.add(y);
+    }), h.once("close", function() {
+      R();
+      for (const y of he)
+        y[bn] === h && (y[bn] = null);
+      he.clear();
+    }), n.timeout) {
+      const E = parseInt(n.timeout, 10);
+      if (Number.isNaN(E)) {
+        S(
+          new g(
             "error trying to parse `config.timeout` to int",
-            AxiosError$1.ERR_BAD_OPTION_VALUE,
-            config,
-            req
+            g.ERR_BAD_OPTION_VALUE,
+            n,
+            h
           )
         );
         return;
       }
-      const handleTimeout = function handleTimeout2() {
-        if (isDone) return;
-        abort2(createTimeoutError());
+      const y = function() {
+        x || S(j());
       };
-      if (isNativeTransport && timeout > 0) {
-        connectPhaseTimer = setTimeout(handleTimeout, timeout);
-      }
-      req.setTimeout(timeout, handleTimeout);
-    } else {
-      req.setTimeout(0);
-    }
-    if (utils$1.isStream(data)) {
-      let ended = false;
-      let errored = false;
-      data.on("end", () => {
-        ended = true;
+      se && E > 0 && (w = setTimeout(y, E)), h.setTimeout(E, y);
+    } else
+      h.setTimeout(0);
+    if (m.isStream(r)) {
+      let E = !1, y = !1;
+      r.on("end", () => {
+        E = !0;
+      }), r.once("error", (z) => {
+        y = !0, h.destroy(z);
+      }), r.on("close", () => {
+        !E && !y && S(new Pe("Request stream has been aborted", n, h));
       });
-      data.once("error", (err) => {
-        errored = true;
-        req.destroy(err);
-      });
-      data.on("close", () => {
-        if (!ended && !errored) {
-          abort2(new CanceledError$1("Request stream has been aborted", config, req));
-        }
-      });
-      let uploadStream = data;
-      if (config.maxBodyLength > -1 && config.maxRedirects === 0) {
-        const limit = config.maxBodyLength;
-        let bytesSent = 0;
-        uploadStream = stream.pipeline(
+      let P = r;
+      if (n.maxBodyLength > -1 && n.maxRedirects === 0) {
+        const z = n.maxBodyLength;
+        let L = 0;
+        P = te.pipeline(
           [
-            data,
-            new stream.Transform({
-              transform(chunk, _enc, cb) {
-                bytesSent += chunk.length;
-                if (bytesSent > limit) {
-                  return cb(
-                    new AxiosError$1(
+            r,
+            new te.Transform({
+              transform(J, ne, I) {
+                if (L += J.length, L > z)
+                  return I(
+                    new g(
                       "Request body larger than maxBodyLength limit",
-                      AxiosError$1.ERR_BAD_REQUEST,
-                      config,
-                      req
+                      g.ERR_BAD_REQUEST,
+                      n,
+                      h
                     )
                   );
-                }
-                cb(null, chunk);
+                I(null, J);
               }
             })
           ],
-          utils$1.noop
-        );
-        uploadStream.on("error", (err) => {
-          if (!req.destroyed) req.destroy(err);
+          m.noop
+        ), P.on("error", (J) => {
+          h.destroyed || h.destroy(J);
         });
       }
-      uploadStream.pipe(req);
-    } else {
-      data && req.write(data);
-      req.end();
-    }
+      P.pipe(h);
+    } else
+      r && h.write(r), h.end();
   });
-};
-const isURLSameOrigin = platform.hasStandardBrowserEnv ? /* @__PURE__ */ ((origin2, isMSIE) => (url2) => {
-  url2 = new URL(url2, platform.origin);
-  return origin2.protocol === url2.protocol && origin2.host === url2.host && (isMSIE || origin2.port === url2.port);
-})(
-  new URL(platform.origin),
-  platform.navigator && /(msie|trident)/i.test(platform.navigator.userAgent)
-) : () => true;
-const cookies = platform.hasStandardBrowserEnv ? (
+}, gl = H.hasStandardBrowserEnv ? /* @__PURE__ */ ((e, n) => (t) => (t = new URL(t, H.origin), e.protocol === t.protocol && e.host === t.host && (n || e.port === t.port)))(
+  new URL(H.origin),
+  H.navigator && /(msie|trident)/i.test(H.navigator.userAgent)
+) : () => !0, yl = H.hasStandardBrowserEnv ? (
   // Standard browser envs support document.cookie
   {
-    write(name, value, expires, path2, domain, secure, sameSite) {
-      if (typeof document === "undefined") return;
-      const cookie = [`${name}=${encodeURIComponent(value)}`];
-      if (utils$1.isNumber(expires)) {
-        cookie.push(`expires=${new Date(expires).toUTCString()}`);
-      }
-      if (utils$1.isString(path2)) {
-        cookie.push(`path=${path2}`);
-      }
-      if (utils$1.isString(domain)) {
-        cookie.push(`domain=${domain}`);
-      }
-      if (secure === true) {
-        cookie.push("secure");
-      }
-      if (utils$1.isString(sameSite)) {
-        cookie.push(`SameSite=${sameSite}`);
-      }
-      document.cookie = cookie.join("; ");
+    write(e, n, t, a, o, s, i) {
+      if (typeof document > "u") return;
+      const r = [`${e}=${encodeURIComponent(n)}`];
+      m.isNumber(t) && r.push(`expires=${new Date(t).toUTCString()}`), m.isString(a) && r.push(`path=${a}`), m.isString(o) && r.push(`domain=${o}`), s === !0 && r.push("secure"), m.isString(i) && r.push(`SameSite=${i}`), document.cookie = r.join("; ");
     },
-    read(name) {
-      if (typeof document === "undefined") return null;
-      const cookies2 = document.cookie.split(";");
-      for (let i = 0; i < cookies2.length; i++) {
-        const cookie = cookies2[i].replace(/^\s+/, "");
-        const eq = cookie.indexOf("=");
-        if (eq !== -1 && cookie.slice(0, eq) === name) {
-          return decodeURIComponent(cookie.slice(eq + 1));
-        }
+    read(e) {
+      if (typeof document > "u") return null;
+      const n = document.cookie.split(";");
+      for (let t = 0; t < n.length; t++) {
+        const a = n[t].replace(/^\s+/, ""), o = a.indexOf("=");
+        if (o !== -1 && a.slice(0, o) === e)
+          return decodeURIComponent(a.slice(o + 1));
       }
       return null;
     },
-    remove(name) {
-      this.write(name, "", Date.now() - 864e5, "/");
+    remove(e) {
+      this.write(e, "", Date.now() - 864e5, "/");
     }
   }
 ) : (
@@ -16579,910 +14537,648 @@ const cookies = platform.hasStandardBrowserEnv ? (
     remove() {
     }
   }
-);
-const headersToObject = (thing) => thing instanceof AxiosHeaders$1 ? { ...thing } : thing;
-function mergeConfig$1(config1, config2) {
-  config2 = config2 || {};
-  const config = /* @__PURE__ */ Object.create(null);
-  Object.defineProperty(config, "hasOwnProperty", {
+), mo = (e) => e instanceof Q ? { ...e } : e;
+function Ne(e, n) {
+  n = n || {};
+  const t = /* @__PURE__ */ Object.create(null);
+  Object.defineProperty(t, "hasOwnProperty", {
     // Null-proto descriptor so a polluted Object.prototype.get cannot turn
     // this data descriptor into an accessor descriptor on the way in.
     __proto__: null,
     value: Object.prototype.hasOwnProperty,
-    enumerable: false,
-    writable: true,
-    configurable: true
+    enumerable: !1,
+    writable: !0,
+    configurable: !0
   });
-  function getMergedValue(target, source, prop, caseless) {
-    if (utils$1.isPlainObject(target) && utils$1.isPlainObject(source)) {
-      return utils$1.merge.call({ caseless }, target, source);
-    } else if (utils$1.isPlainObject(source)) {
-      return utils$1.merge({}, source);
-    } else if (utils$1.isArray(source)) {
-      return source.slice();
-    }
-    return source;
+  function a(l, c, u, d) {
+    return m.isPlainObject(l) && m.isPlainObject(c) ? m.merge.call({ caseless: d }, l, c) : m.isPlainObject(c) ? m.merge({}, c) : m.isArray(c) ? c.slice() : c;
   }
-  function mergeDeepProperties(a, b, prop, caseless) {
-    if (!utils$1.isUndefined(b)) {
-      return getMergedValue(a, b, prop, caseless);
-    } else if (!utils$1.isUndefined(a)) {
-      return getMergedValue(void 0, a, prop, caseless);
-    }
+  function o(l, c, u, d) {
+    if (m.isUndefined(c)) {
+      if (!m.isUndefined(l))
+        return a(void 0, l, u, d);
+    } else return a(l, c, u, d);
   }
-  function valueFromConfig2(a, b) {
-    if (!utils$1.isUndefined(b)) {
-      return getMergedValue(void 0, b);
-    }
+  function s(l, c) {
+    if (!m.isUndefined(c))
+      return a(void 0, c);
   }
-  function defaultToConfig2(a, b) {
-    if (!utils$1.isUndefined(b)) {
-      return getMergedValue(void 0, b);
-    } else if (!utils$1.isUndefined(a)) {
-      return getMergedValue(void 0, a);
-    }
+  function i(l, c) {
+    if (m.isUndefined(c)) {
+      if (!m.isUndefined(l))
+        return a(void 0, l);
+    } else return a(void 0, c);
   }
-  function mergeDirectKeys(a, b, prop) {
-    if (utils$1.hasOwnProp(config2, prop)) {
-      return getMergedValue(a, b);
-    } else if (utils$1.hasOwnProp(config1, prop)) {
-      return getMergedValue(void 0, a);
-    }
+  function r(l, c, u) {
+    if (m.hasOwnProp(n, u))
+      return a(l, c);
+    if (m.hasOwnProp(e, u))
+      return a(void 0, l);
   }
-  const mergeMap = {
-    url: valueFromConfig2,
-    method: valueFromConfig2,
-    data: valueFromConfig2,
-    baseURL: defaultToConfig2,
-    transformRequest: defaultToConfig2,
-    transformResponse: defaultToConfig2,
-    paramsSerializer: defaultToConfig2,
-    timeout: defaultToConfig2,
-    timeoutMessage: defaultToConfig2,
-    withCredentials: defaultToConfig2,
-    withXSRFToken: defaultToConfig2,
-    adapter: defaultToConfig2,
-    responseType: defaultToConfig2,
-    xsrfCookieName: defaultToConfig2,
-    xsrfHeaderName: defaultToConfig2,
-    onUploadProgress: defaultToConfig2,
-    onDownloadProgress: defaultToConfig2,
-    decompress: defaultToConfig2,
-    maxContentLength: defaultToConfig2,
-    maxBodyLength: defaultToConfig2,
-    beforeRedirect: defaultToConfig2,
-    transport: defaultToConfig2,
-    httpAgent: defaultToConfig2,
-    httpsAgent: defaultToConfig2,
-    cancelToken: defaultToConfig2,
-    socketPath: defaultToConfig2,
-    allowedSocketPaths: defaultToConfig2,
-    responseEncoding: defaultToConfig2,
-    validateStatus: mergeDirectKeys,
-    headers: (a, b, prop) => mergeDeepProperties(headersToObject(a), headersToObject(b), prop, true)
+  const p = {
+    url: s,
+    method: s,
+    data: s,
+    baseURL: i,
+    transformRequest: i,
+    transformResponse: i,
+    paramsSerializer: i,
+    timeout: i,
+    timeoutMessage: i,
+    withCredentials: i,
+    withXSRFToken: i,
+    adapter: i,
+    responseType: i,
+    xsrfCookieName: i,
+    xsrfHeaderName: i,
+    onUploadProgress: i,
+    onDownloadProgress: i,
+    decompress: i,
+    maxContentLength: i,
+    maxBodyLength: i,
+    beforeRedirect: i,
+    transport: i,
+    httpAgent: i,
+    httpsAgent: i,
+    cancelToken: i,
+    socketPath: i,
+    allowedSocketPaths: i,
+    responseEncoding: i,
+    validateStatus: r,
+    headers: (l, c, u) => o(mo(l), mo(c), u, !0)
   };
-  utils$1.forEach(Object.keys({ ...config1, ...config2 }), function computeConfigValue(prop) {
-    if (prop === "__proto__" || prop === "constructor" || prop === "prototype") return;
-    const merge2 = utils$1.hasOwnProp(mergeMap, prop) ? mergeMap[prop] : mergeDeepProperties;
-    const a = utils$1.hasOwnProp(config1, prop) ? config1[prop] : void 0;
-    const b = utils$1.hasOwnProp(config2, prop) ? config2[prop] : void 0;
-    const configValue = merge2(a, b, prop);
-    utils$1.isUndefined(configValue) && merge2 !== mergeDirectKeys || (config[prop] = configValue);
-  });
-  return config;
+  return m.forEach(Object.keys({ ...e, ...n }), function(c) {
+    if (c === "__proto__" || c === "constructor" || c === "prototype") return;
+    const u = m.hasOwnProp(p, c) ? p[c] : o, d = m.hasOwnProp(e, c) ? e[c] : void 0, f = m.hasOwnProp(n, c) ? n[c] : void 0, b = u(d, f, c);
+    m.isUndefined(b) && u !== r || (t[c] = b);
+  }), t;
 }
-const FORM_DATA_CONTENT_HEADERS = ["content-type", "content-length"];
-function setFormDataHeaders(headers, formHeaders, policy) {
-  if (policy !== "content-only") {
-    headers.set(formHeaders);
+const wl = ["content-type", "content-length"];
+function kl(e, n, t) {
+  if (t !== "content-only") {
+    e.set(n);
     return;
   }
-  Object.entries(formHeaders).forEach(([key, val]) => {
-    if (FORM_DATA_CONTENT_HEADERS.includes(key.toLowerCase())) {
-      headers.set(key, val);
-    }
+  Object.entries(n).forEach(([a, o]) => {
+    wl.includes(a.toLowerCase()) && e.set(a, o);
   });
 }
-const encodeUTF8 = (str) => encodeURIComponent(str).replace(
+const _l = (e) => encodeURIComponent(e).replace(
   /%([0-9A-F]{2})/gi,
-  (_, hex) => String.fromCharCode(parseInt(hex, 16))
-);
-const resolveConfig = (config) => {
-  const newConfig = mergeConfig$1({}, config);
-  const own2 = (key) => utils$1.hasOwnProp(newConfig, key) ? newConfig[key] : void 0;
-  const data = own2("data");
-  let withXSRFToken = own2("withXSRFToken");
-  const xsrfHeaderName = own2("xsrfHeaderName");
-  const xsrfCookieName = own2("xsrfCookieName");
-  let headers = own2("headers");
-  const auth = own2("auth");
-  const baseURL = own2("baseURL");
-  const allowAbsoluteUrls = own2("allowAbsoluteUrls");
-  const url2 = own2("url");
-  newConfig.headers = headers = AxiosHeaders$1.from(headers);
-  newConfig.url = buildURL(
-    buildFullPath(baseURL, url2, allowAbsoluteUrls),
-    config.params,
-    config.paramsSerializer
-  );
-  if (auth) {
-    headers.set(
-      "Authorization",
-      "Basic " + btoa((auth.username || "") + ":" + (auth.password ? encodeUTF8(auth.password) : ""))
-    );
+  (n, t) => String.fromCharCode(parseInt(t, 16))
+), hs = (e) => {
+  const n = Ne({}, e), t = (d) => m.hasOwnProp(n, d) ? n[d] : void 0, a = t("data");
+  let o = t("withXSRFToken");
+  const s = t("xsrfHeaderName"), i = t("xsrfCookieName");
+  let r = t("headers");
+  const p = t("auth"), l = t("baseURL"), c = t("allowAbsoluteUrls"), u = t("url");
+  if (n.headers = r = Q.from(r), n.url = sa(
+    ra(l, u, c),
+    e.params,
+    e.paramsSerializer
+  ), p && r.set(
+    "Authorization",
+    "Basic " + btoa((p.username || "") + ":" + (p.password ? _l(p.password) : ""))
+  ), m.isFormData(a) && (H.hasStandardBrowserEnv || H.hasStandardBrowserWebWorkerEnv ? r.setContentType(void 0) : m.isFunction(a.getHeaders) && kl(r, a.getHeaders(), t("formDataHeaderPolicy"))), H.hasStandardBrowserEnv && (m.isFunction(o) && (o = o(n)), o === !0 || o == null && gl(n.url))) {
+    const f = s && i && yl.read(i);
+    f && r.set(s, f);
   }
-  if (utils$1.isFormData(data)) {
-    if (platform.hasStandardBrowserEnv || platform.hasStandardBrowserWebWorkerEnv) {
-      headers.setContentType(void 0);
-    } else if (utils$1.isFunction(data.getHeaders)) {
-      setFormDataHeaders(headers, data.getHeaders(), own2("formDataHeaderPolicy"));
+  return n;
+}, El = typeof XMLHttpRequest < "u", Sl = El && function(e) {
+  return new Promise(function(t, a) {
+    const o = hs(e);
+    let s = o.data;
+    const i = Q.from(o.headers).normalize();
+    let { responseType: r, onUploadProgress: p, onDownloadProgress: l } = o, c, u, d, f, b;
+    function x() {
+      f && f(), b && b(), o.cancelToken && o.cancelToken.unsubscribe(c), o.signal && o.signal.removeEventListener("abort", c);
     }
-  }
-  if (platform.hasStandardBrowserEnv) {
-    if (utils$1.isFunction(withXSRFToken)) {
-      withXSRFToken = withXSRFToken(newConfig);
-    }
-    const shouldSendXSRF = withXSRFToken === true || withXSRFToken == null && isURLSameOrigin(newConfig.url);
-    if (shouldSendXSRF) {
-      const xsrfValue = xsrfHeaderName && xsrfCookieName && cookies.read(xsrfCookieName);
-      if (xsrfValue) {
-        headers.set(xsrfHeaderName, xsrfValue);
-      }
-    }
-  }
-  return newConfig;
-};
-const isXHRAdapterSupported = typeof XMLHttpRequest !== "undefined";
-const xhrAdapter = isXHRAdapterSupported && function(config) {
-  return new Promise(function dispatchXhrRequest(resolve2, reject) {
-    const _config = resolveConfig(config);
-    let requestData = _config.data;
-    const requestHeaders = AxiosHeaders$1.from(_config.headers).normalize();
-    let { responseType, onUploadProgress, onDownloadProgress } = _config;
-    let onCanceled;
-    let uploadThrottled, downloadThrottled;
-    let flushUpload, flushDownload;
-    function done() {
-      flushUpload && flushUpload();
-      flushDownload && flushDownload();
-      _config.cancelToken && _config.cancelToken.unsubscribe(onCanceled);
-      _config.signal && _config.signal.removeEventListener("abort", onCanceled);
-    }
-    let request = new XMLHttpRequest();
-    request.open(_config.method.toUpperCase(), _config.url, true);
-    request.timeout = _config.timeout;
-    function onloadend() {
-      if (!request) {
+    let v = new XMLHttpRequest();
+    v.open(o.method.toUpperCase(), o.url, !0), v.timeout = o.timeout;
+    function h() {
+      if (!v)
         return;
-      }
-      const responseHeaders = AxiosHeaders$1.from(
-        "getAllResponseHeaders" in request && request.getAllResponseHeaders()
-      );
-      const responseData = !responseType || responseType === "text" || responseType === "json" ? request.responseText : request.response;
-      const response = {
-        data: responseData,
-        status: request.status,
-        statusText: request.statusText,
-        headers: responseHeaders,
-        config,
-        request
+      const _ = Q.from(
+        "getAllResponseHeaders" in v && v.getAllResponseHeaders()
+      ), S = {
+        data: !r || r === "text" || r === "json" ? v.responseText : v.response,
+        status: v.status,
+        statusText: v.statusText,
+        headers: _,
+        config: e,
+        request: v
       };
-      settle(
-        function _resolve(value) {
-          resolve2(value);
-          done();
+      qe(
+        function(j) {
+          t(j), x();
         },
-        function _reject(err) {
-          reject(err);
-          done();
+        function(j) {
+          a(j), x();
         },
-        response
-      );
-      request = null;
+        S
+      ), v = null;
     }
-    if ("onloadend" in request) {
-      request.onloadend = onloadend;
-    } else {
-      request.onreadystatechange = function handleLoad() {
-        if (!request || request.readyState !== 4) {
-          return;
-        }
-        if (request.status === 0 && !(request.responseURL && request.responseURL.startsWith("file:"))) {
-          return;
-        }
-        setTimeout(onloadend);
-      };
-    }
-    request.onabort = function handleAbort() {
-      if (!request) {
-        return;
-      }
-      reject(new AxiosError$1("Request aborted", AxiosError$1.ECONNABORTED, config, request));
-      done();
-      request = null;
-    };
-    request.onerror = function handleError(event) {
-      const msg = event && event.message ? event.message : "Network Error";
-      const err = new AxiosError$1(msg, AxiosError$1.ERR_NETWORK, config, request);
-      err.event = event || null;
-      reject(err);
-      done();
-      request = null;
-    };
-    request.ontimeout = function handleTimeout() {
-      let timeoutErrorMessage = _config.timeout ? "timeout of " + _config.timeout + "ms exceeded" : "timeout exceeded";
-      const transitional2 = _config.transitional || transitionalDefaults;
-      if (_config.timeoutErrorMessage) {
-        timeoutErrorMessage = _config.timeoutErrorMessage;
-      }
-      reject(
-        new AxiosError$1(
-          timeoutErrorMessage,
-          transitional2.clarifyTimeoutError ? AxiosError$1.ETIMEDOUT : AxiosError$1.ECONNABORTED,
-          config,
-          request
+    "onloadend" in v ? v.onloadend = h : v.onreadystatechange = function() {
+      !v || v.readyState !== 4 || v.status === 0 && !(v.responseURL && v.responseURL.startsWith("file:")) || setTimeout(h);
+    }, v.onabort = function() {
+      v && (a(new g("Request aborted", g.ECONNABORTED, e, v)), x(), v = null);
+    }, v.onerror = function(k) {
+      const S = k && k.message ? k.message : "Network Error", R = new g(S, g.ERR_NETWORK, e, v);
+      R.event = k || null, a(R), x(), v = null;
+    }, v.ontimeout = function() {
+      let k = o.timeout ? "timeout of " + o.timeout + "ms exceeded" : "timeout exceeded";
+      const S = o.transitional || qn;
+      o.timeoutErrorMessage && (k = o.timeoutErrorMessage), a(
+        new g(
+          k,
+          S.clarifyTimeoutError ? g.ETIMEDOUT : g.ECONNABORTED,
+          e,
+          v
         )
-      );
-      done();
-      request = null;
-    };
-    requestData === void 0 && requestHeaders.setContentType(null);
-    if ("setRequestHeader" in request) {
-      utils$1.forEach(requestHeaders.toJSON(), function setRequestHeader(val, key) {
-        request.setRequestHeader(key, val);
-      });
-    }
-    if (!utils$1.isUndefined(_config.withCredentials)) {
-      request.withCredentials = !!_config.withCredentials;
-    }
-    if (responseType && responseType !== "json") {
-      request.responseType = _config.responseType;
-    }
-    if (onDownloadProgress) {
-      [downloadThrottled, flushDownload] = progressEventReducer(onDownloadProgress, true);
-      request.addEventListener("progress", downloadThrottled);
-    }
-    if (onUploadProgress && request.upload) {
-      [uploadThrottled, flushUpload] = progressEventReducer(onUploadProgress);
-      request.upload.addEventListener("progress", uploadThrottled);
-      request.upload.addEventListener("loadend", flushUpload);
-    }
-    if (_config.cancelToken || _config.signal) {
-      onCanceled = (cancel) => {
-        if (!request) {
-          return;
-        }
-        reject(!cancel || cancel.type ? new CanceledError$1(null, config, request) : cancel);
-        request.abort();
-        done();
-        request = null;
-      };
-      _config.cancelToken && _config.cancelToken.subscribe(onCanceled);
-      if (_config.signal) {
-        _config.signal.aborted ? onCanceled() : _config.signal.addEventListener("abort", onCanceled);
-      }
-    }
-    const protocol = parseProtocol(_config.url);
-    if (protocol && !platform.protocols.includes(protocol)) {
-      reject(
-        new AxiosError$1(
-          "Unsupported protocol " + protocol + ":",
-          AxiosError$1.ERR_BAD_REQUEST,
-          config
+      ), x(), v = null;
+    }, s === void 0 && i.setContentType(null), "setRequestHeader" in v && m.forEach(i.toJSON(), function(k, S) {
+      v.setRequestHeader(S, k);
+    }), m.isUndefined(o.withCredentials) || (v.withCredentials = !!o.withCredentials), r && r !== "json" && (v.responseType = o.responseType), l && ([d, b] = Je(l, !0), v.addEventListener("progress", d)), p && v.upload && ([u, f] = Je(p), v.upload.addEventListener("progress", u), v.upload.addEventListener("loadend", f)), (o.cancelToken || o.signal) && (c = (_) => {
+      v && (a(!_ || _.type ? new Pe(null, e, v) : _), v.abort(), x(), v = null);
+    }, o.cancelToken && o.cancelToken.subscribe(c), o.signal && (o.signal.aborted ? c() : o.signal.addEventListener("abort", c)));
+    const w = us(o.url);
+    if (w && !H.protocols.includes(w)) {
+      a(
+        new g(
+          "Unsupported protocol " + w + ":",
+          g.ERR_BAD_REQUEST,
+          e
         )
       );
       return;
     }
-    request.send(requestData || null);
+    v.send(s || null);
   });
-};
-const composeSignals = (signals, timeout) => {
-  const { length } = signals = signals ? signals.filter(Boolean) : [];
-  if (timeout || length) {
-    let controller = new AbortController();
-    let aborted;
-    const onabort = function(reason) {
-      if (!aborted) {
-        aborted = true;
-        unsubscribe();
-        const err = reason instanceof Error ? reason : this.reason;
-        controller.abort(
-          err instanceof AxiosError$1 ? err : new CanceledError$1(err instanceof Error ? err.message : err)
+}, Rl = (e, n) => {
+  const { length: t } = e = e ? e.filter(Boolean) : [];
+  if (n || t) {
+    let a = new AbortController(), o;
+    const s = function(l) {
+      if (!o) {
+        o = !0, r();
+        const c = l instanceof Error ? l : this.reason;
+        a.abort(
+          c instanceof g ? c : new Pe(c instanceof Error ? c.message : c)
         );
       }
     };
-    let timer = timeout && setTimeout(() => {
-      timer = null;
-      onabort(new AxiosError$1(`timeout of ${timeout}ms exceeded`, AxiosError$1.ETIMEDOUT));
-    }, timeout);
-    const unsubscribe = () => {
-      if (signals) {
-        timer && clearTimeout(timer);
-        timer = null;
-        signals.forEach((signal2) => {
-          signal2.unsubscribe ? signal2.unsubscribe(onabort) : signal2.removeEventListener("abort", onabort);
-        });
-        signals = null;
-      }
+    let i = n && setTimeout(() => {
+      i = null, s(new g(`timeout of ${n}ms exceeded`, g.ETIMEDOUT));
+    }, n);
+    const r = () => {
+      e && (i && clearTimeout(i), i = null, e.forEach((l) => {
+        l.unsubscribe ? l.unsubscribe(s) : l.removeEventListener("abort", s);
+      }), e = null);
     };
-    signals.forEach((signal2) => signal2.addEventListener("abort", onabort));
-    const { signal } = controller;
-    signal.unsubscribe = () => utils$1.asap(unsubscribe);
-    return signal;
+    e.forEach((l) => l.addEventListener("abort", s));
+    const { signal: p } = a;
+    return p.unsubscribe = () => m.asap(r), p;
   }
-};
-const streamChunk = function* (chunk, chunkSize) {
-  let len = chunk.byteLength;
-  if (len < chunkSize) {
-    yield chunk;
+}, Al = function* (e, n) {
+  let t = e.byteLength;
+  if (t < n) {
+    yield e;
     return;
   }
-  let pos = 0;
-  let end;
-  while (pos < len) {
-    end = pos + chunkSize;
-    yield chunk.slice(pos, end);
-    pos = end;
-  }
-};
-const readBytes = async function* (iterable, chunkSize) {
-  for await (const chunk of readStream(iterable)) {
-    yield* streamChunk(chunk, chunkSize);
-  }
-};
-const readStream = async function* (stream2) {
-  if (stream2[Symbol.asyncIterator]) {
-    yield* stream2;
+  let a = 0, o;
+  for (; a < t; )
+    o = a + n, yield e.slice(a, o), a = o;
+}, Tl = async function* (e, n) {
+  for await (const t of Cl(e))
+    yield* Al(t, n);
+}, Cl = async function* (e) {
+  if (e[Symbol.asyncIterator]) {
+    yield* e;
     return;
   }
-  const reader = stream2.getReader();
+  const n = e.getReader();
   try {
     for (; ; ) {
-      const { done, value } = await reader.read();
-      if (done) {
+      const { done: t, value: a } = await n.read();
+      if (t)
         break;
-      }
-      yield value;
+      yield a;
     }
   } finally {
-    await reader.cancel();
+    await n.cancel();
   }
-};
-const trackStream = (stream2, chunkSize, onProgress, onFinish) => {
-  const iterator2 = readBytes(stream2, chunkSize);
-  let bytes = 0;
-  let done;
-  let _onFinish = (e) => {
-    if (!done) {
-      done = true;
-      onFinish && onFinish(e);
-    }
+}, fo = (e, n, t, a) => {
+  const o = Tl(e, n);
+  let s = 0, i, r = (p) => {
+    i || (i = !0, a && a(p));
   };
   return new ReadableStream(
     {
-      async pull(controller) {
+      async pull(p) {
         try {
-          const { done: done2, value } = await iterator2.next();
-          if (done2) {
-            _onFinish();
-            controller.close();
+          const { done: l, value: c } = await o.next();
+          if (l) {
+            r(), p.close();
             return;
           }
-          let len = value.byteLength;
-          if (onProgress) {
-            let loadedBytes = bytes += len;
-            onProgress(loadedBytes);
+          let u = c.byteLength;
+          if (t) {
+            let d = s += u;
+            t(d);
           }
-          controller.enqueue(new Uint8Array(value));
-        } catch (err) {
-          _onFinish(err);
-          throw err;
+          p.enqueue(new Uint8Array(c));
+        } catch (l) {
+          throw r(l), l;
         }
       },
-      cancel(reason) {
-        _onFinish(reason);
-        return iterator2.return();
+      cancel(p) {
+        return r(p), o.return();
       }
     },
     {
       highWaterMark: 2
     }
   );
-};
-const DEFAULT_CHUNK_SIZE = 64 * 1024;
-const { isFunction } = utils$1;
-const test = (fn, ...args) => {
+}, xo = 64 * 1024, { isFunction: gn } = m, ho = (e, ...n) => {
   try {
-    return !!fn(...args);
-  } catch (e) {
-    return false;
+    return !!e(...n);
+  } catch {
+    return !1;
   }
-};
-const factory = (env) => {
-  const globalObject = utils$1.global ?? globalThis;
-  const { ReadableStream: ReadableStream2, TextEncoder: TextEncoder2 } = globalObject;
-  env = utils$1.merge.call(
+}, Ol = (e) => {
+  const n = m.global ?? globalThis, { ReadableStream: t, TextEncoder: a } = n;
+  e = m.merge.call(
     {
-      skipUndefined: true
+      skipUndefined: !0
     },
     {
-      Request: globalObject.Request,
-      Response: globalObject.Response
+      Request: n.Request,
+      Response: n.Response
     },
-    env
+    e
   );
-  const { fetch: envFetch, Request, Response } = env;
-  const isFetchSupported = envFetch ? isFunction(envFetch) : typeof fetch === "function";
-  const isRequestSupported = isFunction(Request);
-  const isResponseSupported = isFunction(Response);
-  if (!isFetchSupported) {
-    return false;
-  }
-  const isReadableStreamSupported = isFetchSupported && isFunction(ReadableStream2);
-  const encodeText = isFetchSupported && (typeof TextEncoder2 === "function" ? /* @__PURE__ */ ((encoder) => (str) => encoder.encode(str))(new TextEncoder2()) : async (str) => new Uint8Array(await new Request(str).arrayBuffer()));
-  const supportsRequestStream = isRequestSupported && isReadableStreamSupported && test(() => {
-    let duplexAccessed = false;
-    const request = new Request(platform.origin, {
-      body: new ReadableStream2(),
+  const { fetch: o, Request: s, Response: i } = e, r = o ? gn(o) : typeof fetch == "function", p = gn(s), l = gn(i);
+  if (!r)
+    return !1;
+  const c = r && gn(t), u = r && (typeof a == "function" ? /* @__PURE__ */ ((h) => (w) => h.encode(w))(new a()) : async (h) => new Uint8Array(await new s(h).arrayBuffer())), d = p && c && ho(() => {
+    let h = !1;
+    const w = new s(H.origin, {
+      body: new t(),
       method: "POST",
       get duplex() {
-        duplexAccessed = true;
-        return "half";
+        return h = !0, "half";
       }
-    });
-    const hasContentType = request.headers.has("Content-Type");
-    if (request.body != null) {
-      request.body.cancel();
-    }
-    return duplexAccessed && !hasContentType;
-  });
-  const supportsResponseStream = isResponseSupported && isReadableStreamSupported && test(() => utils$1.isReadableStream(new Response("").body));
-  const resolvers = {
-    stream: supportsResponseStream && ((res) => res.body)
+    }), _ = w.headers.has("Content-Type");
+    return w.body != null && w.body.cancel(), h && !_;
+  }), f = l && c && ho(() => m.isReadableStream(new i("").body)), b = {
+    stream: f && ((h) => h.body)
   };
-  isFetchSupported && (() => {
-    ["text", "arrayBuffer", "blob", "formData", "stream"].forEach((type2) => {
-      !resolvers[type2] && (resolvers[type2] = (res, config) => {
-        let method = res && res[type2];
-        if (method) {
-          return method.call(res);
-        }
-        throw new AxiosError$1(
-          `Response type '${type2}' is not supported`,
-          AxiosError$1.ERR_NOT_SUPPORT,
-          config
-        );
-      });
-    });
-  })();
-  const getBodyLength = async (body) => {
-    if (body == null) {
-      return 0;
-    }
-    if (utils$1.isBlob(body)) {
-      return body.size;
-    }
-    if (utils$1.isSpecCompliantForm(body)) {
-      const _request = new Request(platform.origin, {
-        method: "POST",
-        body
-      });
-      return (await _request.arrayBuffer()).byteLength;
-    }
-    if (utils$1.isArrayBufferView(body) || utils$1.isArrayBuffer(body)) {
-      return body.byteLength;
-    }
-    if (utils$1.isURLSearchParams(body)) {
-      body = body + "";
-    }
-    if (utils$1.isString(body)) {
-      return (await encodeText(body)).byteLength;
-    }
-  };
-  const resolveBodyLength = async (headers, body) => {
-    const length = utils$1.toFiniteNumber(headers.getContentLength());
-    return length == null ? getBodyLength(body) : length;
-  };
-  return async (config) => {
-    let {
-      url: url2,
-      method,
-      data,
-      signal,
-      cancelToken,
-      timeout,
-      onDownloadProgress,
-      onUploadProgress,
-      responseType,
-      headers,
-      withCredentials = "same-origin",
-      fetchOptions,
-      maxContentLength,
-      maxBodyLength
-    } = resolveConfig(config);
-    const hasMaxContentLength = utils$1.isNumber(maxContentLength) && maxContentLength > -1;
-    const hasMaxBodyLength = utils$1.isNumber(maxBodyLength) && maxBodyLength > -1;
-    let _fetch = envFetch || fetch;
-    responseType = responseType ? (responseType + "").toLowerCase() : "text";
-    let composedSignal = composeSignals(
-      [signal, cancelToken && cancelToken.toAbortSignal()],
-      timeout
-    );
-    let request = null;
-    const unsubscribe = composedSignal && composedSignal.unsubscribe && (() => {
-      composedSignal.unsubscribe();
-    });
-    let requestContentLength;
-    try {
-      if (hasMaxContentLength && typeof url2 === "string" && url2.startsWith("data:")) {
-        const estimated = estimateDataURLDecodedBytes(url2);
-        if (estimated > maxContentLength) {
-          throw new AxiosError$1(
-            "maxContentLength size of " + maxContentLength + " exceeded",
-            AxiosError$1.ERR_BAD_RESPONSE,
-            config,
-            request
-          );
-        }
-      }
-      if (hasMaxBodyLength && method !== "get" && method !== "head") {
-        const outboundLength = await resolveBodyLength(headers, data);
-        if (typeof outboundLength === "number" && isFinite(outboundLength) && outboundLength > maxBodyLength) {
-          throw new AxiosError$1(
-            "Request body larger than maxBodyLength limit",
-            AxiosError$1.ERR_BAD_REQUEST,
-            config,
-            request
-          );
-        }
-      }
-      if (onUploadProgress && supportsRequestStream && method !== "get" && method !== "head" && (requestContentLength = await resolveBodyLength(headers, data)) !== 0) {
-        let _request = new Request(url2, {
-          method: "POST",
-          body: data,
-          duplex: "half"
-        });
-        let contentTypeHeader;
-        if (utils$1.isFormData(data) && (contentTypeHeader = _request.headers.get("content-type"))) {
-          headers.setContentType(contentTypeHeader);
-        }
-        if (_request.body) {
-          const [onProgress, flush] = progressEventDecorator(
-            requestContentLength,
-            progressEventReducer(asyncDecorator(onUploadProgress))
-          );
-          data = trackStream(_request.body, DEFAULT_CHUNK_SIZE, onProgress, flush);
-        }
-      }
-      if (!utils$1.isString(withCredentials)) {
-        withCredentials = withCredentials ? "include" : "omit";
-      }
-      const isCredentialsSupported = isRequestSupported && "credentials" in Request.prototype;
-      if (utils$1.isFormData(data)) {
-        const contentType = headers.getContentType();
-        if (contentType && /^multipart\/form-data/i.test(contentType) && !/boundary=/i.test(contentType)) {
-          headers.delete("content-type");
-        }
-      }
-      headers.set("User-Agent", "axios/" + VERSION$1, false);
-      const resolvedOptions = {
-        ...fetchOptions,
-        signal: composedSignal,
-        method: method.toUpperCase(),
-        headers: headers.normalize().toJSON(),
-        body: data,
-        duplex: "half",
-        credentials: isCredentialsSupported ? withCredentials : void 0
-      };
-      request = isRequestSupported && new Request(url2, resolvedOptions);
-      let response = await (isRequestSupported ? _fetch(request, fetchOptions) : _fetch(url2, resolvedOptions));
-      if (hasMaxContentLength) {
-        const declaredLength = utils$1.toFiniteNumber(response.headers.get("content-length"));
-        if (declaredLength != null && declaredLength > maxContentLength) {
-          throw new AxiosError$1(
-            "maxContentLength size of " + maxContentLength + " exceeded",
-            AxiosError$1.ERR_BAD_RESPONSE,
-            config,
-            request
-          );
-        }
-      }
-      const isStreamResponse = supportsResponseStream && (responseType === "stream" || responseType === "response");
-      if (supportsResponseStream && response.body && (onDownloadProgress || hasMaxContentLength || isStreamResponse && unsubscribe)) {
-        const options = {};
-        ["status", "statusText", "headers"].forEach((prop) => {
-          options[prop] = response[prop];
-        });
-        const responseContentLength = utils$1.toFiniteNumber(response.headers.get("content-length"));
-        const [onProgress, flush] = onDownloadProgress && progressEventDecorator(
-          responseContentLength,
-          progressEventReducer(asyncDecorator(onDownloadProgress), true)
-        ) || [];
-        let bytesRead = 0;
-        const onChunkProgress = (loadedBytes) => {
-          if (hasMaxContentLength) {
-            bytesRead = loadedBytes;
-            if (bytesRead > maxContentLength) {
-              throw new AxiosError$1(
-                "maxContentLength size of " + maxContentLength + " exceeded",
-                AxiosError$1.ERR_BAD_RESPONSE,
-                config,
-                request
-              );
-            }
-          }
-          onProgress && onProgress(loadedBytes);
-        };
-        response = new Response(
-          trackStream(response.body, DEFAULT_CHUNK_SIZE, onChunkProgress, () => {
-            flush && flush();
-            unsubscribe && unsubscribe();
-          }),
-          options
-        );
-      }
-      responseType = responseType || "text";
-      let responseData = await resolvers[utils$1.findKey(resolvers, responseType) || "text"](
-        response,
-        config
+  r && ["text", "arrayBuffer", "blob", "formData", "stream"].forEach((h) => {
+    !b[h] && (b[h] = (w, _) => {
+      let k = w && w[h];
+      if (k)
+        return k.call(w);
+      throw new g(
+        `Response type '${h}' is not supported`,
+        g.ERR_NOT_SUPPORT,
+        _
       );
-      if (hasMaxContentLength && !supportsResponseStream && !isStreamResponse) {
-        let materializedSize;
-        if (responseData != null) {
-          if (typeof responseData.byteLength === "number") {
-            materializedSize = responseData.byteLength;
-          } else if (typeof responseData.size === "number") {
-            materializedSize = responseData.size;
-          } else if (typeof responseData === "string") {
-            materializedSize = typeof TextEncoder2 === "function" ? new TextEncoder2().encode(responseData).byteLength : responseData.length;
-          }
-        }
-        if (typeof materializedSize === "number" && materializedSize > maxContentLength) {
-          throw new AxiosError$1(
-            "maxContentLength size of " + maxContentLength + " exceeded",
-            AxiosError$1.ERR_BAD_RESPONSE,
-            config,
-            request
+    });
+  });
+  const x = async (h) => {
+    if (h == null)
+      return 0;
+    if (m.isBlob(h))
+      return h.size;
+    if (m.isSpecCompliantForm(h))
+      return (await new s(H.origin, {
+        method: "POST",
+        body: h
+      }).arrayBuffer()).byteLength;
+    if (m.isArrayBufferView(h) || m.isArrayBuffer(h))
+      return h.byteLength;
+    if (m.isURLSearchParams(h) && (h = h + ""), m.isString(h))
+      return (await u(h)).byteLength;
+  }, v = async (h, w) => {
+    const _ = m.toFiniteNumber(h.getContentLength());
+    return _ ?? x(w);
+  };
+  return async (h) => {
+    let {
+      url: w,
+      method: _,
+      data: k,
+      signal: S,
+      cancelToken: R,
+      timeout: j,
+      onDownloadProgress: D,
+      onUploadProgress: q,
+      responseType: A,
+      headers: ae,
+      withCredentials: K = "same-origin",
+      fetchOptions: _e,
+      maxContentLength: ee,
+      maxBodyLength: xe
+    } = hs(h);
+    const oe = m.isNumber(ee) && ee > -1, de = m.isNumber(xe) && xe > -1;
+    let ye = o || fetch;
+    A = A ? (A + "").toLowerCase() : "text";
+    let V = Rl(
+      [S, R && R.toAbortSignal()],
+      j
+    ), $ = null;
+    const re = V && V.unsubscribe && (() => {
+      V.unsubscribe();
+    });
+    let G;
+    try {
+      if (oe && typeof w == "string" && w.startsWith("data:") && fs(w) > ee)
+        throw new g(
+          "maxContentLength size of " + ee + " exceeded",
+          g.ERR_BAD_RESPONSE,
+          h,
+          $
+        );
+      if (de && _ !== "get" && _ !== "head") {
+        const y = await v(ae, k);
+        if (typeof y == "number" && isFinite(y) && y > xe)
+          throw new g(
+            "Request body larger than maxBodyLength limit",
+            g.ERR_BAD_REQUEST,
+            h,
+            $
           );
+      }
+      if (q && d && _ !== "get" && _ !== "head" && (G = await v(ae, k)) !== 0) {
+        let y = new s(w, {
+          method: "POST",
+          body: k,
+          duplex: "half"
+        }), P;
+        if (m.isFormData(k) && (P = y.headers.get("content-type")) && ae.setContentType(P), y.body) {
+          const [z, L] = Cn(
+            G,
+            Je(On(q))
+          );
+          k = fo(y.body, xo, z, L);
         }
       }
-      !isStreamResponse && unsubscribe && unsubscribe();
-      return await new Promise((resolve2, reject) => {
-        settle(resolve2, reject, {
-          data: responseData,
-          headers: AxiosHeaders$1.from(response.headers),
-          status: response.status,
-          statusText: response.statusText,
-          config,
-          request
-        });
-      });
-    } catch (err) {
-      unsubscribe && unsubscribe();
-      if (composedSignal && composedSignal.aborted && composedSignal.reason instanceof AxiosError$1) {
-        const canceledError = composedSignal.reason;
-        canceledError.config = config;
-        request && (canceledError.request = request);
-        err !== canceledError && (canceledError.cause = err);
-        throw canceledError;
+      m.isString(K) || (K = K ? "include" : "omit");
+      const U = p && "credentials" in s.prototype;
+      if (m.isFormData(k)) {
+        const y = ae.getContentType();
+        y && /^multipart\/form-data/i.test(y) && !/boundary=/i.test(y) && ae.delete("content-type");
       }
-      if (err && err.name === "TypeError" && /Load failed|fetch/i.test(err.message)) {
-        throw Object.assign(
-          new AxiosError$1(
-            "Network Error",
-            AxiosError$1.ERR_NETWORK,
-            config,
-            request,
-            err && err.response
-          ),
-          {
-            cause: err.cause || err
-          }
+      ae.set("User-Agent", "axios/" + tn, !1);
+      const se = {
+        ..._e,
+        signal: V,
+        method: _.toUpperCase(),
+        headers: ae.normalize().toJSON(),
+        body: k,
+        duplex: "half",
+        credentials: U ? K : void 0
+      };
+      $ = p && new s(w, se);
+      let Y = await (p ? ye($, _e) : ye(w, se));
+      if (oe) {
+        const y = m.toFiniteNumber(Y.headers.get("content-length"));
+        if (y != null && y > ee)
+          throw new g(
+            "maxContentLength size of " + ee + " exceeded",
+            g.ERR_BAD_RESPONSE,
+            h,
+            $
+          );
+      }
+      const he = f && (A === "stream" || A === "response");
+      if (f && Y.body && (D || oe || he && re)) {
+        const y = {};
+        ["status", "statusText", "headers"].forEach((I) => {
+          y[I] = Y[I];
+        });
+        const P = m.toFiniteNumber(Y.headers.get("content-length")), [z, L] = D && Cn(
+          P,
+          Je(On(D), !0)
+        ) || [];
+        let J = 0;
+        const ne = (I) => {
+          if (oe && (J = I, J > ee))
+            throw new g(
+              "maxContentLength size of " + ee + " exceeded",
+              g.ERR_BAD_RESPONSE,
+              h,
+              $
+            );
+          z && z(I);
+        };
+        Y = new i(
+          fo(Y.body, xo, ne, () => {
+            L && L(), re && re();
+          }),
+          y
         );
       }
-      throw AxiosError$1.from(err, err && err.code, config, request, err && err.response);
+      A = A || "text";
+      let E = await b[m.findKey(b, A) || "text"](
+        Y,
+        h
+      );
+      if (oe && !f && !he) {
+        let y;
+        if (E != null && (typeof E.byteLength == "number" ? y = E.byteLength : typeof E.size == "number" ? y = E.size : typeof E == "string" && (y = typeof a == "function" ? new a().encode(E).byteLength : E.length)), typeof y == "number" && y > ee)
+          throw new g(
+            "maxContentLength size of " + ee + " exceeded",
+            g.ERR_BAD_RESPONSE,
+            h,
+            $
+          );
+      }
+      return !he && re && re(), await new Promise((y, P) => {
+        qe(y, P, {
+          data: E,
+          headers: Q.from(Y.headers),
+          status: Y.status,
+          statusText: Y.statusText,
+          config: h,
+          request: $
+        });
+      });
+    } catch (U) {
+      if (re && re(), V && V.aborted && V.reason instanceof g) {
+        const se = V.reason;
+        throw se.config = h, $ && (se.request = $), U !== se && (se.cause = U), se;
+      }
+      throw U && U.name === "TypeError" && /Load failed|fetch/i.test(U.message) ? Object.assign(
+        new g(
+          "Network Error",
+          g.ERR_NETWORK,
+          h,
+          $,
+          U && U.response
+        ),
+        {
+          cause: U.cause || U
+        }
+      ) : g.from(U, U && U.code, h, $, U && U.response);
     }
   };
+}, jl = /* @__PURE__ */ new Map(), vs = (e) => {
+  let n = e && e.env || {};
+  const { fetch: t, Request: a, Response: o } = n, s = [a, o, t];
+  let i = s.length, r = i, p, l, c = jl;
+  for (; r--; )
+    p = s[r], l = c.get(p), l === void 0 && c.set(p, l = r ? /* @__PURE__ */ new Map() : Ol(n)), c = l;
+  return l;
 };
-const seedCache = /* @__PURE__ */ new Map();
-const getFetch = (config) => {
-  let env = config && config.env || {};
-  const { fetch: fetch2, Request, Response } = env;
-  const seeds = [Request, Response, fetch2];
-  let len = seeds.length, i = len, seed, target, map = seedCache;
-  while (i--) {
-    seed = seeds[i];
-    target = map.get(seed);
-    target === void 0 && map.set(seed, target = i ? /* @__PURE__ */ new Map() : factory(env));
-    map = target;
-  }
-  return target;
-};
-getFetch();
-const knownAdapters = {
-  http: httpAdapter,
-  xhr: xhrAdapter,
+vs();
+const ha = {
+  http: bl,
+  xhr: Sl,
   fetch: {
-    get: getFetch
+    get: vs
   }
 };
-utils$1.forEach(knownAdapters, (fn, value) => {
-  if (fn) {
+m.forEach(ha, (e, n) => {
+  if (e) {
     try {
-      Object.defineProperty(fn, "name", { __proto__: null, value });
-    } catch (e) {
+      Object.defineProperty(e, "name", { __proto__: null, value: n });
+    } catch {
     }
-    Object.defineProperty(fn, "adapterName", { __proto__: null, value });
+    Object.defineProperty(e, "adapterName", { __proto__: null, value: n });
   }
 });
-const renderReason = (reason) => `- ${reason}`;
-const isResolvedHandle = (adapter) => utils$1.isFunction(adapter) || adapter === null || adapter === false;
-function getAdapter$1(adapters2, config) {
-  adapters2 = utils$1.isArray(adapters2) ? adapters2 : [adapters2];
-  const { length } = adapters2;
-  let nameOrAdapter;
-  let adapter;
-  const rejectedReasons = {};
-  for (let i = 0; i < length; i++) {
-    nameOrAdapter = adapters2[i];
-    let id;
-    adapter = nameOrAdapter;
-    if (!isResolvedHandle(nameOrAdapter)) {
-      adapter = knownAdapters[(id = String(nameOrAdapter)).toLowerCase()];
-      if (adapter === void 0) {
-        throw new AxiosError$1(`Unknown adapter '${id}'`);
-      }
-    }
-    if (adapter && (utils$1.isFunction(adapter) || (adapter = adapter.get(config)))) {
+const vo = (e) => `- ${e}`, Pl = (e) => m.isFunction(e) || e === null || e === !1;
+function Ll(e, n) {
+  e = m.isArray(e) ? e : [e];
+  const { length: t } = e;
+  let a, o;
+  const s = {};
+  for (let i = 0; i < t; i++) {
+    a = e[i];
+    let r;
+    if (o = a, !Pl(a) && (o = ha[(r = String(a)).toLowerCase()], o === void 0))
+      throw new g(`Unknown adapter '${r}'`);
+    if (o && (m.isFunction(o) || (o = o.get(n))))
       break;
-    }
-    rejectedReasons[id || "#" + i] = adapter;
+    s[r || "#" + i] = o;
   }
-  if (!adapter) {
-    const reasons = Object.entries(rejectedReasons).map(
-      ([id, state2]) => `adapter ${id} ` + (state2 === false ? "is not supported by the environment" : "is not available in the build")
+  if (!o) {
+    const i = Object.entries(s).map(
+      ([p, l]) => `adapter ${p} ` + (l === !1 ? "is not supported by the environment" : "is not available in the build")
     );
-    let s = length ? reasons.length > 1 ? "since :\n" + reasons.map(renderReason).join("\n") : " " + renderReason(reasons[0]) : "as no adapter specified";
-    throw new AxiosError$1(
-      `There is no suitable adapter to dispatch the request ` + s,
+    let r = t ? i.length > 1 ? `since :
+` + i.map(vo).join(`
+`) : " " + vo(i[0]) : "as no adapter specified";
+    throw new g(
+      "There is no suitable adapter to dispatch the request " + r,
       "ERR_NOT_SUPPORT"
     );
   }
-  return adapter;
+  return o;
 }
-const adapters = {
+const bs = {
   /**
    * Resolve an adapter from a list of adapter names or functions.
    * @type {Function}
    */
-  getAdapter: getAdapter$1,
+  getAdapter: Ll,
   /**
    * Exposes all known adapters
    * @type {Object<string, Function|Object>}
    */
-  adapters: knownAdapters
+  adapters: ha
 };
-function throwIfCancellationRequested(config) {
-  if (config.cancelToken) {
-    config.cancelToken.throwIfRequested();
-  }
-  if (config.signal && config.signal.aborted) {
-    throw new CanceledError$1(null, config);
-  }
+function _t(e) {
+  if (e.cancelToken && e.cancelToken.throwIfRequested(), e.signal && e.signal.aborted)
+    throw new Pe(null, e);
 }
-function dispatchRequest(config) {
-  throwIfCancellationRequested(config);
-  config.headers = AxiosHeaders$1.from(config.headers);
-  config.data = transformData.call(config, config.transformRequest);
-  if (["post", "put", "patch"].indexOf(config.method) !== -1) {
-    config.headers.setContentType("application/x-www-form-urlencoded", false);
-  }
-  const adapter = adapters.getAdapter(config.adapter || defaults.adapter, config);
-  return adapter(config).then(
-    function onAdapterResolution(response) {
-      throwIfCancellationRequested(config);
-      config.response = response;
+function bo(e) {
+  return _t(e), e.headers = Q.from(e.headers), e.data = ht.call(e, e.transformRequest), ["post", "put", "patch"].indexOf(e.method) !== -1 && e.headers.setContentType("application/x-www-form-urlencoded", !1), bs.getAdapter(e.adapter || ln.adapter, e)(e).then(
+    function(a) {
+      _t(e), e.response = a;
       try {
-        response.data = transformData.call(config, config.transformResponse, response);
+        a.data = ht.call(e, e.transformResponse, a);
       } finally {
-        delete config.response;
+        delete e.response;
       }
-      response.headers = AxiosHeaders$1.from(response.headers);
-      return response;
+      return a.headers = Q.from(a.headers), a;
     },
-    function onAdapterRejection(reason) {
-      if (!isCancel$1(reason)) {
-        throwIfCancellationRequested(config);
-        if (reason && reason.response) {
-          config.response = reason.response;
-          try {
-            reason.response.data = transformData.call(
-              config,
-              config.transformResponse,
-              reason.response
-            );
-          } finally {
-            delete config.response;
-          }
-          reason.response.headers = AxiosHeaders$1.from(reason.response.headers);
+    function(a) {
+      if (!ss(a) && (_t(e), a && a.response)) {
+        e.response = a.response;
+        try {
+          a.response.data = ht.call(
+            e,
+            e.transformResponse,
+            a.response
+          );
+        } finally {
+          delete e.response;
         }
+        a.response.headers = Q.from(a.response.headers);
       }
-      return Promise.reject(reason);
+      return Promise.reject(a);
     }
   );
 }
-const validators$1 = {};
-["object", "boolean", "number", "function", "string", "symbol"].forEach((type2, i) => {
-  validators$1[type2] = function validator2(thing) {
-    return typeof thing === type2 || "a" + (i < 1 ? "n " : " ") + type2;
+const $n = {};
+["object", "boolean", "number", "function", "string", "symbol"].forEach((e, n) => {
+  $n[e] = function(a) {
+    return typeof a === e || "a" + (n < 1 ? "n " : " ") + e;
   };
 });
-const deprecatedWarnings = {};
-validators$1.transitional = function transitional(validator2, version, message) {
-  function formatMessage(opt, desc) {
-    return "[Axios v" + VERSION$1 + "] Transitional option '" + opt + "'" + desc + (message ? ". " + message : "");
+const go = {};
+$n.transitional = function(n, t, a) {
+  function o(s, i) {
+    return "[Axios v" + tn + "] Transitional option '" + s + "'" + i + (a ? ". " + a : "");
   }
-  return (value, opt, opts) => {
-    if (validator2 === false) {
-      throw new AxiosError$1(
-        formatMessage(opt, " has been removed" + (version ? " in " + version : "")),
-        AxiosError$1.ERR_DEPRECATED
+  return (s, i, r) => {
+    if (n === !1)
+      throw new g(
+        o(i, " has been removed" + (t ? " in " + t : "")),
+        g.ERR_DEPRECATED
       );
-    }
-    if (version && !deprecatedWarnings[opt]) {
-      deprecatedWarnings[opt] = true;
-      console.warn(
-        formatMessage(
-          opt,
-          " has been deprecated since v" + version + " and will be removed in the near future"
-        )
-      );
-    }
-    return validator2 ? validator2(value, opt, opts) : true;
+    return t && !go[i] && (go[i] = !0, console.warn(
+      o(
+        i,
+        " has been deprecated since v" + t + " and will be removed in the near future"
+      )
+    )), n ? n(s, i, r) : !0;
   };
 };
-validators$1.spelling = function spelling(correctSpelling) {
-  return (value, opt) => {
-    console.warn(`${opt} is likely a misspelling of ${correctSpelling}`);
-    return true;
-  };
+$n.spelling = function(n) {
+  return (t, a) => (console.warn(`${a} is likely a misspelling of ${n}`), !0);
 };
-function assertOptions(options, schema, allowUnknown) {
-  if (typeof options !== "object") {
-    throw new AxiosError$1("options must be an object", AxiosError$1.ERR_BAD_OPTION_VALUE);
-  }
-  const keys = Object.keys(options);
-  let i = keys.length;
-  while (i-- > 0) {
-    const opt = keys[i];
-    const validator2 = Object.prototype.hasOwnProperty.call(schema, opt) ? schema[opt] : void 0;
-    if (validator2) {
-      const value = options[opt];
-      const result = value === void 0 || validator2(value, opt, options);
-      if (result !== true) {
-        throw new AxiosError$1(
-          "option " + opt + " must be " + result,
-          AxiosError$1.ERR_BAD_OPTION_VALUE
+function Nl(e, n, t) {
+  if (typeof e != "object")
+    throw new g("options must be an object", g.ERR_BAD_OPTION_VALUE);
+  const a = Object.keys(e);
+  let o = a.length;
+  for (; o-- > 0; ) {
+    const s = a[o], i = Object.prototype.hasOwnProperty.call(n, s) ? n[s] : void 0;
+    if (i) {
+      const r = e[s], p = r === void 0 || i(r, s, e);
+      if (p !== !0)
+        throw new g(
+          "option " + s + " must be " + p,
+          g.ERR_BAD_OPTION_VALUE
         );
-      }
       continue;
     }
-    if (allowUnknown !== true) {
-      throw new AxiosError$1("Unknown option " + opt, AxiosError$1.ERR_BAD_OPTION);
-    }
+    if (t !== !0)
+      throw new g("Unknown option " + s, g.ERR_BAD_OPTION);
   }
 }
-const validator = {
-  assertOptions,
-  validators: validators$1
-};
-const validators = validator.validators;
-let Axios$1 = class Axios {
-  constructor(instanceConfig) {
-    this.defaults = instanceConfig || {};
-    this.interceptors = {
-      request: new InterceptorManager(),
-      response: new InterceptorManager()
+const Sn = {
+  assertOptions: Nl,
+  validators: $n
+}, me = Sn.validators;
+let je = class {
+  constructor(n) {
+    this.defaults = n || {}, this.interceptors = {
+      request: new Ka(),
+      response: new Ka()
     };
   }
   /**
@@ -17493,292 +15189,225 @@ let Axios$1 = class Axios {
    *
    * @returns {Promise} The Promise to be fulfilled
    */
-  async request(configOrUrl, config) {
+  async request(n, t) {
     try {
-      return await this._request(configOrUrl, config);
-    } catch (err) {
-      if (err instanceof Error) {
-        let dummy = {};
-        Error.captureStackTrace ? Error.captureStackTrace(dummy) : dummy = new Error();
-        const stack = (() => {
-          if (!dummy.stack) {
+      return await this._request(n, t);
+    } catch (a) {
+      if (a instanceof Error) {
+        let o = {};
+        Error.captureStackTrace ? Error.captureStackTrace(o) : o = new Error();
+        const s = (() => {
+          if (!o.stack)
             return "";
-          }
-          const firstNewlineIndex = dummy.stack.indexOf("\n");
-          return firstNewlineIndex === -1 ? "" : dummy.stack.slice(firstNewlineIndex + 1);
+          const i = o.stack.indexOf(`
+`);
+          return i === -1 ? "" : o.stack.slice(i + 1);
         })();
         try {
-          if (!err.stack) {
-            err.stack = stack;
-          } else if (stack) {
-            const firstNewlineIndex = stack.indexOf("\n");
-            const secondNewlineIndex = firstNewlineIndex === -1 ? -1 : stack.indexOf("\n", firstNewlineIndex + 1);
-            const stackWithoutTwoTopLines = secondNewlineIndex === -1 ? "" : stack.slice(secondNewlineIndex + 1);
-            if (!String(err.stack).endsWith(stackWithoutTwoTopLines)) {
-              err.stack += "\n" + stack;
-            }
+          if (!a.stack)
+            a.stack = s;
+          else if (s) {
+            const i = s.indexOf(`
+`), r = i === -1 ? -1 : s.indexOf(`
+`, i + 1), p = r === -1 ? "" : s.slice(r + 1);
+            String(a.stack).endsWith(p) || (a.stack += `
+` + s);
           }
-        } catch (e) {
+        } catch {
         }
       }
-      throw err;
+      throw a;
     }
   }
-  _request(configOrUrl, config) {
-    if (typeof configOrUrl === "string") {
-      config = config || {};
-      config.url = configOrUrl;
-    } else {
-      config = configOrUrl || {};
-    }
-    config = mergeConfig$1(this.defaults, config);
-    const { transitional: transitional2, paramsSerializer, headers } = config;
-    if (transitional2 !== void 0) {
-      validator.assertOptions(
-        transitional2,
-        {
-          silentJSONParsing: validators.transitional(validators.boolean),
-          forcedJSONParsing: validators.transitional(validators.boolean),
-          clarifyTimeoutError: validators.transitional(validators.boolean),
-          legacyInterceptorReqResOrdering: validators.transitional(validators.boolean)
-        },
-        false
-      );
-    }
-    if (paramsSerializer != null) {
-      if (utils$1.isFunction(paramsSerializer)) {
-        config.paramsSerializer = {
-          serialize: paramsSerializer
-        };
-      } else {
-        validator.assertOptions(
-          paramsSerializer,
-          {
-            encode: validators.function,
-            serialize: validators.function
-          },
-          true
-        );
-      }
-    }
-    if (config.allowAbsoluteUrls !== void 0) ;
-    else if (this.defaults.allowAbsoluteUrls !== void 0) {
-      config.allowAbsoluteUrls = this.defaults.allowAbsoluteUrls;
-    } else {
-      config.allowAbsoluteUrls = true;
-    }
-    validator.assertOptions(
-      config,
+  _request(n, t) {
+    typeof n == "string" ? (t = t || {}, t.url = n) : t = n || {}, t = Ne(this.defaults, t);
+    const { transitional: a, paramsSerializer: o, headers: s } = t;
+    a !== void 0 && Sn.assertOptions(
+      a,
       {
-        baseUrl: validators.spelling("baseURL"),
-        withXsrfToken: validators.spelling("withXSRFToken")
+        silentJSONParsing: me.transitional(me.boolean),
+        forcedJSONParsing: me.transitional(me.boolean),
+        clarifyTimeoutError: me.transitional(me.boolean),
+        legacyInterceptorReqResOrdering: me.transitional(me.boolean)
       },
-      true
-    );
-    config.method = (config.method || this.defaults.method || "get").toLowerCase();
-    let contextHeaders = headers && utils$1.merge(headers.common, headers[config.method]);
-    headers && utils$1.forEach(["delete", "get", "head", "post", "put", "patch", "query", "common"], (method) => {
-      delete headers[method];
-    });
-    config.headers = AxiosHeaders$1.concat(contextHeaders, headers);
-    const requestInterceptorChain = [];
-    let synchronousRequestInterceptors = true;
-    this.interceptors.request.forEach(function unshiftRequestInterceptors(interceptor) {
-      if (typeof interceptor.runWhen === "function" && interceptor.runWhen(config) === false) {
+      !1
+    ), o != null && (m.isFunction(o) ? t.paramsSerializer = {
+      serialize: o
+    } : Sn.assertOptions(
+      o,
+      {
+        encode: me.function,
+        serialize: me.function
+      },
+      !0
+    )), t.allowAbsoluteUrls !== void 0 || (this.defaults.allowAbsoluteUrls !== void 0 ? t.allowAbsoluteUrls = this.defaults.allowAbsoluteUrls : t.allowAbsoluteUrls = !0), Sn.assertOptions(
+      t,
+      {
+        baseUrl: me.spelling("baseURL"),
+        withXsrfToken: me.spelling("withXSRFToken")
+      },
+      !0
+    ), t.method = (t.method || this.defaults.method || "get").toLowerCase();
+    let i = s && m.merge(s.common, s[t.method]);
+    s && m.forEach(["delete", "get", "head", "post", "put", "patch", "query", "common"], (b) => {
+      delete s[b];
+    }), t.headers = Q.concat(i, s);
+    const r = [];
+    let p = !0;
+    this.interceptors.request.forEach(function(x) {
+      if (typeof x.runWhen == "function" && x.runWhen(t) === !1)
         return;
-      }
-      synchronousRequestInterceptors = synchronousRequestInterceptors && interceptor.synchronous;
-      const transitional3 = config.transitional || transitionalDefaults;
-      const legacyInterceptorReqResOrdering = transitional3 && transitional3.legacyInterceptorReqResOrdering;
-      if (legacyInterceptorReqResOrdering) {
-        requestInterceptorChain.unshift(interceptor.fulfilled, interceptor.rejected);
-      } else {
-        requestInterceptorChain.push(interceptor.fulfilled, interceptor.rejected);
-      }
+      p = p && x.synchronous;
+      const v = t.transitional || qn;
+      v && v.legacyInterceptorReqResOrdering ? r.unshift(x.fulfilled, x.rejected) : r.push(x.fulfilled, x.rejected);
     });
-    const responseInterceptorChain = [];
-    this.interceptors.response.forEach(function pushResponseInterceptors(interceptor) {
-      responseInterceptorChain.push(interceptor.fulfilled, interceptor.rejected);
+    const l = [];
+    this.interceptors.response.forEach(function(x) {
+      l.push(x.fulfilled, x.rejected);
     });
-    let promise;
-    let i = 0;
-    let len;
-    if (!synchronousRequestInterceptors) {
-      const chain = [dispatchRequest.bind(this), void 0];
-      chain.unshift(...requestInterceptorChain);
-      chain.push(...responseInterceptorChain);
-      len = chain.length;
-      promise = Promise.resolve(config);
-      while (i < len) {
-        promise = promise.then(chain[i++], chain[i++]);
-      }
-      return promise;
+    let c, u = 0, d;
+    if (!p) {
+      const b = [bo.bind(this), void 0];
+      for (b.unshift(...r), b.push(...l), d = b.length, c = Promise.resolve(t); u < d; )
+        c = c.then(b[u++], b[u++]);
+      return c;
     }
-    len = requestInterceptorChain.length;
-    let newConfig = config;
-    while (i < len) {
-      const onFulfilled = requestInterceptorChain[i++];
-      const onRejected = requestInterceptorChain[i++];
+    d = r.length;
+    let f = t;
+    for (; u < d; ) {
+      const b = r[u++], x = r[u++];
       try {
-        newConfig = onFulfilled(newConfig);
-      } catch (error) {
-        onRejected.call(this, error);
+        f = b(f);
+      } catch (v) {
+        x.call(this, v);
         break;
       }
     }
     try {
-      promise = dispatchRequest.call(this, newConfig);
-    } catch (error) {
-      return Promise.reject(error);
+      c = bo.call(this, f);
+    } catch (b) {
+      return Promise.reject(b);
     }
-    i = 0;
-    len = responseInterceptorChain.length;
-    while (i < len) {
-      promise = promise.then(responseInterceptorChain[i++], responseInterceptorChain[i++]);
-    }
-    return promise;
+    for (u = 0, d = l.length; u < d; )
+      c = c.then(l[u++], l[u++]);
+    return c;
   }
-  getUri(config) {
-    config = mergeConfig$1(this.defaults, config);
-    const fullPath = buildFullPath(config.baseURL, config.url, config.allowAbsoluteUrls);
-    return buildURL(fullPath, config.params, config.paramsSerializer);
+  getUri(n) {
+    n = Ne(this.defaults, n);
+    const t = ra(n.baseURL, n.url, n.allowAbsoluteUrls);
+    return sa(t, n.params, n.paramsSerializer);
   }
 };
-utils$1.forEach(["delete", "get", "head", "options"], function forEachMethodNoData(method) {
-  Axios$1.prototype[method] = function(url2, config) {
+m.forEach(["delete", "get", "head", "options"], function(n) {
+  je.prototype[n] = function(t, a) {
     return this.request(
-      mergeConfig$1(config || {}, {
-        method,
-        url: url2,
-        data: (config || {}).data
+      Ne(a || {}, {
+        method: n,
+        url: t,
+        data: (a || {}).data
       })
     );
   };
 });
-utils$1.forEach(["post", "put", "patch", "query"], function forEachMethodWithData(method) {
-  function generateHTTPMethod(isForm) {
-    return function httpMethod(url2, data, config) {
+m.forEach(["post", "put", "patch", "query"], function(n) {
+  function t(a) {
+    return function(s, i, r) {
       return this.request(
-        mergeConfig$1(config || {}, {
-          method,
-          headers: isForm ? {
+        Ne(r || {}, {
+          method: n,
+          headers: a ? {
             "Content-Type": "multipart/form-data"
           } : {},
-          url: url2,
-          data
+          url: s,
+          data: i
         })
       );
     };
   }
-  Axios$1.prototype[method] = generateHTTPMethod();
-  if (method !== "query") {
-    Axios$1.prototype[method + "Form"] = generateHTTPMethod(true);
-  }
+  je.prototype[n] = t(), n !== "query" && (je.prototype[n + "Form"] = t(!0));
 });
-let CancelToken$1 = class CancelToken {
-  constructor(executor) {
-    if (typeof executor !== "function") {
+let Dl = class gs {
+  constructor(n) {
+    if (typeof n != "function")
       throw new TypeError("executor must be a function.");
-    }
-    let resolvePromise;
-    this.promise = new Promise(function promiseExecutor(resolve2) {
-      resolvePromise = resolve2;
+    let t;
+    this.promise = new Promise(function(s) {
+      t = s;
     });
-    const token = this;
-    this.promise.then((cancel) => {
-      if (!token._listeners) return;
-      let i = token._listeners.length;
-      while (i-- > 0) {
-        token._listeners[i](cancel);
-      }
-      token._listeners = null;
-    });
-    this.promise.then = (onfulfilled) => {
-      let _resolve;
-      const promise = new Promise((resolve2) => {
-        token.subscribe(resolve2);
-        _resolve = resolve2;
-      }).then(onfulfilled);
-      promise.cancel = function reject() {
-        token.unsubscribe(_resolve);
-      };
-      return promise;
-    };
-    executor(function cancel(message, config, request) {
-      if (token.reason) {
-        return;
-      }
-      token.reason = new CanceledError$1(message, config, request);
-      resolvePromise(token.reason);
+    const a = this;
+    this.promise.then((o) => {
+      if (!a._listeners) return;
+      let s = a._listeners.length;
+      for (; s-- > 0; )
+        a._listeners[s](o);
+      a._listeners = null;
+    }), this.promise.then = (o) => {
+      let s;
+      const i = new Promise((r) => {
+        a.subscribe(r), s = r;
+      }).then(o);
+      return i.cancel = function() {
+        a.unsubscribe(s);
+      }, i;
+    }, n(function(s, i, r) {
+      a.reason || (a.reason = new Pe(s, i, r), t(a.reason));
     });
   }
   /**
    * Throws a `CanceledError` if cancellation has been requested.
    */
   throwIfRequested() {
-    if (this.reason) {
+    if (this.reason)
       throw this.reason;
-    }
   }
   /**
    * Subscribe to the cancel signal
    */
-  subscribe(listener) {
+  subscribe(n) {
     if (this.reason) {
-      listener(this.reason);
+      n(this.reason);
       return;
     }
-    if (this._listeners) {
-      this._listeners.push(listener);
-    } else {
-      this._listeners = [listener];
-    }
+    this._listeners ? this._listeners.push(n) : this._listeners = [n];
   }
   /**
    * Unsubscribe from the cancel signal
    */
-  unsubscribe(listener) {
-    if (!this._listeners) {
+  unsubscribe(n) {
+    if (!this._listeners)
       return;
-    }
-    const index = this._listeners.indexOf(listener);
-    if (index !== -1) {
-      this._listeners.splice(index, 1);
-    }
+    const t = this._listeners.indexOf(n);
+    t !== -1 && this._listeners.splice(t, 1);
   }
   toAbortSignal() {
-    const controller = new AbortController();
-    const abort2 = (err) => {
-      controller.abort(err);
+    const n = new AbortController(), t = (a) => {
+      n.abort(a);
     };
-    this.subscribe(abort2);
-    controller.signal.unsubscribe = () => this.unsubscribe(abort2);
-    return controller.signal;
+    return this.subscribe(t), n.signal.unsubscribe = () => this.unsubscribe(t), n.signal;
   }
   /**
    * Returns an object that contains a new `CancelToken` and a function that, when called,
    * cancels the `CancelToken`.
    */
   static source() {
-    let cancel;
-    const token = new CancelToken(function executor(c) {
-      cancel = c;
-    });
+    let n;
     return {
-      token,
-      cancel
+      token: new gs(function(o) {
+        n = o;
+      }),
+      cancel: n
     };
   }
 };
-function spread$1(callback) {
-  return function wrap2(arr) {
-    return callback.apply(null, arr);
+function Il(e) {
+  return function(t) {
+    return e.apply(null, t);
   };
 }
-function isAxiosError$1(payload) {
-  return utils$1.isObject(payload) && payload.isAxiosError === true;
+function Fl(e) {
+  return m.isObject(e) && e.isAxiosError === !0;
 }
-const HttpStatusCode$1 = {
+const Ut = {
   Continue: 100,
   SwitchingProtocols: 101,
   Processing: 102,
@@ -17849,79 +15478,61 @@ const HttpStatusCode$1 = {
   SslHandshakeFailed: 525,
   InvalidSslCertificate: 526
 };
-Object.entries(HttpStatusCode$1).forEach(([key, value]) => {
-  HttpStatusCode$1[value] = key;
+Object.entries(Ut).forEach(([e, n]) => {
+  Ut[n] = e;
 });
-function createInstance(defaultConfig) {
-  const context = new Axios$1(defaultConfig);
-  const instance = bind$2(Axios$1.prototype.request, context);
-  utils$1.extend(instance, Axios$1.prototype, context, { allOwnKeys: true });
-  utils$1.extend(instance, context, null, { allOwnKeys: true });
-  instance.create = function create2(instanceConfig) {
-    return createInstance(mergeConfig$1(defaultConfig, instanceConfig));
-  };
-  return instance;
+function ys(e) {
+  const n = new je(e), t = Ro(je.prototype.request, n);
+  return m.extend(t, je.prototype, n, { allOwnKeys: !0 }), m.extend(t, n, null, { allOwnKeys: !0 }), t.create = function(o) {
+    return ys(Ne(e, o));
+  }, t;
 }
-const axios = createInstance(defaults);
-axios.Axios = Axios$1;
-axios.CanceledError = CanceledError$1;
-axios.CancelToken = CancelToken$1;
-axios.isCancel = isCancel$1;
-axios.VERSION = VERSION$1;
-axios.toFormData = toFormData$1;
-axios.AxiosError = AxiosError$1;
-axios.Cancel = axios.CanceledError;
-axios.all = function all(promises) {
-  return Promise.all(promises);
+const O = ys(ln);
+O.Axios = je;
+O.CanceledError = Pe;
+O.CancelToken = Dl;
+O.isCancel = ss;
+O.VERSION = tn;
+O.toFormData = zn;
+O.AxiosError = g;
+O.Cancel = O.CanceledError;
+O.all = function(n) {
+  return Promise.all(n);
 };
-axios.spread = spread$1;
-axios.isAxiosError = isAxiosError$1;
-axios.mergeConfig = mergeConfig$1;
-axios.AxiosHeaders = AxiosHeaders$1;
-axios.formToJSON = (thing) => formDataToJSON(utils$1.isHTMLForm(thing) ? new FormData(thing) : thing);
-axios.getAdapter = adapters.getAdapter;
-axios.HttpStatusCode = HttpStatusCode$1;
-axios.default = axios;
+O.spread = Il;
+O.isAxiosError = Fl;
+O.mergeConfig = Ne;
+O.AxiosHeaders = Q;
+O.formToJSON = (e) => os(m.isHTMLForm(e) ? new FormData(e) : e);
+O.getAdapter = bs.getAdapter;
+O.HttpStatusCode = Ut;
+O.default = O;
 const {
-  Axios: Axios2,
-  AxiosError: AxiosError2,
-  CanceledError: CanceledError2,
-  isCancel,
-  CancelToken: CancelToken2,
-  VERSION,
-  all: all2,
-  Cancel,
-  isAxiosError,
-  spread,
-  toFormData,
-  AxiosHeaders: AxiosHeaders2,
-  HttpStatusCode,
-  formToJSON,
-  getAdapter,
-  mergeConfig,
-  create
-} = axios;
-const DEEPSEEK_LOGIN_URL = "https://chat.deepseek.com/api/v0/users/login";
-const DEEPSEEK_HISTORY_URL = "https://chat.deepseek.com/api/v0/chat_session/fetch_page?lte_cursor.pinned=false";
-const DEEPSEEK_CREATE_POW_URL = "https://chat.deepseek.com/api/v0/chat/create_pow_challenge";
-const DEEPSEEK_COMPLETION_URL = "https://chat.deepseek.com/api/v0/chat/completion";
-const DEEPSEEK_HISTORY_MESSAGES_URL = "https://chat.deepseek.com/api/v0/chat/history_messages";
-const DEEPSEEK_CREATE_SESSION_URL = "https://chat.deepseek.com/api/v0/chat_session/create";
-const DEEPSEEK_DELETE_SESSION_URL = "https://chat.deepseek.com/api/v0/chat_session/delete";
-const DEEPSEEK_COMPLETION_TARGET_PATH = "/api/v0/chat/completion";
-const DEEPSEEK_PLATFORM_GET_API_KEYS_URL = "https://platform.deepseek.com/api/v0/users/get_api_keys";
-const DEEPSEEK_PLATFORM_EDIT_API_KEYS_URL = "https://platform.deepseek.com/api/v0/users/edit_api_keys";
-const DEEPSEEK_UPLOAD_FILE_URL = "https://chat.deepseek.com/api/v0/file/upload_file";
-const DEEPSEEK_FETCH_FILES_URL = "https://chat.deepseek.com/api/v0/file/fetch_files";
-const getLoginRequestBody = (email, password, _deviceId) => ({
-  email,
+  Axios: bd,
+  AxiosError: gd,
+  CanceledError: yd,
+  isCancel: wd,
+  CancelToken: kd,
+  VERSION: _d,
+  all: Ed,
+  Cancel: Sd,
+  isAxiosError: Rd,
+  spread: Ad,
+  toFormData: Td,
+  AxiosHeaders: Cd,
+  HttpStatusCode: Od,
+  formToJSON: jd,
+  getAdapter: Pd,
+  mergeConfig: Ld,
+  create: Nd
+} = O, Ul = "https://chat.deepseek.com/api/v0/users/login", Bl = "https://chat.deepseek.com/api/v0/chat_session/fetch_page?lte_cursor.pinned=false", Bt = "https://chat.deepseek.com/api/v0/chat/create_pow_challenge", zt = "https://chat.deepseek.com/api/v0/chat/completion", zl = "https://chat.deepseek.com/api/v0/chat/history_messages", ws = "https://chat.deepseek.com/api/v0/chat_session/create", ks = "https://chat.deepseek.com/api/v0/chat_session/delete", _s = "/api/v0/chat/completion", ql = "https://platform.deepseek.com/api/v0/users/get_api_keys", $l = "https://platform.deepseek.com/api/v0/users/edit_api_keys", Ml = "https://chat.deepseek.com/api/v0/file/upload_file", Hl = "https://chat.deepseek.com/api/v0/file/fetch_files", Wl = (e, n, t) => ({
+  email: e,
   mobile: "",
-  password,
+  password: n,
   area_code: "",
   device_id: "deepseek_to_api",
   os: "android"
-});
-const getLoginHeaders = () => ({
+}), Kl = () => ({
   accept: "application/json",
   "accept-language": "zh-CN",
   "cache-control": "no-cache",
@@ -17932,37 +15543,31 @@ const getLoginHeaders = () => ({
   "x-client-platform": "android",
   "x-client-timezone-offset": "28800",
   "x-client-version": "2.0.4"
-});
-const getHistoryHeaders = (token, cookies2) => {
-  const headers = {
-    "Accept": "application/json",
+}), le = (e, n) => {
+  const t = {
+    Accept: "application/json",
     "Accept-Charset": "UTF-8",
-    "Authorization": `Bearer ${token}`,
+    Authorization: `Bearer ${e}`,
     "Cache-Control": "no-cache",
-    "Host": "chat.deepseek.com",
-    "Pragma": "no-cache",
+    Host: "chat.deepseek.com",
+    Pragma: "no-cache",
     "User-Agent": "DeepSeek/2.0.4 Android/35",
     "x-client-locale": "zh_CN",
     "x-client-platform": "android",
     "x-client-timezone-offset": "28800",
     "x-client-version": "2.0.4"
   };
-  if (cookies2) {
-    headers["Cookie"] = cookies2;
-  }
-  return headers;
-};
-const getChatHeaders = (token, powResponse, cookies2) => ({
-  ...getHistoryHeaders(token, cookies2),
-  "x-ds-pow-response": powResponse,
+  return n && (t.Cookie = n), t;
+}, Es = (e, n, t) => ({
+  ...le(e, t),
+  "x-ds-pow-response": n,
   "Content-Type": "application/json"
-});
-const getPlatformHeaders = (token) => ({
-  "accept": "*/*",
+}), yo = (e) => ({
+  accept: "*/*",
   "accept-language": "vi,vi-VN;q=0.9,en;q=0.8",
-  "authorization": `Bearer ${token}`,
+  authorization: `Bearer ${e}`,
   "cache-control": "no-cache",
-  "pragma": "no-cache",
+  pragma: "no-cache",
   "sec-ch-ua": '"Chromium";v="148", "Google Chrome";v="148", "Not/A)Brand";v="99"',
   "sec-ch-ua-mobile": "?0",
   "sec-ch-ua-platform": '"Windows"',
@@ -17970,10 +15575,9 @@ const getPlatformHeaders = (token) => ({
   "sec-fetch-mode": "cors",
   "sec-fetch-site": "same-origin",
   "x-app-version": "1.0.0",
-  "Referer": "https://platform.deepseek.com/api_keys",
+  Referer: "https://platform.deepseek.com/api_keys",
   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"
-});
-const rc = [
+}), Gl = [
   0x0000000000000001n,
   0x0000000000008082n,
   0x800000000000808an,
@@ -17999,229 +15603,89 @@ const rc = [
   0x0000000080000001n,
   0x8000000080008008n
 ];
-function rotl64(v, k) {
-  return BigInt.asUintN(64, v << k | v >> 64n - k);
+function F(e, n) {
+  return BigInt.asUintN(64, e << n | e >> 64n - n);
 }
-function keccakF23(s) {
-  let a0 = s[0], a1 = s[1], a2 = s[2], a3 = s[3], a4 = s[4];
-  let a5 = s[5], a6 = s[6], a7 = s[7], a8 = s[8], a9 = s[9];
-  let a10 = s[10], a11 = s[11], a12 = s[12], a13 = s[13], a14 = s[14];
-  let a15 = s[15], a16 = s[16], a17 = s[17], a18 = s[18], a19 = s[19];
-  let a20 = s[20], a21 = s[21], a22 = s[22], a23 = s[23], a24 = s[24];
-  for (let r = 1; r < 24; r++) {
-    const c0 = a0 ^ a5 ^ a10 ^ a15 ^ a20;
-    const c1 = a1 ^ a6 ^ a11 ^ a16 ^ a21;
-    const c2 = a2 ^ a7 ^ a12 ^ a17 ^ a22;
-    const c3 = a3 ^ a8 ^ a13 ^ a18 ^ a23;
-    const c4 = a4 ^ a9 ^ a14 ^ a19 ^ a24;
-    const d0 = c4 ^ rotl64(c1, 1n);
-    const d1 = c0 ^ rotl64(c2, 1n);
-    const d2 = c1 ^ rotl64(c3, 1n);
-    const d3 = c2 ^ rotl64(c4, 1n);
-    const d4 = c3 ^ rotl64(c0, 1n);
-    a0 ^= d0;
-    a5 ^= d0;
-    a10 ^= d0;
-    a15 ^= d0;
-    a20 ^= d0;
-    a1 ^= d1;
-    a6 ^= d1;
-    a11 ^= d1;
-    a16 ^= d1;
-    a21 ^= d1;
-    a2 ^= d2;
-    a7 ^= d2;
-    a12 ^= d2;
-    a17 ^= d2;
-    a22 ^= d2;
-    a3 ^= d3;
-    a8 ^= d3;
-    a13 ^= d3;
-    a18 ^= d3;
-    a23 ^= d3;
-    a4 ^= d4;
-    a9 ^= d4;
-    a14 ^= d4;
-    a19 ^= d4;
-    a24 ^= d4;
-    const b0 = a0;
-    const b10 = rotl64(a1, 1n);
-    const b20 = rotl64(a2, 62n);
-    const b5 = rotl64(a3, 28n);
-    const b15 = rotl64(a4, 27n);
-    const b16 = rotl64(a5, 36n);
-    const b1 = rotl64(a6, 44n);
-    const b11 = rotl64(a7, 6n);
-    const b21 = rotl64(a8, 55n);
-    const b6 = rotl64(a9, 20n);
-    const b7 = rotl64(a10, 3n);
-    const b17 = rotl64(a11, 10n);
-    const b2 = rotl64(a12, 43n);
-    const b12 = rotl64(a13, 25n);
-    const b22 = rotl64(a14, 39n);
-    const b23 = rotl64(a15, 41n);
-    const b8 = rotl64(a16, 45n);
-    const b18 = rotl64(a17, 15n);
-    const b3 = rotl64(a18, 21n);
-    const b13 = rotl64(a19, 8n);
-    const b14 = rotl64(a20, 18n);
-    const b24 = rotl64(a21, 2n);
-    const b9 = rotl64(a22, 61n);
-    const b19 = rotl64(a23, 56n);
-    const b4 = rotl64(a24, 14n);
-    a0 = b0 ^ ~b1 & b2;
-    a1 = b1 ^ ~b2 & b3;
-    a2 = b2 ^ ~b3 & b4;
-    a3 = b3 ^ ~b4 & b0;
-    a4 = b4 ^ ~b0 & b1;
-    a5 = b5 ^ ~b6 & b7;
-    a6 = b6 ^ ~b7 & b8;
-    a7 = b7 ^ ~b8 & b9;
-    a8 = b8 ^ ~b9 & b5;
-    a9 = b9 ^ ~b5 & b6;
-    a10 = b10 ^ ~b11 & b12;
-    a11 = b11 ^ ~b12 & b13;
-    a12 = b12 ^ ~b13 & b14;
-    a13 = b13 ^ ~b14 & b10;
-    a14 = b14 ^ ~b10 & b11;
-    a15 = b15 ^ ~b16 & b17;
-    a16 = b16 ^ ~b17 & b18;
-    a17 = b17 ^ ~b18 & b19;
-    a18 = b18 ^ ~b19 & b15;
-    a19 = b19 ^ ~b15 & b16;
-    a20 = b20 ^ ~b21 & b22;
-    a21 = b21 ^ ~b22 & b23;
-    a22 = b22 ^ ~b23 & b24;
-    a23 = b23 ^ ~b24 & b20;
-    a24 = b24 ^ ~b20 & b21;
-    a0 ^= rc[r];
+function yn(e) {
+  let n = e[0], t = e[1], a = e[2], o = e[3], s = e[4], i = e[5], r = e[6], p = e[7], l = e[8], c = e[9], u = e[10], d = e[11], f = e[12], b = e[13], x = e[14], v = e[15], h = e[16], w = e[17], _ = e[18], k = e[19], S = e[20], R = e[21], j = e[22], D = e[23], q = e[24];
+  for (let A = 1; A < 24; A++) {
+    const ae = n ^ i ^ u ^ v ^ S, K = t ^ r ^ d ^ h ^ R, _e = a ^ p ^ f ^ w ^ j, ee = o ^ l ^ b ^ _ ^ D, xe = s ^ c ^ x ^ k ^ q, oe = xe ^ F(K, 1n), de = ae ^ F(_e, 1n), ye = K ^ F(ee, 1n), V = _e ^ F(xe, 1n), $ = ee ^ F(ae, 1n);
+    n ^= oe, i ^= oe, u ^= oe, v ^= oe, S ^= oe, t ^= de, r ^= de, d ^= de, h ^= de, R ^= de, a ^= ye, p ^= ye, f ^= ye, w ^= ye, j ^= ye, o ^= V, l ^= V, b ^= V, _ ^= V, D ^= V, s ^= $, c ^= $, x ^= $, k ^= $, q ^= $;
+    const re = n, G = F(t, 1n), U = F(a, 62n), se = F(o, 28n), Y = F(s, 27n), he = F(i, 36n), E = F(r, 44n), y = F(p, 6n), P = F(l, 55n), z = F(c, 20n), L = F(u, 3n), J = F(d, 10n), ne = F(f, 43n), I = F(b, 25n), we = F(x, 39n), Ee = F(v, 41n), M = F(h, 45n), Ie = F(w, 15n), Mn = F(_, 21n), Hn = F(k, 8n), Wn = F(S, 18n), Kn = F(R, 2n), Gn = F(j, 61n), Jn = F(D, 56n), Vn = F(q, 14n);
+    n = re ^ ~E & ne, t = E ^ ~ne & Mn, a = ne ^ ~Mn & Vn, o = Mn ^ ~Vn & re, s = Vn ^ ~re & E, i = se ^ ~z & L, r = z ^ ~L & M, p = L ^ ~M & Gn, l = M ^ ~Gn & se, c = Gn ^ ~se & z, u = G ^ ~y & I, d = y ^ ~I & Hn, f = I ^ ~Hn & Wn, b = Hn ^ ~Wn & G, x = Wn ^ ~G & y, v = Y ^ ~he & J, h = he ^ ~J & Ie, w = J ^ ~Ie & Jn, _ = Ie ^ ~Jn & Y, k = Jn ^ ~Y & he, S = U ^ ~P & we, R = P ^ ~we & Ee, j = we ^ ~Ee & Kn, D = Ee ^ ~Kn & U, q = Kn ^ ~U & P, n ^= Gl[A];
   }
-  s[0] = a0;
-  s[1] = a1;
-  s[2] = a2;
-  s[3] = a3;
-  s[4] = a4;
-  s[5] = a5;
-  s[6] = a6;
-  s[7] = a7;
-  s[8] = a8;
-  s[9] = a9;
-  s[10] = a10;
-  s[11] = a11;
-  s[12] = a12;
-  s[13] = a13;
-  s[14] = a14;
-  s[15] = a15;
-  s[16] = a16;
-  s[17] = a17;
-  s[18] = a18;
-  s[19] = a19;
-  s[20] = a20;
-  s[21] = a21;
-  s[22] = a22;
-  s[23] = a23;
-  s[24] = a24;
+  e[0] = n, e[1] = t, e[2] = a, e[3] = o, e[4] = s, e[5] = i, e[6] = r, e[7] = p, e[8] = l, e[9] = c, e[10] = u, e[11] = d, e[12] = f, e[13] = b, e[14] = x, e[15] = v, e[16] = h, e[17] = w, e[18] = _, e[19] = k, e[20] = S, e[21] = R, e[22] = j, e[23] = D, e[24] = q;
 }
-function solvePow(challengeHex, salt, expireAt, difficulty) {
-  if (challengeHex.length !== 64) {
+function Jl(e, n, t, a) {
+  if (e.length !== 64)
     throw new Error("pow: challenge must be 64 hex chars");
+  const o = Buffer.from(e, "hex"), s = o.readBigUInt64LE(0), i = o.readBigUInt64LE(8), r = o.readBigUInt64LE(16), p = o.readBigUInt64LE(24), l = `${n}_${t}_`, c = Buffer.from(l, "utf-8"), u = 136;
+  let d = new Array(25).fill(0n), f = 0;
+  for (; f + u <= c.length; ) {
+    for (let h = 0; h < u / 8; h++)
+      d[h] ^= c.readBigUInt64LE(f + h * 8);
+    yn(d), f += u;
   }
-  const target = Buffer.from(challengeHex, "hex");
-  const t0 = target.readBigUInt64LE(0);
-  const t1 = target.readBigUInt64LE(8);
-  const t2 = target.readBigUInt64LE(16);
-  const t3 = target.readBigUInt64LE(24);
-  const prefixStr = `${salt}_${expireAt}_`;
-  const prefix = Buffer.from(prefixStr, "utf-8");
-  const rate = 136;
-  let baseState = new Array(25).fill(0n);
-  let off = 0;
-  while (off + rate <= prefix.length) {
-    for (let i = 0; i < rate / 8; i++) {
-      baseState[i] ^= prefix.readBigUInt64LE(off + i * 8);
-    }
-    keccakF23(baseState);
-    off += rate;
-  }
-  const tailLen = prefix.length - off;
-  const tail = Buffer.alloc(rate);
-  prefix.copy(tail, 0, off);
-  let numBuf = Buffer.alloc(20);
-  for (let n = 0; n < difficulty; n++) {
-    let v = n;
-    let pos = 20;
-    if (v === 0) {
-      pos--;
-      numBuf[pos] = 48;
+  const b = c.length - f, x = Buffer.alloc(u);
+  c.copy(x, 0, f);
+  let v = Buffer.alloc(20);
+  for (let h = 0; h < a; h++) {
+    let w = h, _ = 20;
+    if (w === 0)
+      _--, v[_] = 48;
+    else
+      for (; w > 0; )
+        _--, v[_] = 48 + w % 10, w = Math.floor(w / 10);
+    const k = 20 - _;
+    let S = [...d];
+    const R = b + k;
+    if (R < u) {
+      let j = Buffer.alloc(u);
+      x.copy(j, 0, 0, b), v.copy(j, b, _, 20), j[R] = 6, j[u - 1] |= 128;
+      for (let D = 0; D < u / 8; D++)
+        S[D] ^= j.readBigUInt64LE(D * 8);
+      yn(S);
     } else {
-      while (v > 0) {
-        pos--;
-        numBuf[pos] = 48 + v % 10;
-        v = Math.floor(v / 10);
-      }
+      let j = Buffer.alloc(u);
+      x.copy(j, 0, 0, b), v.copy(j, b, _, _ + (u - b));
+      for (let A = 0; A < u / 8; A++)
+        S[A] ^= j.readBigUInt64LE(A * 8);
+      yn(S);
+      let D = Buffer.alloc(u);
+      const q = R - u;
+      v.copy(D, 0, _ + (u - b), _ + (u - b) + q), D[q] = 6, D[u - 1] |= 128;
+      for (let A = 0; A < u / 8; A++)
+        S[A] ^= D.readBigUInt64LE(A * 8);
+      yn(S);
     }
-    const numLen = 20 - pos;
-    let s = [...baseState];
-    const totalTail = tailLen + numLen;
-    if (totalTail < rate) {
-      let buf = Buffer.alloc(rate);
-      tail.copy(buf, 0, 0, tailLen);
-      numBuf.copy(buf, tailLen, pos, 20);
-      buf[totalTail] = 6;
-      buf[rate - 1] |= 128;
-      for (let i = 0; i < rate / 8; i++) {
-        s[i] ^= buf.readBigUInt64LE(i * 8);
-      }
-      keccakF23(s);
-    } else {
-      let buf = Buffer.alloc(rate);
-      tail.copy(buf, 0, 0, tailLen);
-      numBuf.copy(buf, tailLen, pos, pos + (rate - tailLen));
-      for (let i = 0; i < rate / 8; i++) {
-        s[i] ^= buf.readBigUInt64LE(i * 8);
-      }
-      keccakF23(s);
-      let buf2 = Buffer.alloc(rate);
-      const rem = totalTail - rate;
-      numBuf.copy(buf2, 0, pos + (rate - tailLen), pos + (rate - tailLen) + rem);
-      buf2[rem] = 6;
-      buf2[rate - 1] |= 128;
-      for (let i = 0; i < rate / 8; i++) {
-        s[i] ^= buf2.readBigUInt64LE(i * 8);
-      }
-      keccakF23(s);
-    }
-    if (s[0] === t0 && s[1] === t1 && s[2] === t2 && s[3] === t3) {
-      return n;
-    }
+    if (S[0] === s && S[1] === i && S[2] === r && S[3] === p)
+      return h;
   }
   throw new Error("pow: no solution within difficulty");
 }
-function buildPowHeader(challenge, answer) {
-  const payload = {
-    algorithm: challenge.algorithm,
-    challenge: challenge.challenge,
-    salt: challenge.salt,
-    answer,
-    signature: challenge.signature,
-    target_path: challenge.target_path
+function Vl(e, n) {
+  const t = {
+    algorithm: e.algorithm,
+    challenge: e.challenge,
+    salt: e.salt,
+    answer: n,
+    signature: e.signature,
+    target_path: e.target_path
   };
-  return Buffer.from(JSON.stringify(payload)).toString("base64");
+  return Buffer.from(JSON.stringify(t)).toString("base64");
 }
-function solveAndBuildHeader(challenge) {
-  if (challenge.algorithm !== "DeepSeekHashV1") {
-    throw new Error("pow: unsupported algorithm: " + challenge.algorithm);
-  }
-  const difficulty = challenge.difficulty || 144e3;
-  const answer = solvePow(
-    challenge.challenge,
-    challenge.salt,
-    challenge.expire_at,
-    difficulty
+function qt(e) {
+  if (e.algorithm !== "DeepSeekHashV1")
+    throw new Error("pow: unsupported algorithm: " + e.algorithm);
+  const n = e.difficulty || 144e3, t = Jl(
+    e.challenge,
+    e.salt,
+    e.expire_at,
+    n
   );
-  return buildPowHeader(challenge, answer);
+  return Vl(e, t);
 }
-const credentialTrackerScript = `
+const Xl = `
 (function() {
 	if (window.__credentialTracker) return;
 	window.__credentialTracker = true;
@@ -18254,8 +15718,7 @@ const credentialTrackerScript = `
 		} catch(e) {}
 	}, 200);
 })();
-`;
-const loginPollerScript = `
+`, Yl = `
 (function() {
 	if (window.__loginPoller) return;
 	window.__loginPoller = setInterval(() => {
@@ -18272,14 +15735,13 @@ const loginPollerScript = `
 		} catch(e) {}
 	}, 1000);
 })();
-`;
-const getAutoLoginScript = (email, password) => `
+`, Zl = (e, n) => `
 (function() {
 	if (window.__autologinRun) return;
 	window.__autologinRun = true;
 	
-	const email = ${JSON.stringify(email)};
-	const password = ${JSON.stringify(password)};
+	const email = ${JSON.stringify(e)};
+	const password = ${JSON.stringify(n)};
 	if (!email || !password) return;
 	
 	const tryLogin = () => {
@@ -18346,8 +15808,7 @@ const getAutoLoginScript = (email, password) => `
 	
 	setTimeout(() => clearInterval(interval), 15000);
 })();
-`;
-const chatPollerScript = `
+`, Ql = `
 (function() {
 	if (window.__chatPoller) return;
 	window.__chatPoller = setInterval(() => {
@@ -18365,641 +15826,538 @@ const chatPollerScript = `
 	}, 1000);
 })();
 `;
-function registerAccountIpcs(__dirname, VITE_DEV_SERVER_URL2, RENDERER_DIST2) {
-  ipcMain.on("open-add-account", (event) => {
-    const parentWindow = BrowserWindow.fromWebContents(event.sender) || void 0;
-    const popup = new BrowserWindow({
+function eu(e, n, t) {
+  C.on("open-add-account", (a) => {
+    const o = X.fromWebContents(a.sender) || void 0, s = new X({
       width: 450,
       height: 550,
-      frame: false,
-      resizable: false,
-      parent: parentWindow,
-      modal: true,
-      icon: path$1.join(process.env.VITE_PUBLIC || "", "logo.png"),
+      frame: !1,
+      resizable: !1,
+      parent: o,
+      modal: !0,
+      icon: B.join(process.env.VITE_PUBLIC || "", "logo.png"),
       webPreferences: {
-        preload: path$1.join(__dirname, "preload.mjs")
+        preload: B.join(e, "preload.mjs")
       }
     });
-    if (VITE_DEV_SERVER_URL2) {
-      popup.loadURL(`${VITE_DEV_SERVER_URL2}#/add-account`);
-    } else {
-      popup.loadFile(path$1.join(RENDERER_DIST2, "index.html"), {
-        hash: "/add-account"
-      });
-    }
-  });
-  ipcMain.on("open-create-api-key", (event, token) => {
-    const parentWindow = BrowserWindow.fromWebContents(event.sender) || void 0;
-    const popup = new BrowserWindow({
+    n ? s.loadURL(`${n}#/add-account`) : s.loadFile(B.join(t, "index.html"), {
+      hash: "/add-account"
+    });
+  }), C.on("open-create-api-key", (a, o) => {
+    const s = X.fromWebContents(a.sender) || void 0, i = new X({
       width: 450,
       height: 560,
-      frame: false,
-      resizable: false,
-      parent: parentWindow,
-      modal: true,
-      icon: path$1.join(process.env.VITE_PUBLIC || "", "logo.png"),
+      frame: !1,
+      resizable: !1,
+      parent: s,
+      modal: !0,
+      icon: B.join(process.env.VITE_PUBLIC || "", "logo.png"),
       webPreferences: {
-        preload: path$1.join(__dirname, "preload.mjs")
+        preload: B.join(e, "preload.mjs")
       }
+    }), r = encodeURIComponent(o);
+    n ? i.loadURL(
+      `${n}#/create-api-key/${r}`
+    ) : i.loadFile(B.join(t, "index.html"), {
+      hash: `/create-api-key/${r}`
     });
-    const encodedToken = encodeURIComponent(token);
-    if (VITE_DEV_SERVER_URL2) {
-      popup.loadURL(
-        `${VITE_DEV_SERVER_URL2}#/create-api-key/${encodedToken}`
-      );
-    } else {
-      popup.loadFile(path$1.join(RENDERER_DIST2, "index.html"), {
-        hash: `/create-api-key/${encodedToken}`
-      });
-    }
-  });
-  ipcMain.handle(
+  }), C.handle(
     "deepseek-login",
-    async (_event, _payload) => {
-      return new Promise(async (resolve2) => {
-        const partitionName = `platform-waf-${Date.now()}`;
-        const ses = session.fromPartition(partitionName, {
-          cache: false
-        });
-        const win2 = new BrowserWindow({
-          width: 800,
-          height: 600,
-          show: true,
-          webPreferences: {
-            session: ses,
-            nodeIntegration: false,
-            contextIsolation: true,
-            webSecurity: true,
-            preload: path$1.join(__dirname, "preload.mjs")
-          }
-        });
-        const standardUA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
-        ses.setUserAgent(standardUA);
-        win2.webContents.setUserAgent(standardUA);
-        let platformToken = null;
-        let chatToken = null;
-        let hasNavigatedToChat = false;
-        let isResolved = false;
-        let capturedEmail = "";
-        let capturedPassword = "";
-        const completeLogin = () => {
-          if (isResolved) return;
-          if (platformToken && chatToken) {
-            isResolved = true;
-            console.log(
-              "[deepseek-login] Both tokens captured successfully, fetching user profile via main process (Android client mode)..."
-            );
-            axios.get(
-              "https://chat.deepseek.com/api/v0/users/current",
-              {
-                headers: getHistoryHeaders(chatToken)
-              }
-            ).then((response) => {
-              var _a, _b;
-              const bizData = (_b = (_a = response.data) == null ? void 0 : _a.data) == null ? void 0 : _b.biz_data;
-              console.log(
-                "[deepseek-login] User profile fetched successfully:",
-                bizData
-              );
-              resolve2({
-                ok: true,
-                status: 200,
-                data: {
-                  data: {
-                    biz_data: {
-                      user: {
-                        id: (bizData == null ? void 0 : bizData.id) || `temp_${Date.now()}`,
-                        email: capturedEmail || (bizData == null ? void 0 : bizData.email) || "unknown@deepseek.com",
-                        token: chatToken
-                      }
-                    }
-                  }
-                },
-                platformToken
-              });
-            }).catch((err) => {
-              console.error(
-                "[deepseek-login] Main-process profile fetch failed, using captured credentials fallback:",
-                err.message
-              );
-              resolve2({
-                ok: true,
-                status: 200,
-                data: {
-                  data: {
-                    biz_data: {
-                      user: {
-                        id: `temp_${Date.now()}`,
-                        email: capturedEmail || "unknown@deepseek.com",
-                        token: chatToken
-                      }
-                    }
-                  }
-                },
-                platformToken
-              });
-            }).finally(() => {
-              setTimeout(() => {
-                if (!win2.isDestroyed()) {
-                  win2.destroy();
-                  ses.clearStorageData().catch(() => {
-                  });
-                }
-              }, 500);
-            });
-          }
-        };
-        ses.webRequest.onBeforeSendHeaders(
-          { urls: ["*://*/*"] },
-          (details, callback) => {
-            if (details.requestHeaders["sec-ch-ua"]) {
-              details.requestHeaders["sec-ch-ua"] = details.requestHeaders["sec-ch-ua"].split(", ").filter(
-                (part) => !part.includes("Electron") && !part.includes("shallow-seek")
-              ).join(", ");
-            }
-            callback({
-              cancel: false,
-              requestHeaders: details.requestHeaders
-            });
-          }
-        );
-        win2.webContents.on("did-finish-load", async () => {
-          const url2 = win2.webContents.getURL();
-          if (url2.includes("platform.deepseek.com")) {
-            await win2.webContents.executeJavaScript(credentialTrackerScript).catch(() => {
-            });
-            await win2.webContents.executeJavaScript(loginPollerScript).catch(() => {
-            });
-          } else if (url2.includes("chat.deepseek.com")) {
-            if (capturedEmail && capturedPassword) {
-              console.log(
-                "[deepseek-login] Injecting auto-login credentials into Chat page...",
-                { capturedEmail }
-              );
-              await win2.webContents.executeJavaScript(
-                getAutoLoginScript(
-                  capturedEmail,
-                  capturedPassword
-                )
-              ).catch(() => {
-              });
-            }
-            await win2.webContents.executeJavaScript(chatPollerScript).catch(() => {
-            });
-          }
-        });
-        win2.webContents.on(
-          "console-message",
-          async (_event2, level, message) => {
-            console.log(
-              `[Browser Console] [Level ${level}]:`,
-              message
-            );
-            if (message.startsWith("__TRACKED_EMAIL__:")) {
-              capturedEmail = message.replace("__TRACKED_EMAIL__:", "").trim();
-            } else if (message.startsWith("__TRACKED_PASSWORD__:")) {
-              capturedPassword = message.replace("__TRACKED_PASSWORD__:", "").trim();
-            } else if (message.startsWith("__PLATFORM_TOKEN__:")) {
-              const token = message.replace("__PLATFORM_TOKEN__:", "").trim();
-              if (!platformToken) {
-                platformToken = token;
-                console.log(
-                  "[deepseek-login] Captured platform token from localStorage!"
-                );
-              }
-              if (platformToken && !hasNavigatedToChat) {
-                hasNavigatedToChat = true;
-                try {
-                  const cookies2 = await ses.cookies.get({});
-                  console.log(
-                    "[deepseek-login] Domain cookies:",
-                    cookies2.map(
-                      (c) => `${c.domain} - ${c.name}=${c.value ? "***" : "empty"}`
-                    )
-                  );
-                } catch (cookieErr) {
-                  console.error(
-                    "[deepseek-login] Error getting cookies:",
-                    cookieErr.message
-                  );
-                }
-                console.log(
-                  "[deepseek-login] Platform token found, waiting 2.5s before navigating to chat..."
-                );
-                setTimeout(() => {
-                  win2.loadURL("https://chat.deepseek.com/");
-                }, 2500);
-              }
-            } else if (message.startsWith("__CHAT_TOKEN__:")) {
-              const token = message.replace("__CHAT_TOKEN__:", "").trim();
-              if (!chatToken) {
-                chatToken = token;
-                console.log(
-                  "[deepseek-login] Captured chat token from localStorage!"
-                );
-              }
-            }
-            completeLogin();
-          }
-        );
-        win2.on("closed", () => {
-          if (!isResolved) {
-            isResolved = true;
-            resolve2({
-              ok: false,
-              error: {
-                message: "User closed window before login complete"
-              }
-            });
-          }
-        });
-        console.log(
-          "[deepseek-login] Opening platform sign_in page..."
-        );
-        await win2.loadURL("https://platform.deepseek.com/sign_in");
+    async (a, o) => new Promise(async (s) => {
+      const i = `platform-waf-${Date.now()}`, r = Fs.fromPartition(i, {
+        cache: !1
+      }), p = new X({
+        width: 800,
+        height: 600,
+        show: !0,
+        frame: !1,
+        icon: B.join(process.env.VITE_PUBLIC || "", "logo.png"),
+        webPreferences: {
+          nodeIntegration: !1,
+          contextIsolation: !0,
+          preload: B.join(e, "preload.mjs")
+        }
       });
-    }
-  );
-  ipcMain.handle(
+      n ? p.loadURL(`${n}#/deepseek-browser`) : p.loadFile(B.join(t, "index.html"), {
+        hash: "/deepseek-browser"
+      });
+      const l = new Us({
+        webPreferences: {
+          session: r,
+          nodeIntegration: !1,
+          contextIsolation: !0,
+          webSecurity: !0,
+          preload: B.join(e, "preload.mjs")
+        }
+      });
+      p.setBrowserView(l);
+      const [c, u] = p.getContentSize();
+      l.setBounds({ x: 0, y: 40, width: c, height: u - 40 }), l.setAutoResize({ width: !0, height: !0 }), p.on("resize", () => {
+        const [k, S] = p.getContentSize();
+        l.setBounds({ x: 0, y: 40, width: k, height: S - 40 });
+      });
+      const d = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
+      r.setUserAgent(d), l.webContents.setUserAgent(d);
+      let f = null, b = null, x = !1, v = !1, h = "", w = "";
+      const _ = () => {
+        v || f && b && (v = !0, console.log(
+          "[deepseek-login] Both tokens captured successfully, fetching user profile via main process (Android client mode)..."
+        ), O.get(
+          "https://chat.deepseek.com/api/v0/users/current",
+          {
+            headers: le(b)
+          }
+        ).then((k) => {
+          var R, j;
+          const S = (j = (R = k.data) == null ? void 0 : R.data) == null ? void 0 : j.biz_data;
+          console.log(
+            "[deepseek-login] User profile fetched successfully:",
+            S
+          ), s({
+            ok: !0,
+            status: 200,
+            data: {
+              data: {
+                biz_data: {
+                  user: {
+                    id: (S == null ? void 0 : S.id) || `temp_${Date.now()}`,
+                    email: h || (S == null ? void 0 : S.email) || "unknown@deepseek.com",
+                    token: b
+                  }
+                }
+              }
+            },
+            platformToken: f
+          });
+        }).catch((k) => {
+          console.error(
+            "[deepseek-login] Main-process profile fetch failed, using captured credentials fallback:",
+            k.message
+          ), s({
+            ok: !0,
+            status: 200,
+            data: {
+              data: {
+                biz_data: {
+                  user: {
+                    id: `temp_${Date.now()}`,
+                    email: h || "unknown@deepseek.com",
+                    token: b
+                  }
+                }
+              }
+            },
+            platformToken: f
+          });
+        }).finally(() => {
+          setTimeout(() => {
+            p.isDestroyed() || (p.destroy(), r.clearStorageData().catch(() => {
+            }));
+          }, 500);
+        }));
+      };
+      r.webRequest.onBeforeSendHeaders(
+        { urls: ["*://*/*"] },
+        (k, S) => {
+          k.requestHeaders["sec-ch-ua"] && (k.requestHeaders["sec-ch-ua"] = k.requestHeaders["sec-ch-ua"].split(", ").filter(
+            (R) => !R.includes("Electron") && !R.includes("shallow-seek")
+          ).join(", ")), S({
+            cancel: !1,
+            requestHeaders: k.requestHeaders
+          });
+        }
+      ), l.webContents.on("did-finish-load", async () => {
+        const k = l.webContents.getURL();
+        k.includes("platform.deepseek.com") ? (await l.webContents.executeJavaScript(Xl).catch(() => {
+        }), await l.webContents.executeJavaScript(Yl).catch(() => {
+        })) : k.includes("chat.deepseek.com") && (h && w && (console.log(
+          "[deepseek-login] Injecting auto-login credentials into Chat page...",
+          { capturedEmail: h }
+        ), await l.webContents.executeJavaScript(
+          Zl(
+            h,
+            w
+          )
+        ).catch(() => {
+        })), await l.webContents.executeJavaScript(Ql).catch(() => {
+        }));
+      }), l.webContents.on(
+        "console-message",
+        async (k, S, R) => {
+          if (console.log(
+            `[Browser Console] [Level ${S}]:`,
+            R
+          ), R.startsWith("__TRACKED_EMAIL__:"))
+            h = R.replace("__TRACKED_EMAIL__:", "").trim();
+          else if (R.startsWith("__TRACKED_PASSWORD__:"))
+            w = R.replace("__TRACKED_PASSWORD__:", "").trim();
+          else if (R.startsWith("__PLATFORM_TOKEN__:")) {
+            const j = R.replace("__PLATFORM_TOKEN__:", "").trim();
+            if (f || (f = j, console.log(
+              "[deepseek-login] Captured platform token from localStorage!"
+            )), f && !x) {
+              x = !0;
+              try {
+                const D = await r.cookies.get({});
+                console.log(
+                  "[deepseek-login] Domain cookies:",
+                  D.map(
+                    (q) => `${q.domain} - ${q.name}=${q.value ? "***" : "empty"}`
+                  )
+                );
+              } catch (D) {
+                console.error(
+                  "[deepseek-login] Error getting cookies:",
+                  D.message
+                );
+              }
+              console.log(
+                "[deepseek-login] Platform token found, waiting 2.5s before navigating to chat..."
+              ), setTimeout(() => {
+                l.webContents.loadURL("https://chat.deepseek.com/");
+              }, 2500);
+            }
+          } else if (R.startsWith("__CHAT_TOKEN__:")) {
+            const j = R.replace("__CHAT_TOKEN__:", "").trim();
+            b || (b = j, console.log(
+              "[deepseek-login] Captured chat token from localStorage!"
+            ));
+          }
+          _();
+        }
+      ), p.on("closed", () => {
+        v || (v = !0, s({
+          ok: !1,
+          error: {
+            message: "User closed window before login complete"
+          }
+        }));
+      }), console.log(
+        "[deepseek-login] Opening platform sign_in page..."
+      ), await l.webContents.loadURL("https://platform.deepseek.com/sign_in");
+    })
+  ), C.handle(
     "deepseek-fetch-history",
-    async (_event, payload) => {
+    async (a, o) => {
       console.log(
         "[deepseek-fetch-history] Requesting history with token:",
-        payload.token ? "present" : "missing"
+        o.token ? "present" : "missing"
       );
       try {
-        const response = await axios.get(DEEPSEEK_HISTORY_URL, {
-          headers: getHistoryHeaders(payload.token, payload.cookies),
-          validateStatus: () => true
+        const s = await O.get(Bl, {
+          headers: le(o.token, o.cookies),
+          validateStatus: () => !0
         });
-        console.log(
+        return console.log(
           "[deepseek-fetch-history] Response status:",
-          response.status
-        );
-        if (response.status !== 200) {
-          console.error(
-            "[deepseek-fetch-history] Error response data:",
-            response.data
-          );
-        }
-        return { ok: true, data: response.data };
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Unknown error";
-        console.error("[deepseek-fetch-history] Catch error:", message);
-        return { ok: false, error: { message } };
+          s.status
+        ), s.status !== 200 && console.error(
+          "[deepseek-fetch-history] Error response data:",
+          s.data
+        ), { ok: !0, data: s.data };
+      } catch (s) {
+        const i = s instanceof Error ? s.message : "Unknown error";
+        return console.error("[deepseek-fetch-history] Catch error:", i), { ok: !1, error: { message: i } };
       }
     }
-  );
-  ipcMain.handle(
+  ), C.handle(
     "deepseek-fetch-session-messages",
-    async (_event, payload) => {
-      var _a, _b, _c, _d, _e;
+    async (a, o) => {
+      var s, i, r, p, l;
       try {
-        const headers = getHistoryHeaders(
-          payload.token,
-          payload.cookies
-        );
-        const res = await axios.get(
-          `${DEEPSEEK_HISTORY_MESSAGES_URL}?chat_session_id=${payload.sessionId}`,
+        const c = le(
+          o.token,
+          o.cookies
+        ), u = await O.get(
+          `${zl}?chat_session_id=${o.sessionId}`,
           {
-            headers
+            headers: c
           }
         );
-        console.log(
+        return console.log(
           "[deepseek-fetch-session-messages] Response status:",
-          res.status
-        );
-        if (((_d = (_c = (_b = (_a = res.data) == null ? void 0 : _a.data) == null ? void 0 : _b.biz_data) == null ? void 0 : _c.chat_messages) == null ? void 0 : _d.length) > 0) {
-          console.log(
-            "[deepseek-fetch-session-messages] Message keys:",
-            Object.keys(res.data.data.biz_data.chat_messages[0])
-          );
-          console.log(
-            "[deepseek-fetch-session-messages] Message sample:",
-            JSON.stringify(
-              res.data.data.biz_data.chat_messages[0]
-            ).substring(0, 1e3)
-          );
-        }
-        return { ok: true, data: res.data };
-      } catch (error) {
-        console.error(
+          u.status
+        ), ((p = (r = (i = (s = u.data) == null ? void 0 : s.data) == null ? void 0 : i.biz_data) == null ? void 0 : r.chat_messages) == null ? void 0 : p.length) > 0 && (console.log(
+          "[deepseek-fetch-session-messages] Message keys:",
+          Object.keys(u.data.data.biz_data.chat_messages[0])
+        ), console.log(
+          "[deepseek-fetch-session-messages] Message sample:",
+          JSON.stringify(
+            u.data.data.biz_data.chat_messages[0]
+          ).substring(0, 1e3)
+        )), { ok: !0, data: u.data };
+      } catch (c) {
+        return console.error(
           "[deepseek-fetch-session-messages] error:",
-          error == null ? void 0 : error.message
-        );
-        return {
-          ok: false,
-          error: ((_e = error == null ? void 0 : error.response) == null ? void 0 : _e.data) || (error == null ? void 0 : error.message)
+          c == null ? void 0 : c.message
+        ), {
+          ok: !1,
+          error: ((l = c == null ? void 0 : c.response) == null ? void 0 : l.data) || (c == null ? void 0 : c.message)
         };
       }
     }
-  );
-  ipcMain.handle(
+  ), C.handle(
     "deepseek-create-session",
-    async (_event, payload) => {
+    async (a, o) => {
       try {
-        const response = await axios.post(
-          DEEPSEEK_CREATE_SESSION_URL,
+        const s = await O.post(
+          ws,
           {},
           {
-            headers: getHistoryHeaders(
-              payload.token,
-              payload.cookies
+            headers: le(
+              o.token,
+              o.cookies
             ),
-            validateStatus: () => true
+            validateStatus: () => !0
           }
         );
-        console.log(
+        return console.log(
           "[deepseek-create-session] Response status:",
-          response.status
-        );
-        return { ok: true, data: response.data };
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Unknown error";
-        console.error(
+          s.status
+        ), { ok: !0, data: s.data };
+      } catch (s) {
+        const i = s instanceof Error ? s.message : "Unknown error";
+        return console.error(
           "[deepseek-create-session] Catch error:",
-          message
-        );
-        return { ok: false, error: { message } };
+          i
+        ), { ok: !1, error: { message: i } };
       }
     }
-  );
-  ipcMain.handle(
+  ), C.handle(
     "deepseek-delete-session",
-    async (_event, payload) => {
+    async (a, o) => {
       try {
-        const response = await axios.post(
-          DEEPSEEK_DELETE_SESSION_URL,
-          { chat_session_id: payload.sessionId },
+        const s = await O.post(
+          ks,
+          { chat_session_id: o.sessionId },
           {
-            headers: getHistoryHeaders(
-              payload.token,
-              payload.cookies
+            headers: le(
+              o.token,
+              o.cookies
             ),
-            validateStatus: () => true
+            validateStatus: () => !0
           }
         );
-        console.log(
+        return console.log(
           "[deepseek-delete-session] Response status:",
-          response.status
-        );
-        return { ok: true, data: response.data };
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Unknown error";
-        console.error(
+          s.status
+        ), { ok: !0, data: s.data };
+      } catch (s) {
+        const i = s instanceof Error ? s.message : "Unknown error";
+        return console.error(
           "[deepseek-delete-session] Catch error:",
-          message
-        );
-        return { ok: false, error: { message } };
+          i
+        ), { ok: !1, error: { message: i } };
       }
     }
-  );
-  ipcMain.handle(
+  ), C.handle(
     "deepseek-get-api-keys",
-    async (_event, payload) => {
+    async (a, o) => {
       console.log(
         "[deepseek-get-api-keys] Request with token prefix:",
-        payload.token ? `${payload.token.substring(0, 10)}... (len: ${payload.token.length})` : "missing"
+        o.token ? `${o.token.substring(0, 10)}... (len: ${o.token.length})` : "missing"
       );
       try {
-        const response = await axios.get(
-          DEEPSEEK_PLATFORM_GET_API_KEYS_URL,
+        const s = await O.get(
+          ql,
           {
-            headers: getPlatformHeaders(payload.token),
-            validateStatus: () => true
+            headers: yo(o.token),
+            validateStatus: () => !0
           }
         );
-        console.log(
+        return console.log(
           "[deepseek-get-api-keys] Response status:",
-          response.status,
+          s.status,
           "body:",
-          JSON.stringify(response.data)
-        );
-        return { ok: true, data: response.data };
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Unknown error";
-        console.error("[deepseek-get-api-keys] Catch error:", message);
-        return { ok: false, error: { message } };
+          JSON.stringify(s.data)
+        ), { ok: !0, data: s.data };
+      } catch (s) {
+        const i = s instanceof Error ? s.message : "Unknown error";
+        return console.error("[deepseek-get-api-keys] Catch error:", i), { ok: !1, error: { message: i } };
       }
     }
-  );
-  ipcMain.handle(
+  ), C.handle(
     "deepseek-edit-api-keys",
-    async (_event, payload) => {
+    async (a, o) => {
       console.log(
         "[deepseek-edit-api-keys] Request with token prefix:",
-        payload.token ? `${payload.token.substring(0, 10)}... (len: ${payload.token.length})` : "missing",
+        o.token ? `${o.token.substring(0, 10)}... (len: ${o.token.length})` : "missing",
         "body:",
-        JSON.stringify(payload.body)
+        JSON.stringify(o.body)
       );
       try {
-        const response = await axios.post(
-          DEEPSEEK_PLATFORM_EDIT_API_KEYS_URL,
-          payload.body,
+        const s = await O.post(
+          $l,
+          o.body,
           {
             headers: {
-              ...getPlatformHeaders(payload.token),
+              ...yo(o.token),
               "Content-Type": "application/json"
             },
-            validateStatus: () => true
+            validateStatus: () => !0
           }
         );
-        console.log(
+        return console.log(
           "[deepseek-edit-api-keys] Response status:",
-          response.status,
+          s.status,
           "body:",
-          JSON.stringify(response.data)
-        );
-        return { ok: true, data: response.data };
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Unknown error";
-        console.error("[deepseek-edit-api-keys] Catch error:", message);
-        return { ok: false, error: { message } };
+          JSON.stringify(s.data)
+        ), { ok: !0, data: s.data };
+      } catch (s) {
+        const i = s instanceof Error ? s.message : "Unknown error";
+        return console.error("[deepseek-edit-api-keys] Catch error:", i), { ok: !1, error: { message: i } };
       }
     }
-  );
-  ipcMain.handle(
+  ), C.handle(
     "deepseek-upload-file",
-    async (_event, payload) => {
-      var _a, _b, _c, _d, _e;
+    async (a, o) => {
+      var s, i, r, p, l;
       try {
-        const powResponse = await axios.post(
-          DEEPSEEK_CREATE_POW_URL,
+        const c = await O.post(
+          Bt,
           { target_path: "/api/v0/file/upload_file" },
           {
-            headers: getHistoryHeaders(
-              payload.token,
-              payload.cookies
+            headers: le(
+              o.token,
+              o.cookies
             ),
-            validateStatus: () => true
+            validateStatus: () => !0
           }
         );
-        if (powResponse.status !== 200 || ((_a = powResponse.data) == null ? void 0 : _a.code) !== 0) {
-          return { ok: false, error: { message: "Failed to get PoW challenge for upload" } };
-        }
-        const challenge = (_d = (_c = (_b = powResponse.data) == null ? void 0 : _b.data) == null ? void 0 : _c.biz_data) == null ? void 0 : _d.challenge;
-        const powHeaderStr = solveAndBuildHeader(challenge);
-        const formData = new FormData$2();
-        formData.append("file", fs$1.createReadStream(payload.filePath), payload.fileName);
-        const headers = {
-          ...getHistoryHeaders(payload.token, payload.cookies),
-          "x-ds-pow-response": powHeaderStr,
-          ...formData.getHeaders()
-        };
-        const response = await axios.post(DEEPSEEK_UPLOAD_FILE_URL, formData, {
-          headers,
-          maxBodyLength: Infinity,
-          maxContentLength: Infinity,
-          validateStatus: () => true
+        if (c.status !== 200 || ((s = c.data) == null ? void 0 : s.code) !== 0)
+          return { ok: !1, error: { message: "Failed to get PoW challenge for upload" } };
+        const u = (p = (r = (i = c.data) == null ? void 0 : i.data) == null ? void 0 : r.biz_data) == null ? void 0 : p.challenge, d = qt(u), f = new oa();
+        f.append("file", Rn.createReadStream(o.filePath), o.fileName);
+        const b = {
+          ...le(o.token, o.cookies),
+          "x-ds-pow-response": d,
+          ...f.getHeaders()
+        }, x = await O.post(Ml, f, {
+          headers: b,
+          maxBodyLength: 1 / 0,
+          maxContentLength: 1 / 0,
+          validateStatus: () => !0
         });
-        if (response.status !== 200 || ((_e = response.data) == null ? void 0 : _e.code) !== 0) {
-          return { ok: false, error: response.data || { message: "Upload failed" } };
-        }
-        return { ok: true, data: response.data };
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Unknown error";
-        return { ok: false, error: { message } };
+        return x.status !== 200 || ((l = x.data) == null ? void 0 : l.code) !== 0 ? { ok: !1, error: x.data || { message: "Upload failed" } } : { ok: !0, data: x.data };
+      } catch (c) {
+        return { ok: !1, error: { message: c instanceof Error ? c.message : "Unknown error" } };
       }
     }
-  );
-  ipcMain.handle(
+  ), C.handle(
     "deepseek-fetch-files",
-    async (_event, payload) => {
-      var _a;
+    async (a, o) => {
+      var s;
       try {
-        const query = payload.fileIds.map((id) => `file_ids=${encodeURIComponent(id)}`).join("&");
-        const response = await axios.get(`${DEEPSEEK_FETCH_FILES_URL}?${query}`, {
-          headers: getHistoryHeaders(payload.token),
-          validateStatus: () => true
+        const i = o.fileIds.map((p) => `file_ids=${encodeURIComponent(p)}`).join("&"), r = await O.get(`${Hl}?${i}`, {
+          headers: le(o.token),
+          validateStatus: () => !0
         });
-        if (response.status !== 200 || ((_a = response.data) == null ? void 0 : _a.code) !== 0) {
-          return { ok: false, error: response.data || { message: "Fetch files failed" } };
-        }
-        return { ok: true, data: response.data };
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Unknown error";
-        return { ok: false, error: { message } };
+        return r.status !== 200 || ((s = r.data) == null ? void 0 : s.code) !== 0 ? { ok: !1, error: r.data || { message: "Fetch files failed" } } : { ok: !0, data: r.data };
+      } catch (i) {
+        return { ok: !1, error: { message: i instanceof Error ? i.message : "Unknown error" } };
       }
     }
-  );
-  ipcMain.handle(
+  ), C.handle(
     "deepseek-save-temp-file",
-    async (_event, payload) => {
+    async (a, o) => {
       try {
-        const tempDir = app.getPath("temp");
-        const filePath = path$1.join(tempDir, payload.fileName);
-        const buffer = Buffer.from(payload.base64Data, "base64");
-        await fs$1.promises.writeFile(filePath, buffer);
-        return { ok: true, filePath };
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Unknown error";
-        return { ok: false, error: { message } };
+        const s = We.getPath("temp"), i = B.join(s, o.fileName), r = Buffer.from(o.base64Data, "base64");
+        return await Rn.promises.writeFile(i, r), { ok: !0, filePath: i };
+      } catch (s) {
+        return { ok: !1, error: { message: s instanceof Error ? s.message : "Unknown error" } };
       }
     }
-  );
-  ipcMain.on(
+  ), C.on(
     "deepseek-chat-stream",
-    async (event, payload) => {
-      var _a, _b, _c, _d;
+    async (a, o) => {
+      var s, i, r, p;
       try {
-        const powResponse = await axios.post(
-          DEEPSEEK_CREATE_POW_URL,
-          { target_path: DEEPSEEK_COMPLETION_TARGET_PATH },
+        const l = await O.post(
+          Bt,
+          { target_path: _s },
           {
-            headers: getHistoryHeaders(
-              payload.token,
-              payload.cookies
+            headers: le(
+              o.token,
+              o.cookies
             ),
-            validateStatus: () => true
+            validateStatus: () => !0
           }
         );
-        if (powResponse.status !== 200 || ((_a = powResponse.data) == null ? void 0 : _a.code) !== 0) {
-          event.sender.send("deepseek-chat-error", {
+        if (l.status !== 200 || ((s = l.data) == null ? void 0 : s.code) !== 0) {
+          a.sender.send("deepseek-chat-error", {
             message: "Failed to get PoW challenge"
           });
           return;
         }
-        const challenge = (_d = (_c = (_b = powResponse.data) == null ? void 0 : _b.data) == null ? void 0 : _c.biz_data) == null ? void 0 : _d.challenge;
-        if (!challenge) {
-          event.sender.send("deepseek-chat-error", {
+        const c = (p = (r = (i = l.data) == null ? void 0 : i.data) == null ? void 0 : r.biz_data) == null ? void 0 : p.challenge;
+        if (!c) {
+          a.sender.send("deepseek-chat-error", {
             message: "Invalid PoW challenge response"
           });
           return;
         }
-        const powHeaderStr = solveAndBuildHeader(challenge);
-        const chatHeaders = getChatHeaders(
-          payload.token,
-          powHeaderStr,
-          payload.cookies
+        const u = qt(c), d = Es(
+          o.token,
+          u,
+          o.cookies
         );
         console.log(
           "[deepseek-chat-stream] Request URL:",
-          DEEPSEEK_COMPLETION_URL
-        );
-        console.log(
+          zt
+        ), console.log(
           "[deepseek-chat-stream] Request Headers:",
-          JSON.stringify(chatHeaders)
-        );
-        console.log(
+          JSON.stringify(d)
+        ), console.log(
           "[deepseek-chat-stream] Request Body:",
-          JSON.stringify(payload.payload)
+          JSON.stringify(o.payload)
         );
-        const response = await axios.post(
-          DEEPSEEK_COMPLETION_URL,
-          payload.payload,
+        const f = await O.post(
+          zt,
+          o.payload,
           {
-            headers: chatHeaders,
+            headers: d,
             responseType: "stream",
-            validateStatus: () => true
+            validateStatus: () => !0
           }
         );
-        if (response.status !== 200) {
-          const stream22 = response.data;
-          let errorData = "";
-          for await (const chunk of stream22) {
-            errorData += chunk.toString();
-          }
+        if (f.status !== 200) {
+          const x = f.data;
+          let v = "";
+          for await (const h of x)
+            v += h.toString();
           console.error(
             "[deepseek-chat-stream] Error Status:",
-            response.status
-          );
-          console.error(
+            f.status
+          ), console.error(
             "[deepseek-chat-stream] Error Data:",
-            errorData
-          );
-          event.sender.send("deepseek-chat-error", {
-            message: `DeepSeek API Error: ${response.status}. ${errorData}`
+            v
+          ), a.sender.send("deepseek-chat-error", {
+            message: `DeepSeek API Error: ${f.status}. ${v}`
           });
           return;
         }
-        const stream2 = response.data;
-        stream2.on("data", (chunk) => {
-          const text = chunk.toString("utf-8");
-          event.sender.send("deepseek-chat-chunk", text);
-        });
-        stream2.on("end", () => {
-          event.sender.send("deepseek-chat-end");
-        });
-        stream2.on("error", (err) => {
-          event.sender.send("deepseek-chat-error", {
-            message: err.message
+        const b = f.data;
+        b.on("data", (x) => {
+          const v = x.toString("utf-8");
+          a.sender.send("deepseek-chat-chunk", v);
+        }), b.on("end", () => {
+          a.sender.send("deepseek-chat-end");
+        }), b.on("error", (x) => {
+          a.sender.send("deepseek-chat-error", {
+            message: x.message
           });
         });
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Unknown error";
-        event.sender.send("deepseek-chat-error", { message });
+      } catch (l) {
+        const c = l instanceof Error ? l.message : "Unknown error";
+        a.sender.send("deepseek-chat-error", { message: c });
       }
     }
   );
 }
-const userDataPath = app.getPath("userData");
-const dbDir = path$1.join(userDataPath, "database");
-if (!fs$1.existsSync(dbDir)) {
-  fs$1.mkdirSync(dbDir, { recursive: true });
-}
-const dbPath = path$1.join(dbDir, "shallow-seek.db");
-const db = new Database(dbPath);
-db.exec(`
+const nu = We.getPath("userData"), $t = B.join(nu, "database");
+Rn.existsSync($t) || Rn.mkdirSync($t, { recursive: !0 });
+const tu = B.join($t, "shallow-seek.db"), ge = new Ks(tu);
+ge.exec(`
   CREATE TABLE IF NOT EXISTS accounts (
     id TEXT PRIMARY KEY,
     email TEXT NOT NULL,
@@ -19009,231 +16367,176 @@ db.exec(`
   );
 `);
 try {
-  db.exec(`ALTER TABLE accounts RENAME COLUMN token TO chat_token;`);
-} catch (e) {
+  ge.exec("ALTER TABLE accounts RENAME COLUMN token TO chat_token;");
+} catch {
 }
 try {
-  db.exec(`ALTER TABLE accounts ADD COLUMN platform_token TEXT;`);
-} catch (e) {
+  ge.exec("ALTER TABLE accounts ADD COLUMN platform_token TEXT;");
+} catch {
 }
-db.exec(`
+ge.exec(`
   CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
   );
 `);
-const addAccount = (account) => {
-  const stmt = db.prepare(
-    "INSERT OR REPLACE INTO accounts (id, email, chat_token, platform_token) VALUES (?, ?, ?, ?)"
-  );
-  return stmt.run(
-    account.id,
-    account.email,
-    account.chat_token,
-    account.platform_token || null
-  );
-};
-const getAccounts = () => {
-  const stmt = db.prepare("SELECT * FROM accounts ORDER BY created_at DESC");
-  return stmt.all();
-};
-const deleteAccount = (id) => {
-  const stmt = db.prepare("DELETE FROM accounts WHERE id = ?");
-  return stmt.run(id);
-};
-const checkAccountExists = (email) => {
-  const stmt = db.prepare(
-    "SELECT COUNT(*) as count FROM accounts WHERE LOWER(email) = LOWER(?)"
-  );
-  const result = stmt.get(email.trim());
-  return result.count > 0;
-};
-const getSetting = (key) => {
-  const stmt = db.prepare("SELECT value FROM settings WHERE key = ?");
-  const result = stmt.get(key);
-  return result ? result.value : null;
-};
-const setSetting = (key, value) => {
-  const stmt = db.prepare(
-    "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)"
-  );
-  return stmt.run(key, value);
-};
-const getAllSettings = () => {
-  const stmt = db.prepare("SELECT * FROM settings");
-  const rows = stmt.all();
-  return rows.reduce((acc, row) => ({ ...acc, [row.key]: row.value }), {});
-};
-function registerDatabaseIpcs() {
-  ipcMain.handle("db-add-account", async (_event, account) => {
+const au = (e) => ge.prepare(
+  "INSERT OR REPLACE INTO accounts (id, email, chat_token, platform_token) VALUES (?, ?, ?, ?)"
+).run(
+  e.id,
+  e.email,
+  e.chat_token,
+  e.platform_token || null
+), Ss = () => ge.prepare("SELECT * FROM accounts ORDER BY created_at DESC").all(), ou = (e) => ge.prepare("DELETE FROM accounts WHERE id = ?").run(e), su = (e) => ge.prepare(
+  "SELECT COUNT(*) as count FROM accounts WHERE LOWER(email) = LOWER(?)"
+).get(e.trim()).count > 0, va = (e) => {
+  const t = ge.prepare("SELECT value FROM settings WHERE key = ?").get(e);
+  return t ? t.value : null;
+}, iu = (e, n) => ge.prepare(
+  "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)"
+).run(e, n), ru = () => ge.prepare("SELECT * FROM settings").all().reduce((t, a) => ({ ...t, [a.key]: a.value }), {});
+function cu() {
+  C.handle("db-add-account", async (e, n) => {
     try {
-      addAccount(account);
-      return { success: true };
-    } catch (error) {
-      return { success: false, error: error.message };
+      return au(n), { success: !0 };
+    } catch (t) {
+      return { success: !1, error: t.message };
     }
-  });
-  ipcMain.handle("db-get-accounts", async () => {
+  }), C.handle("db-get-accounts", async () => {
     try {
-      const accounts = getAccounts();
-      return { success: true, data: accounts };
-    } catch (error) {
-      return { success: false, error: error.message };
+      return { success: !0, data: Ss() };
+    } catch (e) {
+      return { success: !1, error: e.message };
     }
-  });
-  ipcMain.handle("db-delete-account", async (_event, id) => {
+  }), C.handle("db-delete-account", async (e, n) => {
     try {
-      deleteAccount(id);
-      return { success: true };
-    } catch (error) {
-      return { success: false, error: error.message };
+      return ou(n), { success: !0 };
+    } catch (t) {
+      return { success: !1, error: t.message };
     }
-  });
-  ipcMain.handle("db-check-account-exists", async (_event, email) => {
+  }), C.handle("db-check-account-exists", async (e, n) => {
     try {
-      const exists = checkAccountExists(email);
-      return { success: true, exists };
-    } catch (error) {
-      return { success: false, error: error.message };
+      return { success: !0, exists: su(n) };
+    } catch (t) {
+      return { success: !1, error: t.message };
     }
-  });
-  ipcMain.handle("db-get-setting", async (_event, key) => {
+  }), C.handle("db-get-setting", async (e, n) => {
     try {
-      const value = getSetting(key);
-      return { success: true, value };
-    } catch (error) {
-      return { success: false, error: error.message };
+      return { success: !0, value: va(n) };
+    } catch (t) {
+      return { success: !1, error: t.message };
     }
-  });
-  ipcMain.handle("db-set-setting", async (_event, key, value) => {
+  }), C.handle("db-set-setting", async (e, n, t) => {
     try {
-      setSetting(key, value);
-      return { success: true };
-    } catch (error) {
-      return { success: false, error: error.message };
+      return iu(n, t), { success: !0 };
+    } catch (a) {
+      return { success: !1, error: a.message };
     }
-  });
-  ipcMain.handle("db-get-all-settings", async () => {
+  }), C.handle("db-get-all-settings", async () => {
     try {
-      const settings = getAllSettings();
-      return { success: true, data: settings };
-    } catch (error) {
-      return { success: false, error: error.message };
+      return { success: !0, data: ru() };
+    } catch (e) {
+      return { success: !1, error: e.message };
     }
   });
 }
-function intFrom(v) {
-  if (typeof v === "number") return Math.floor(v);
-  return 0;
+function Ve(e) {
+  return typeof e == "number" ? Math.floor(e) : 0;
 }
-async function login(acc) {
-  var _a, _b, _c, _d, _e;
-  const body = getLoginRequestBody(
-    acc.email.trim(),
-    acc.password.trim()
-  );
-  const resp = await axios.post(DEEPSEEK_LOGIN_URL, body, {
-    headers: getLoginHeaders(),
-    validateStatus: () => true
-  });
-  const data = resp.data;
-  const code = intFrom(data == null ? void 0 : data.code);
-  if (code !== 0) throw new Error(`login failed: ${data == null ? void 0 : data.msg}`);
-  const bizCode = intFrom((_a = data == null ? void 0 : data.data) == null ? void 0 : _a.biz_code);
-  if (bizCode !== 0) throw new Error(`login failed: ${(_b = data == null ? void 0 : data.data) == null ? void 0 : _b.biz_msg}`);
-  const token = (_e = (_d = (_c = data == null ? void 0 : data.data) == null ? void 0 : _c.biz_data) == null ? void 0 : _d.user) == null ? void 0 : _e.token;
-  if (!token || typeof token !== "string" || !token.trim()) {
+async function pu(e) {
+  var r, p, l, c, u;
+  const n = Wl(
+    e.email.trim(),
+    e.password.trim()
+  ), a = (await O.post(Ul, n, {
+    headers: Kl(),
+    validateStatus: () => !0
+  })).data;
+  if (Ve(a == null ? void 0 : a.code) !== 0) throw new Error(`login failed: ${a == null ? void 0 : a.msg}`);
+  if (Ve((r = a == null ? void 0 : a.data) == null ? void 0 : r.biz_code) !== 0) throw new Error(`login failed: ${(p = a == null ? void 0 : a.data) == null ? void 0 : p.biz_msg}`);
+  const i = (u = (c = (l = a == null ? void 0 : a.data) == null ? void 0 : l.biz_data) == null ? void 0 : c.user) == null ? void 0 : u.token;
+  if (!i || typeof i != "string" || !i.trim())
     throw new Error("missing login token");
-  }
-  return token.trim();
+  return i.trim();
 }
-async function createSession(token, maxAttempts = 3) {
-  var _a;
-  const headers = getHistoryHeaders(token);
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+async function lu(e, n = 3) {
+  var a;
+  const t = le(e);
+  for (let o = 0; o < n; o++)
     try {
-      const resp = await axios.post(
-        DEEPSEEK_CREATE_SESSION_URL,
+      const s = await O.post(
+        ws,
         { agent: "chat" },
         {
-          headers,
-          validateStatus: () => true
+          headers: t,
+          validateStatus: () => !0
         }
-      );
-      const data = resp.data;
-      if (resp.status === 200 && intFrom(data == null ? void 0 : data.code) === 0 && intFrom((_a = data == null ? void 0 : data.data) == null ? void 0 : _a.biz_code) === 0) {
-        const sessionId = extractSessionId(data);
-        if (sessionId) return sessionId;
+      ), i = s.data;
+      if (s.status === 200 && Ve(i == null ? void 0 : i.code) === 0 && Ve((a = i == null ? void 0 : i.data) == null ? void 0 : a.biz_code) === 0) {
+        const r = uu(i);
+        if (r) return r;
       }
       console.warn(
         "[shallowseek-api] create_session failed",
-        resp.status,
-        data == null ? void 0 : data.msg
+        s.status,
+        i == null ? void 0 : i.msg
       );
-    } catch (err) {
-      console.warn("[shallowseek-api] create_session error", err.message);
+    } catch (s) {
+      console.warn("[shallowseek-api] create_session error", s.message);
     }
-  }
   throw new Error("create session failed after retries");
 }
-function extractSessionId(resp) {
-  var _a, _b;
-  const bizData = (_a = resp == null ? void 0 : resp.data) == null ? void 0 : _a.biz_data;
-  if (typeof (bizData == null ? void 0 : bizData.id) === "string" && bizData.id.trim())
-    return bizData.id.trim();
-  if (typeof ((_b = bizData == null ? void 0 : bizData.chat_session) == null ? void 0 : _b.id) === "string" && bizData.chat_session.id.trim()) {
-    return bizData.chat_session.id.trim();
-  }
-  return null;
+function uu(e) {
+  var t, a;
+  const n = (t = e == null ? void 0 : e.data) == null ? void 0 : t.biz_data;
+  return typeof (n == null ? void 0 : n.id) == "string" && n.id.trim() ? n.id.trim() : typeof ((a = n == null ? void 0 : n.chat_session) == null ? void 0 : a.id) == "string" && n.chat_session.id.trim() ? n.chat_session.id.trim() : null;
 }
-async function getPow(token, maxAttempts = 3) {
-  var _a, _b, _c;
-  const headers = getHistoryHeaders(token);
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+async function du(e, n = 3) {
+  var a, o, s;
+  const t = le(e);
+  for (let i = 0; i < n; i++)
     try {
-      const resp = await axios.post(
-        DEEPSEEK_CREATE_POW_URL,
-        { target_path: DEEPSEEK_COMPLETION_TARGET_PATH },
-        { headers, validateStatus: () => true }
-      );
-      const data = resp.data;
-      if (resp.status === 200 && intFrom(data == null ? void 0 : data.code) === 0 && intFrom((_a = data == null ? void 0 : data.data) == null ? void 0 : _a.biz_code) === 0) {
-        const challenge = (_c = (_b = data == null ? void 0 : data.data) == null ? void 0 : _b.biz_data) == null ? void 0 : _c.challenge;
-        if (!challenge)
+      const r = await O.post(
+        Bt,
+        { target_path: _s },
+        { headers: t, validateStatus: () => !0 }
+      ), p = r.data;
+      if (r.status === 200 && Ve(p == null ? void 0 : p.code) === 0 && Ve((a = p == null ? void 0 : p.data) == null ? void 0 : a.biz_code) === 0) {
+        const l = (s = (o = p == null ? void 0 : p.data) == null ? void 0 : o.biz_data) == null ? void 0 : s.challenge;
+        if (!l)
           throw new Error("invalid pow challenge response");
-        return solveAndBuildHeader(challenge);
+        return qt(l);
       }
       console.warn(
         "[shallowseek-api] get_pow failed",
-        resp.status,
-        data == null ? void 0 : data.msg
+        r.status,
+        p == null ? void 0 : p.msg
       );
-    } catch (err) {
-      console.warn("[shallowseek-api] get_pow error", err.message);
+    } catch (r) {
+      console.warn("[shallowseek-api] get_pow error", r.message);
     }
-  }
   throw new Error("get pow failed after retries");
 }
-async function callCompletion(token, payload, powResponse) {
-  const headers = getChatHeaders(token, powResponse);
-  return axios.post(DEEPSEEK_COMPLETION_URL, payload, {
-    headers,
+async function mu(e, n, t) {
+  const a = Es(e, t);
+  return O.post(zt, n, {
+    headers: a,
     responseType: "stream",
-    validateStatus: () => true
+    validateStatus: () => !0
   });
 }
-async function deleteSession(token, sessionId) {
+async function fu(e, n) {
   try {
-    await axios.post(
-      DEEPSEEK_DELETE_SESSION_URL,
-      { chat_session_id: sessionId },
-      { headers: getHistoryHeaders(token), validateStatus: () => true }
+    await O.post(
+      ks,
+      { chat_session_id: n },
+      { headers: le(e), validateStatus: () => !0 }
     );
-  } catch (err) {
-    console.warn("[shallowseek-api] delete_session error", err.message);
+  } catch (t) {
+    console.warn("[shallowseek-api] delete_session error", t.message);
   }
 }
-const SKIP_CONTAINS_PATTERNS = [
+const xu = [
   "quasi_status",
   "elapsed_secs",
   "token_usage",
@@ -19242,295 +16545,228 @@ const SKIP_CONTAINS_PATTERNS = [
   "fragments/-1/status",
   "fragments/-2/status",
   "fragments/-3/status"
-];
-const SKIP_EXACT_PATHS = /* @__PURE__ */ new Set(["response/search_status"]);
-const THINK_CLOSE = /<\/\s*think\s*>/gi;
-const THINK_OPEN = /<\s*think\s*>/gi;
-function isFragmentStatusPath(path2) {
-  if (!path2 || path2 === "response/status") return false;
-  if (!path2.startsWith("response/fragments/") || !path2.endsWith("/status")) return false;
-  const mid = path2.slice("response/fragments/".length, path2.length - "/status".length).replace(/^-/, "");
-  return mid.length > 0 && /^\d+$/.test(mid);
+], hu = /* @__PURE__ */ new Set(["response/search_status"]), Mt = /<\/\s*think\s*>/gi, vu = /<\s*think\s*>/gi;
+function bu(e) {
+  if (!e || e === "response/status" || !e.startsWith("response/fragments/") || !e.endsWith("/status")) return !1;
+  const n = e.slice(19, e.length - 7).replace(/^-/, "");
+  return n.length > 0 && /^\d+$/.test(n);
 }
-function shouldSkipPath(path2) {
-  if (isFragmentStatusPath(path2)) return true;
-  if (SKIP_EXACT_PATHS.has(path2)) return true;
-  for (const p of SKIP_CONTAINS_PATTERNS) {
-    if (path2.includes(p)) return true;
-  }
-  return false;
+function Rs(e) {
+  if (bu(e) || hu.has(e)) return !0;
+  for (const n of xu)
+    if (e.includes(n)) return !0;
+  return !1;
 }
-function isStatusPath(path2) {
-  return path2 === "response/status" || path2 === "status";
+function jn(e) {
+  return e === "response/status" || e === "status";
 }
-function stripThinkTags(s) {
-  return s.replace(THINK_CLOSE, "").replace(THINK_OPEN, "");
+function Et(e) {
+  return e.replace(Mt, "").replace(vu, "");
 }
-function parseDeepSeekSSELine(raw) {
-  const line = raw.trim();
-  if (!line || !line.startsWith("data:")) return [null, false, false];
-  const dataStr = line.slice(5).trim();
-  if (dataStr === "[DONE]") return [null, true, true];
+function As(e) {
+  const n = e.trim();
+  if (!n || !n.startsWith("data:")) return [null, !1, !1];
+  const t = n.slice(5).trim();
+  if (t === "[DONE]") return [null, !0, !0];
   try {
-    const chunk = JSON.parse(dataStr);
-    return [chunk, false, true];
+    return [JSON.parse(t), !1, !0];
   } catch {
-    return [null, false, false];
+    return [null, !1, !1];
   }
 }
-function parseSSEChunkForContent(chunk, thinkingEnabled, currentFragmentType) {
-  const v = chunk["v"];
-  if (v === void 0) {
-    return { parts: [], finished: false, nextType: currentFragmentType };
-  }
-  const path2 = chunk["p"] ?? "";
-  if (shouldSkipPath(path2)) {
-    return { parts: [], finished: false, nextType: currentFragmentType };
-  }
-  if (isStatusPath(path2) && typeof v === "string") {
-    if (v.trim().toUpperCase() === "FINISHED") {
-      return { parts: [], finished: true, nextType: currentFragmentType };
-    }
-    return { parts: [], finished: false, nextType: currentFragmentType };
-  }
-  let newType = currentFragmentType;
-  const parts = [];
-  if (path2 === "response/content") newType = "text";
-  else if (path2 === "response/thinking_content") {
-    if (!thinkingEnabled || newType !== "text") newType = "thinking";
-  }
-  if (path2 === "response/fragments" && (chunk["o"] ?? "").toString().toUpperCase() === "APPEND") {
-    const frags = Array.isArray(v) ? v : [];
-    for (const frag of frags) {
-      if (typeof frag !== "object" || !frag) continue;
-      const { typeName, content } = parseFragmentTypeContent(frag);
-      switch (typeName) {
+function Ts(e, n, t) {
+  const a = e.v;
+  if (a === void 0)
+    return { parts: [], finished: !1, nextType: t };
+  const o = e.p ?? "";
+  if (Rs(o))
+    return { parts: [], finished: !1, nextType: t };
+  if (jn(o) && typeof a == "string")
+    return a.trim().toUpperCase() === "FINISHED" ? { parts: [], finished: !0, nextType: t } : { parts: [], finished: !1, nextType: t };
+  let s = t;
+  const i = [];
+  if (o === "response/content" ? s = "text" : o === "response/thinking_content" && (!n || s !== "text") && (s = "thinking"), o === "response/fragments" && (e.o ?? "").toString().toUpperCase() === "APPEND") {
+    const d = Array.isArray(a) ? a : [];
+    for (const f of d) {
+      if (typeof f != "object" || !f) continue;
+      const { typeName: b, content: x } = Ht(f);
+      switch (b) {
         case "THINK":
         case "THINKING":
-          newType = "thinking";
-          if (content) parts.push({ text: content, type: "thinking" });
+          s = "thinking", x && i.push({ text: x, type: "thinking" });
           break;
         case "RESPONSE":
-          newType = "text";
-          if (content) parts.push({ text: content, type: "text" });
+          s = "text", x && i.push({ text: x, type: "text" });
           break;
         default:
-          if (content) parts.push({ text: content, type: "text" });
+          x && i.push({ text: x, type: "text" });
       }
     }
   }
-  if (path2 === "response" && Array.isArray(v)) {
-    for (const it of v) {
-      if (typeof it !== "object" || !it) continue;
-      if (it.p !== "fragments" || it.o !== "APPEND") continue;
-      const frags = Array.isArray(it.v) ? it.v : [];
-      for (const frag of frags) {
-        if (typeof frag !== "object" || !frag) continue;
-        const { typeName } = parseFragmentTypeContent(frag);
-        if (typeName === "THINK" || typeName === "THINKING") newType = "thinking";
-        else if (typeName === "RESPONSE") newType = "text";
+  if (o === "response" && Array.isArray(a))
+    for (const d of a) {
+      if (typeof d != "object" || !d || d.p !== "fragments" || d.o !== "APPEND") continue;
+      const f = Array.isArray(d.v) ? d.v : [];
+      for (const b of f) {
+        if (typeof b != "object" || !b) continue;
+        const { typeName: x } = Ht(b);
+        x === "THINK" || x === "THINKING" ? s = "thinking" : x === "RESPONSE" && (s = "text");
       }
     }
-  }
-  let partType;
-  if (path2 === "response/thinking_content") {
-    partType = !thinkingEnabled || newType !== "text" ? "thinking" : "text";
-  } else if (path2 === "response/content") {
-    partType = "text";
-  } else if (path2.includes("response/fragments") && path2.includes("/content")) {
-    partType = newType;
-  } else if (path2 === "") {
-    partType = newType || "text";
-  } else {
-    partType = "text";
-  }
-  const appendResult = appendChunkValueContent(v, partType, path2);
-  if (appendResult.finished) {
-    return { parts: [], finished: true, nextType: newType };
-  }
-  parts.push(...appendResult.parts);
-  if (appendResult.newType) newType = appendResult.newType;
-  const { parts: splitParts, transitioned } = splitThinkingParts(parts);
-  if (transitioned) newType = "text";
-  const finalParts = thinkingEnabled ? splitParts : splitParts.filter((p) => p.type !== "thinking");
-  return { parts: finalParts, finished: false, nextType: newType };
+  let r;
+  o === "response/thinking_content" ? r = !n || s !== "text" ? "thinking" : "text" : o === "response/content" ? r = "text" : o.includes("response/fragments") && o.includes("/content") ? r = s : o === "" ? r = s || "text" : r = "text";
+  const p = gu(a, r, o);
+  if (p.finished)
+    return { parts: [], finished: !0, nextType: s };
+  i.push(...p.parts), p.newType && (s = p.newType);
+  const { parts: l, transitioned: c } = wu(i);
+  return c && (s = "text"), { parts: n ? l : l.filter((d) => d.type !== "thinking"), finished: !1, nextType: s };
 }
-function parseFragmentTypeContent(m) {
-  const typeName = (m.type || "").toUpperCase();
-  const content = m.content || "";
-  return { typeName, content };
+function Ht(e) {
+  const n = (e.type || "").toUpperCase(), t = e.content || "";
+  return { typeName: n, content: t };
 }
-function appendChunkValueContent(v, partType, path2) {
-  const parts = [];
-  if (typeof v === "string") {
-    if (v === "FINISHED" && (path2 === "" || path2 === "status")) {
-      return { parts: [], finished: true };
-    }
-    if (isStatusPath(path2)) return { parts: [], finished: false };
-    if (v) parts.push({ text: v, type: partType });
-    return { parts, finished: false };
+function gu(e, n, t) {
+  const a = [];
+  if (typeof e == "string")
+    return e === "FINISHED" && (t === "" || t === "status") ? { parts: [], finished: !0 } : jn(t) ? { parts: [], finished: !1 } : (e && a.push({ text: e, type: n }), { parts: a, finished: !1 });
+  if (Array.isArray(e)) {
+    const o = yu(e, n);
+    return o.finished ? { parts: [], finished: !0 } : { parts: o.parts, finished: !1 };
   }
-  if (Array.isArray(v)) {
-    const result = extractContentRecursive(v, partType);
-    if (result.finished) return { parts: [], finished: true };
-    return { parts: result.parts, finished: false };
-  }
-  if (typeof v === "object" && v !== null) {
-    if (path2 === "response/content" || path2 === "response/thinking_content" || path2 === "") {
-      const text = v.text || v.content || "";
-      if (text) {
-        parts.push({ text, type: partType });
-        return { parts, finished: false };
-      }
+  if (typeof e == "object" && e !== null) {
+    if (t === "response/content" || t === "response/thinking_content" || t === "") {
+      const i = e.text || e.content || "";
+      if (i)
+        return a.push({ text: i, type: n }), { parts: a, finished: !1 };
     }
-    const resp = v.response || v;
-    const frags = resp == null ? void 0 : resp.fragments;
-    if (Array.isArray(frags)) {
-      let newType;
-      for (const item of frags) {
-        if (typeof item !== "object" || !item) continue;
-        const { typeName, content } = parseFragmentTypeContent(item);
-        switch (typeName) {
+    const o = e.response || e, s = o == null ? void 0 : o.fragments;
+    if (Array.isArray(s)) {
+      let i;
+      for (const r of s) {
+        if (typeof r != "object" || !r) continue;
+        const { typeName: p, content: l } = Ht(r);
+        switch (p) {
           case "THINK":
           case "THINKING":
-            newType = "thinking";
-            if (content) parts.push({ text: content, type: "thinking" });
+            i = "thinking", l && a.push({ text: l, type: "thinking" });
             break;
           case "RESPONSE":
-            newType = "text";
-            if (content) parts.push({ text: content, type: "text" });
+            i = "text", l && a.push({ text: l, type: "text" });
             break;
           default:
-            if (content) parts.push({ text: content, type: partType });
+            l && a.push({ text: l, type: n });
         }
       }
-      return { parts, finished: false, newType };
+      return { parts: a, finished: !1, newType: i };
     }
   }
-  return { parts, finished: false };
+  return { parts: a, finished: !1 };
 }
-function extractContentRecursive(items, defaultType) {
-  const parts = [];
-  for (const it of items) {
-    if (typeof it !== "object" || !it) continue;
-    const itemPath = it.p || "";
-    const itemV = it.v;
-    if (itemV === void 0) continue;
-    if (isStatusPath(itemPath)) {
-      if (typeof itemV === "string" && itemV.trim().toUpperCase() === "FINISHED") {
-        return { parts: [], finished: true };
-      }
+function yu(e, n) {
+  const t = [];
+  for (const a of e) {
+    if (typeof a != "object" || !a) continue;
+    const o = a.p || "", s = a.v;
+    if (s === void 0) continue;
+    if (jn(o)) {
+      if (typeof s == "string" && s.trim().toUpperCase() === "FINISHED")
+        return { parts: [], finished: !0 };
       continue;
     }
-    if (shouldSkipPath(itemPath)) continue;
-    if (typeof it.content === "string" && it.content) {
-      const typeName = (it.type || "").toUpperCase();
-      switch (typeName) {
+    if (Rs(o)) continue;
+    if (typeof a.content == "string" && a.content) {
+      switch ((a.type || "").toUpperCase()) {
         case "THINK":
         case "THINKING":
-          parts.push({ text: it.content, type: "thinking" });
+          t.push({ text: a.content, type: "thinking" });
           break;
         case "RESPONSE":
-          parts.push({ text: it.content, type: "text" });
+          t.push({ text: a.content, type: "text" });
           break;
         default:
-          parts.push({ text: it.content, type: defaultType });
+          t.push({ text: a.content, type: n });
       }
       continue;
     }
-    const partType = itemPath.includes("thinking") ? "thinking" : itemPath.includes("content") || itemPath === "response" || itemPath === "fragments" ? "text" : defaultType;
-    if (typeof itemV === "string") {
-      if (isStatusPath(itemPath)) continue;
-      if (itemV && itemV !== "FINISHED") {
-        parts.push({ text: itemV, type: partType });
-      }
-    } else if (Array.isArray(itemV)) {
-      for (const inner of itemV) {
-        if (typeof inner === "object" && (inner == null ? void 0 : inner.content)) {
-          const typeName = (inner.type || "").toUpperCase();
-          switch (typeName) {
+    const i = o.includes("thinking") ? "thinking" : o.includes("content") || o === "response" || o === "fragments" ? "text" : n;
+    if (typeof s == "string") {
+      if (jn(o)) continue;
+      s && s !== "FINISHED" && t.push({ text: s, type: i });
+    } else if (Array.isArray(s))
+      for (const r of s)
+        if (typeof r == "object" && (r != null && r.content))
+          switch ((r.type || "").toUpperCase()) {
             case "THINK":
             case "THINKING":
-              parts.push({ text: inner.content, type: "thinking" });
+              t.push({ text: r.content, type: "thinking" });
               break;
             case "RESPONSE":
-              parts.push({ text: inner.content, type: "text" });
+              t.push({ text: r.content, type: "text" });
               break;
             default:
-              parts.push({ text: inner.content, type: partType });
+              t.push({ text: r.content, type: i });
           }
-        } else if (typeof inner === "string" && inner) {
-          parts.push({ text: inner, type: partType });
-        }
-      }
-    }
+        else typeof r == "string" && r && t.push({ text: r, type: i });
   }
-  return { parts, finished: false };
+  return { parts: t, finished: !1 };
 }
-function splitThinkingParts(parts) {
-  const out = [];
-  let thinkingDone = false;
-  for (const p of parts) {
-    if (thinkingDone && p.type === "thinking") {
-      const cleaned = stripThinkTags(p.text);
-      if (cleaned) out.push({ text: cleaned, type: "text" });
+function wu(e) {
+  const n = [];
+  let t = !1;
+  for (const a of e) {
+    if (t && a.type === "thinking") {
+      const r = Et(a.text);
+      r && n.push({ text: r, type: "text" });
       continue;
     }
-    if (p.type !== "thinking") {
-      const cleaned = stripThinkTags(p.text);
-      if (cleaned) out.push({ text: cleaned, type: p.type });
+    if (a.type !== "thinking") {
+      const r = Et(a.text);
+      r && n.push({ text: r, type: a.type });
       continue;
     }
-    const match = THINK_CLOSE.exec(p.text);
-    THINK_CLOSE.lastIndex = 0;
-    if (!match) {
-      out.push(p);
+    const o = Mt.exec(a.text);
+    if (Mt.lastIndex = 0, !o) {
+      n.push(a);
       continue;
     }
-    thinkingDone = true;
-    const before = p.text.slice(0, match.index);
-    const after = stripThinkTags(p.text.slice(match.index + match[0].length));
-    if (before) out.push({ text: before, type: "thinking" });
-    if (after) out.push({ text: after, type: "text" });
+    t = !0;
+    const s = a.text.slice(0, o.index), i = Et(a.text.slice(o.index + o[0].length));
+    s && n.push({ text: s, type: "thinking" }), i && n.push({ text: i, type: "text" });
   }
-  return { parts: out, transitioned: thinkingDone };
+  return { parts: n, transitioned: t };
 }
-function hasContentFilterStatus(chunk) {
-  const code = chunk.code;
-  if (typeof code === "string" && code.trim().toLowerCase() === "content_filter") return true;
-  return hasContentFilterStatusValue(chunk);
+function Cs(e) {
+  const n = e.code;
+  return typeof n == "string" && n.trim().toLowerCase() === "content_filter" ? !0 : Wt(e);
 }
-function hasContentFilterStatusValue(v) {
-  if (Array.isArray(v)) return v.some((item) => hasContentFilterStatusValue(item));
-  if (typeof v === "object" && v !== null) {
-    const p = v.p;
-    if (typeof p === "string" && p.toLowerCase().includes("status")) {
-      if (typeof v.v === "string" && v.v.trim().toLowerCase() === "content_filter") return true;
-    }
-    if (typeof v.code === "string" && v.code.trim().toLowerCase() === "content_filter") return true;
-    for (const val of Object.values(v)) {
-      if (hasContentFilterStatusValue(val)) return true;
-    }
+function Wt(e) {
+  if (Array.isArray(e)) return e.some((n) => Wt(n));
+  if (typeof e == "object" && e !== null) {
+    const n = e.p;
+    if (typeof n == "string" && n.toLowerCase().includes("status") && typeof e.v == "string" && e.v.trim().toLowerCase() === "content_filter" || typeof e.code == "string" && e.code.trim().toLowerCase() === "content_filter") return !0;
+    for (const t of Object.values(e))
+      if (Wt(t)) return !0;
   }
-  return false;
+  return !1;
 }
-function buildToolPrompt(tools) {
-  if (!tools || tools.length === 0) return "";
-  const toolSchemas = [];
-  const names = [];
-  for (const t of tools) {
-    if (t.type !== "function" || !t.function) continue;
-    const name = t.function.name;
-    const desc = t.function.description || "No description available";
-    const parameters = JSON.stringify(t.function.parameters || {});
-    names.push(name);
-    toolSchemas.push(`Tool: ${name}
-Description: ${desc}
-Parameters: ${parameters}`);
+function ku(e) {
+  if (!e || e.length === 0) return "";
+  const n = [], t = [];
+  for (const s of e) {
+    if (s.type !== "function" || !s.function) continue;
+    const i = s.function.name, r = s.function.description || "No description available", p = JSON.stringify(s.function.parameters || {});
+    t.push(i), n.push(`Tool: ${i}
+Description: ${r}
+Parameters: ${p}`);
   }
-  if (names.length === 0) return "";
-  const descriptions = "You have access to these tools:\n\n" + toolSchemas.join("\n\n");
-  const instructions = `TOOL CALL FORMAT — FOLLOW EXACTLY:
+  return t.length === 0 ? "" : `You have access to these tools:
+
+` + n.join(`
+
+`) + `
+
+` + `TOOL CALL FORMAT — FOLLOW EXACTLY:
 
 <|DSML|tool_calls>
   <|DSML|invoke name="TOOL_NAME_HERE">
@@ -19557,124 +16793,103 @@ PARAMETER SHAPES:
 - number/bool/null => <|DSML|parameter name="x">plain_text</|DSML|parameter>
 
 Remember: The ONLY valid way to use tools is the <|DSML|tool_calls>...</|DSML|tool_calls> block at the end of your response.`;
-  return descriptions + "\n\n" + instructions;
 }
-function parseDSMLToolCalls(xmlContent) {
-  const results = [];
-  const invokeRegex = /<\|DSML\|invoke\s+name="([^"]+)">([\s\S]*?)<\/\|DSML\|invoke>/g;
-  const paramRegex = /<\|DSML\|parameter\s+name="([^"]+)">([\s\S]*?)<\/\|DSML\|parameter>/g;
-  const cdataRegex = /^\s*<!\[CDATA\[([\s\S]*?)\]\]>\s*$/;
-  let match;
-  while ((match = invokeRegex.exec(xmlContent)) !== null) {
-    const name = match[1];
-    const paramsStr = match[2];
-    const args = {};
-    let paramMatch;
-    while ((paramMatch = paramRegex.exec(paramsStr)) !== null) {
-      const pName = paramMatch[1];
-      let pValue = paramMatch[2].trim();
-      const cdataMatch = pValue.match(cdataRegex);
-      if (cdataMatch) {
-        pValue = cdataMatch[1];
-      }
-      args[pName] = pValue;
+function Kt(e) {
+  const n = [], t = /<\|DSML\|invoke\s+name="([^"]+)">([\s\S]*?)<\/\|DSML\|invoke>/g, a = /<\|DSML\|parameter\s+name="([^"]+)">([\s\S]*?)<\/\|DSML\|parameter>/g, o = /^\s*<!\[CDATA\[([\s\S]*?)\]\]>\s*$/;
+  let s;
+  for (; (s = t.exec(e)) !== null; ) {
+    const i = s[1], r = s[2], p = {};
+    let l;
+    for (; (l = a.exec(r)) !== null; ) {
+      const c = l[1];
+      let u = l[2].trim();
+      const d = u.match(o);
+      d && (u = d[1]), p[c] = u;
     }
-    results.push({
-      id: `call_${crypto$1.randomUUID().replace(/-/g, "")}`,
+    n.push({
+      id: `call_${Qt.randomUUID().replace(/-/g, "")}`,
       type: "function",
       function: {
-        name,
-        arguments: JSON.stringify(args)
+        name: i,
+        arguments: JSON.stringify(p)
       }
     });
   }
-  return results;
+  return n;
 }
-class StreamToolSieve {
+class _u {
   constructor() {
-    __publicField(this, "buffer", "");
-    __publicField(this, "inTool", false);
-    __publicField(this, "finishedTool", false);
+    mn(this, "buffer", "");
+    mn(this, "inTool", !1);
+    mn(this, "finishedTool", !1);
   }
-  processChunk(text) {
-    if (this.finishedTool) return { outputText: text, toolCalls: null };
-    this.buffer += text;
-    const toolStartIdx = this.buffer.indexOf("<|DSML|tool_calls>");
-    if (toolStartIdx !== -1) {
-      this.inTool = true;
-      const toolEndIdx = this.buffer.indexOf("</|DSML|tool_calls>");
-      if (toolEndIdx !== -1) {
-        const fullXml = this.buffer.substring(toolStartIdx, toolEndIdx + "</|DSML|tool_calls>".length);
-        this.finishedTool = true;
-        const preText = this.buffer.substring(0, toolStartIdx);
-        const postText = this.buffer.substring(toolEndIdx + "</|DSML|tool_calls>".length);
-        const toolCalls = parseDSMLToolCalls(fullXml);
-        this.buffer = postText;
-        return { outputText: preText, toolCalls: toolCalls.length > 0 ? toolCalls : null };
+  processChunk(n) {
+    if (this.finishedTool) return { outputText: n, toolCalls: null };
+    this.buffer += n;
+    const t = this.buffer.indexOf("<|DSML|tool_calls>");
+    if (t !== -1) {
+      this.inTool = !0;
+      const s = this.buffer.indexOf("</|DSML|tool_calls>");
+      if (s !== -1) {
+        const i = this.buffer.substring(t, s + 19);
+        this.finishedTool = !0;
+        const r = this.buffer.substring(0, t), p = this.buffer.substring(s + 19), l = Kt(i);
+        return this.buffer = p, { outputText: r, toolCalls: l.length > 0 ? l : null };
       }
-      if (toolStartIdx > 0) {
-        const preText = this.buffer.substring(0, toolStartIdx);
-        this.buffer = this.buffer.substring(toolStartIdx);
-        return { outputText: preText, toolCalls: null };
+      if (t > 0) {
+        const i = this.buffer.substring(0, t);
+        return this.buffer = this.buffer.substring(t), { outputText: i, toolCalls: null };
       }
       return { outputText: "", toolCalls: null };
     }
-    const lastLt = this.buffer.lastIndexOf("<");
-    if (lastLt !== -1) {
-      const safeText2 = this.buffer.substring(0, lastLt);
-      this.buffer = this.buffer.substring(lastLt);
-      return { outputText: safeText2, toolCalls: null };
+    const a = this.buffer.lastIndexOf("<");
+    if (a !== -1) {
+      const s = this.buffer.substring(0, a);
+      return this.buffer = this.buffer.substring(a), { outputText: s, toolCalls: null };
     }
-    const safeText = this.buffer;
-    this.buffer = "";
-    return { outputText: safeText, toolCalls: null };
+    const o = this.buffer;
+    return this.buffer = "", { outputText: o, toolCalls: null };
   }
   flush() {
     if (this.inTool && this.buffer.includes("<|DSML|tool_calls>")) {
-      const fullXml = this.buffer + "</|DSML|invoke></|DSML|tool_calls>";
-      const toolCalls = parseDSMLToolCalls(fullXml);
-      const preText = this.buffer.substring(0, this.buffer.indexOf("<|DSML|tool_calls>"));
-      return { outputText: preText, toolCalls: toolCalls.length > 0 ? toolCalls : null };
+      const t = this.buffer + "</|DSML|invoke></|DSML|tool_calls>", a = Kt(t);
+      return { outputText: this.buffer.substring(0, this.buffer.indexOf("<|DSML|tool_calls>")), toolCalls: a.length > 0 ? a : null };
     }
-    const remainder = this.buffer;
-    this.buffer = "";
-    return { outputText: remainder, toolCalls: null };
+    const n = this.buffer;
+    return this.buffer = "", { outputText: n, toolCalls: null };
   }
 }
-const NO_THINKING_SUFFIX = "-nothinking";
-const DEEPSEEK_BASE_MODELS = [
+const Pn = "-nothinking", Eu = [
   { id: "deepseek-v4-flash", object: "model", created: 1677610602, owned_by: "deepseek" },
   { id: "deepseek-v4-pro", object: "model", created: 1677610602, owned_by: "deepseek" },
   { id: "deepseek-v4-flash-search", object: "model", created: 1677610602, owned_by: "deepseek" },
   { id: "deepseek-v4-pro-search", object: "model", created: 1677610602, owned_by: "deepseek" },
   { id: "deepseek-v4-vision", object: "model", created: 1677610602, owned_by: "deepseek" }
 ];
-function appendNoThinkingVariants(models) {
-  const out = [];
-  for (const model of models) {
-    out.push(model);
-    out.push({ ...model, id: model.id + NO_THINKING_SUFFIX });
-  }
-  return out;
+function Su(e) {
+  const n = [];
+  for (const t of e)
+    n.push(t), n.push({ ...t, id: t.id + Pn });
+  return n;
 }
-const ALL_MODELS = appendNoThinkingVariants(DEEPSEEK_BASE_MODELS);
-function getModelConfig(model) {
-  const { base, noThinking } = splitNoThinking(model);
-  switch (base) {
+const Os = Su(Eu);
+function js(e) {
+  const { base: n, noThinking: t } = ba(e);
+  switch (n) {
     case "deepseek-v4-flash":
     case "deepseek-v4-pro":
     case "deepseek-v4-vision":
-      return { thinking: !noThinking, search: false, ok: true };
+      return { thinking: !t, search: !1, ok: !0 };
     case "deepseek-v4-flash-search":
     case "deepseek-v4-pro-search":
-      return { thinking: !noThinking, search: true, ok: true };
+      return { thinking: !t, search: !0, ok: !0 };
     default:
-      return { thinking: false, search: false, ok: false };
+      return { thinking: !1, search: !1, ok: !1 };
   }
 }
-function getModelType(model) {
-  const { base } = splitNoThinking(model);
-  switch (base) {
+function Ru(e) {
+  const { base: n } = ba(e);
+  switch (n) {
     case "deepseek-v4-flash":
     case "deepseek-v4-flash-search":
       return "default";
@@ -19687,10 +16902,10 @@ function getModelType(model) {
       return null;
   }
 }
-function isSupportedModel(model) {
-  return getModelConfig(model).ok;
+function St(e) {
+  return js(e).ok;
 }
-const DEFAULT_MODEL_ALIASES = {
+const Au = {
   // OpenAI GPT
   "gpt-4": "deepseek-v4-flash",
   "gpt-4-turbo": "deepseek-v4-flash",
@@ -19705,9 +16920,9 @@ const DEFAULT_MODEL_ALIASES = {
   "gpt-5-codex": "deepseek-v4-pro",
   "codex-mini-latest": "deepseek-v4-pro",
   // Reasoning
-  "o1": "deepseek-v4-pro",
+  o1: "deepseek-v4-pro",
   "o1-mini": "deepseek-v4-pro",
-  "o3": "deepseek-v4-pro",
+  o3: "deepseek-v4-pro",
   "o3-mini": "deepseek-v4-pro",
   "o4-mini": "deepseek-v4-pro",
   // Claude
@@ -19725,747 +16940,572 @@ const DEFAULT_MODEL_ALIASES = {
   "gemini-3.1-pro": "deepseek-v4-pro",
   "gemini-3-flash": "deepseek-v4-flash"
 };
-function resolveModel(requested, customAliases) {
-  const model = requested.trim().toLowerCase();
-  if (!model) return null;
-  const aliases = { ...DEFAULT_MODEL_ALIASES, ...customAliases || {} };
-  if (isSupportedModel(model)) return model;
-  const mapped = aliases[model];
-  if (mapped && isSupportedModel(mapped)) return mapped;
-  const { base, noThinking } = splitNoThinking(model);
-  const baseMapped = aliases[base];
-  if (baseMapped && isSupportedModel(baseMapped)) {
-    return noThinking ? baseMapped + NO_THINKING_SUFFIX : baseMapped;
-  }
-  return null;
+function Tu(e, n) {
+  const t = e.trim().toLowerCase();
+  if (!t) return null;
+  const a = { ...Au, ...n || {} };
+  if (St(t)) return t;
+  const o = a[t];
+  if (o && St(o)) return o;
+  const { base: s, noThinking: i } = ba(t), r = a[s];
+  return r && St(r) ? i ? r + Pn : r : null;
 }
-function splitNoThinking(model) {
-  const m = model.trim().toLowerCase();
-  if (m.endsWith(NO_THINKING_SUFFIX)) {
-    return { base: m.slice(0, -NO_THINKING_SUFFIX.length), noThinking: true };
-  }
-  return { base: m, noThinking: false };
+function ba(e) {
+  const n = e.trim().toLowerCase();
+  return n.endsWith(Pn) ? { base: n.slice(0, -Pn.length), noThinking: !0 } : { base: n, noThinking: !1 };
 }
-function openAIModelsResponse() {
-  return { object: "list", data: ALL_MODELS };
+function Cu() {
+  return { object: "list", data: Os };
 }
-let currentServer = null;
-let currentConfig = null;
-let accountTokens = /* @__PURE__ */ new Map();
-let accountIndex = 0;
-let _logCallback = null;
-function setLogCallback(cb) {
-  _logCallback = cb;
+let He = null, ke = null, $e = /* @__PURE__ */ new Map(), Rt = 0, Gt = null;
+function Ou(e) {
+  Gt = e;
 }
-function serverLog(msg) {
-  console.log(msg);
-  if (_logCallback) _logCallback(msg);
+function ie(e) {
+  console.log(e), Gt && Gt(e);
 }
-async function startServer(config) {
-  if (currentServer) throw new Error("Server is already running");
-  currentConfig = config;
-  accountTokens = /* @__PURE__ */ new Map();
-  for (const acc of config.accounts) {
-    if (acc.token) {
-      accountTokens.set(acc.email, acc.token);
-    } else {
+async function ju(e) {
+  if (He) throw new Error("Server is already running");
+  ke = e, $e = /* @__PURE__ */ new Map();
+  for (const t of e.accounts)
+    if (t.token)
+      $e.set(t.email, t.token);
+    else
       try {
-        const token = await login(acc);
-        accountTokens.set(acc.email, token);
-        serverLog(`[shallowseek-api] ✓ Logged in: ${acc.email.slice(0, 3)}***`);
-      } catch (err) {
-        serverLog(`[shallowseek-api] ✗ Login failed for ${acc.email}: ${err.message}`);
+        const a = await pu(t);
+        $e.set(t.email, a), ie(`[shallowseek-api] ✓ Logged in: ${t.email.slice(0, 3)}***`);
+      } catch (a) {
+        ie(`[shallowseek-api] ✗ Login failed for ${t.email}: ${a.message}`);
       }
-    }
-  }
-  if (accountTokens.size === 0) {
+  if ($e.size === 0)
     throw new Error("No accounts available (all login attempts failed)");
-  }
-  const server = http$2.createServer(handleRequest);
-  return new Promise((resolve2, reject) => {
-    server.listen(config.port, () => {
-      currentServer = server;
-      serverLog(`[shallowseek-api] OpenAI-compatible API server listening on port ${config.port}`);
-      resolve2(config.port);
-    });
-    server.on("error", reject);
+  const n = Gs.createServer(Lu);
+  return new Promise((t, a) => {
+    n.listen(e.port, () => {
+      He = n, ie(`[shallowseek-api] OpenAI-compatible API server listening on port ${e.port}`), t(e.port);
+    }), n.on("error", a);
   });
 }
-async function stopServer() {
-  if (!currentServer) throw new Error("Server is not running");
-  return new Promise((resolve2) => {
-    currentServer.close(() => {
-      currentServer = null;
-      serverLog("[shallowseek-api] Server stopped");
-      resolve2();
+async function Pu() {
+  if (!He) throw new Error("Server is not running");
+  return new Promise((e) => {
+    He.close(() => {
+      He = null, ie("[shallowseek-api] Server stopped"), e();
     });
   });
 }
-function isRunning() {
-  return currentServer !== null;
+function At() {
+  return He !== null;
 }
-async function handleRequest(req, res) {
-  const startTime = Date.now();
-  const method = req.method || "GET";
-  setCORS(res, req);
-  if (method === "OPTIONS") {
-    res.writeHead(204);
-    res.end();
+async function Lu(e, n) {
+  const t = Date.now(), a = e.method || "GET";
+  if (qu(n, e), a === "OPTIONS") {
+    n.writeHead(204), n.end();
     return;
   }
-  const url2 = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
-  const path2 = url2.pathname;
-  const clientIP = req.socket.remoteAddress || "unknown";
-  const origEnd = res.end.bind(res);
-  res.end = function(...args) {
-    const duration = Date.now() - startTime;
-    const status = res.statusCode;
-    if (path2 !== "/healthz" && path2 !== "/readyz") {
-      serverLog(`[api] ${method} ${path2} → ${status} (${duration}ms) [${clientIP}]`);
-    }
-    return origEnd(...args);
+  const s = new URL(e.url || "/", `http://${e.headers.host || "localhost"}`).pathname, i = e.socket.remoteAddress || "unknown", r = n.end.bind(n);
+  n.end = function(...p) {
+    const l = Date.now() - t, c = n.statusCode;
+    return s !== "/healthz" && s !== "/readyz" && ie(`[api] ${a} ${s} → ${c} (${l}ms) [${i}]`), r(...p);
   };
   try {
-    if (path2 === "/healthz" || path2 === "/readyz") {
-      jsonResponse(res, 200, { status: "ok" });
+    if (s === "/healthz" || s === "/readyz") {
+      ue(n, 200, { status: "ok" });
       return;
     }
-    if ((path2 === "/v1/models" || path2 === "/models") && method === "GET") {
-      jsonResponse(res, 200, openAIModelsResponse());
+    if ((s === "/v1/models" || s === "/models") && a === "GET") {
+      ue(n, 200, Cu());
       return;
     }
-    const modelMatch = path2.match(/^\/(?:v1\/)?models\/(.+)$/);
-    if (modelMatch && method === "GET") {
-      const modelId = modelMatch[1];
-      const model = ALL_MODELS.find((m) => m.id === modelId);
-      if (model) {
-        jsonResponse(res, 200, model);
-      } else {
-        jsonResponse(res, 404, { error: { message: `Model '${modelId}' not found`, type: "invalid_request_error" } });
-      }
+    const p = s.match(/^\/(?:v1\/)?models\/(.+)$/);
+    if (p && a === "GET") {
+      const l = p[1], c = Os.find((u) => u.id === l);
+      c ? ue(n, 200, c) : ue(n, 404, { error: { message: `Model '${l}' not found`, type: "invalid_request_error" } });
       return;
     }
-    if ((path2 === "/v1/chat/completions" || path2 === "/chat/completions") && method === "POST") {
-      if (!validateAuth(req, res)) return;
-      await handleChatCompletions(req, res);
+    if ((s === "/v1/chat/completions" || s === "/chat/completions") && a === "POST") {
+      if (!Nu(e, n)) return;
+      await Du(e, n);
       return;
     }
-    jsonResponse(res, 404, { error: { message: "Not found", type: "invalid_request_error" } });
-  } catch (err) {
-    serverLog(`[api] ✗ ${method} ${path2} — unhandled error: ${err.message}`);
-    jsonResponse(res, 500, { error: { message: "Internal Server Error", type: "api_error" } });
+    ue(n, 404, { error: { message: "Not found", type: "invalid_request_error" } });
+  } catch (p) {
+    ie(`[api] ✗ ${a} ${s} — unhandled error: ${p.message}`), ue(n, 500, { error: { message: "Internal Server Error", type: "api_error" } });
   }
 }
-function validateAuth(req, res) {
-  if (!currentConfig || currentConfig.apiKeys.length === 0) return true;
-  const authHeader = req.headers["authorization"] || "";
-  let key = "";
-  if (authHeader.startsWith("Bearer ")) {
-    key = authHeader.slice(7).trim();
+function Nu(e, n) {
+  if (!ke || ke.apiKeys.length === 0) return !0;
+  const t = e.headers.authorization || "";
+  let a = "";
+  if (t.startsWith("Bearer ") && (a = t.slice(7).trim()), !a) {
+    const o = new URL(e.url || "/", `http://${e.headers.host || "localhost"}`);
+    a = o.searchParams.get("key") || o.searchParams.get("api_key") || "";
   }
-  if (!key) {
-    const url2 = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
-    key = url2.searchParams.get("key") || url2.searchParams.get("api_key") || "";
-  }
-  if (!key || !currentConfig.apiKeys.includes(key)) {
-    jsonResponse(res, 401, {
-      error: { message: "Invalid API key", type: "invalid_request_error", code: "invalid_api_key" }
-    });
-    return false;
-  }
-  return true;
+  return !a || !ke.apiKeys.includes(a) ? (ue(n, 401, {
+    error: { message: "Invalid API key", type: "invalid_request_error", code: "invalid_api_key" }
+  }), !1) : !0;
 }
-async function handleChatCompletions(req, res) {
-  var _a;
-  const reqStart = Date.now();
-  const body = await readBody(req);
-  let request;
+async function Du(e, n) {
+  var b;
+  const t = Date.now(), a = await zu(e);
+  let o;
   try {
-    request = JSON.parse(body);
+    o = JSON.parse(a);
   } catch {
-    jsonResponse(res, 400, { error: { message: "Invalid JSON", type: "invalid_request_error" } });
+    ue(n, 400, { error: { message: "Invalid JSON", type: "invalid_request_error" } });
     return;
   }
-  const streamMode = request.stream ? "stream" : "sync";
-  const requestedModel = request.model || "(none)";
-  const resolvedModel = resolveModel(request.model, currentConfig == null ? void 0 : currentConfig.modelAliases);
-  if (!resolvedModel) {
-    serverLog(`[api] ✗ completion rejected — unsupported model: ${requestedModel}`);
-    jsonResponse(res, 400, {
-      error: { message: `Model '${request.model}' is not supported`, type: "invalid_request_error" }
+  const s = o.stream ? "stream" : "sync", i = o.model || "(none)", r = Tu(o.model, ke == null ? void 0 : ke.modelAliases);
+  if (!r) {
+    ie(`[api] ✗ completion rejected — unsupported model: ${i}`), ue(n, 400, {
+      error: { message: `Model '${o.model}' is not supported`, type: "invalid_request_error" }
     });
     return;
   }
-  const modelAlias = requestedModel !== resolvedModel ? `${requestedModel} → ${resolvedModel}` : resolvedModel;
-  serverLog(`[api] ⟶ completion ${streamMode} | model: ${modelAlias} | msgs: ${((_a = request.messages) == null ? void 0 : _a.length) || 0}`);
-  const { thinking, search } = getModelConfig(resolvedModel);
-  const modelType = getModelType(resolvedModel);
-  const token = getNextToken();
-  if (!token) {
-    serverLog(`[api] ✗ completion failed — no available accounts`);
-    jsonResponse(res, 503, {
+  const p = i !== r ? `${i} → ${r}` : r;
+  ie(`[api] ⟶ completion ${s} | model: ${p} | msgs: ${((b = o.messages) == null ? void 0 : b.length) || 0}`);
+  const { thinking: l, search: c } = js(r), u = Ru(r), d = Uu();
+  if (!d) {
+    ie("[api] ✗ completion failed — no available accounts"), ue(n, 503, {
       error: { message: "No available accounts", type: "api_error" }
     });
     return;
   }
-  let sessionId;
+  let f;
   try {
-    sessionId = await createSession(token);
-    serverLog(`[api]   session: ${sessionId.slice(0, 8)}...`);
-    const powResponse = await getPow(token);
-    serverLog(`[api]   pow: solved`);
-    const prompt = buildPromptText(request.messages, request.tools);
-    const payload = {
-      chat_session_id: sessionId,
-      prompt,
+    f = await lu(d), ie(`[api]   session: ${f.slice(0, 8)}...`);
+    const x = await du(d);
+    ie("[api]   pow: solved");
+    const v = Bu(o.messages, o.tools), h = {
+      chat_session_id: f,
+      prompt: v,
       ref_file_ids: [],
-      thinking_enabled: thinking,
-      search_enabled: search
+      thinking_enabled: l,
+      search_enabled: c
     };
-    if (modelType) {
-      payload.model_class = modelType;
-    }
-    const dsResponse = await callCompletion(token, payload, powResponse);
-    if (dsResponse.status !== 200) {
-      const errData = await streamToString(dsResponse.data);
-      serverLog(`[api] ✗ DeepSeek error ${dsResponse.status}: ${errData.slice(0, 200)}`);
-      jsonResponse(res, dsResponse.status, {
-        error: { message: `DeepSeek API error: ${dsResponse.status}`, type: "api_error" }
+    u && (h.model_class = u);
+    const w = await mu(d, h, x);
+    if (w.status !== 200) {
+      const k = await Ps(w.data);
+      ie(`[api] ✗ DeepSeek error ${w.status}: ${k.slice(0, 200)}`), ue(n, w.status, {
+        error: { message: `DeepSeek API error: ${w.status}`, type: "api_error" }
       });
       return;
     }
-    serverLog(`[api]   streaming response...`);
-    if (request.stream) {
-      await handleStreamResponse(res, dsResponse.data, resolvedModel, thinking);
-    } else {
-      await handleNonStreamResponse(res, dsResponse.data, resolvedModel, prompt, thinking);
-    }
-    const elapsed = ((Date.now() - reqStart) / 1e3).toFixed(1);
-    serverLog(`[api] ✓ completion done | model: ${resolvedModel} | ${streamMode} | ${elapsed}s`);
-  } catch (err) {
-    const elapsed = ((Date.now() - reqStart) / 1e3).toFixed(1);
-    serverLog(`[api] ✗ completion error (${elapsed}s): ${err.message}`);
-    jsonResponse(res, 500, {
-      error: { message: err.message || "Completion failed", type: "api_error" }
+    ie("[api]   streaming response..."), o.stream ? await Iu(n, w.data, r, l) : await Fu(n, w.data, r, v, l);
+    const _ = ((Date.now() - t) / 1e3).toFixed(1);
+    ie(`[api] ✓ completion done | model: ${r} | ${s} | ${_}s`);
+  } catch (x) {
+    const v = ((Date.now() - t) / 1e3).toFixed(1);
+    ie(`[api] ✗ completion error (${v}s): ${x.message}`), ue(n, 500, {
+      error: { message: x.message || "Completion failed", type: "api_error" }
     });
   } finally {
-    if (sessionId && token && (currentConfig == null ? void 0 : currentConfig.autoDeleteMode) === "single") {
-      deleteSession(token, sessionId).catch(() => {
-      });
-    }
+    f && d && (ke == null ? void 0 : ke.autoDeleteMode) === "single" && fu(d, f).catch(() => {
+    });
   }
 }
-async function handleStreamResponse(res, stream2, model, thinkingEnabled) {
-  res.writeHead(200, {
+async function Iu(e, n, t, a) {
+  e.writeHead(200, {
     "Content-Type": "text/event-stream",
     "Cache-Control": "no-cache, no-transform",
-    "Connection": "keep-alive",
+    Connection: "keep-alive",
     "X-Accel-Buffering": "no"
   });
-  const completionId = `chatcmpl-${crypto$1.randomUUID().replace(/-/g, "").slice(0, 24)}`;
-  const created = Math.floor(Date.now() / 1e3);
-  let currentType = thinkingEnabled ? "thinking" : "text";
-  let buffer = "";
-  let thinkingStartSent = false;
-  const sieve = new StreamToolSieve();
-  const sendSSE = (data) => {
-    res.write(`data: ${JSON.stringify(data)}
+  const o = `chatcmpl-${Qt.randomUUID().replace(/-/g, "").slice(0, 24)}`, s = Math.floor(Date.now() / 1e3);
+  let i = a ? "thinking" : "text", r = "", p = !1;
+  const l = new _u(), c = (u) => {
+    e.write(`data: ${JSON.stringify(u)}
 
 `);
   };
-  stream2.on("data", (chunk) => {
-    buffer += chunk.toString("utf-8");
-    const lines = buffer.split("\n");
-    buffer = lines.pop() || "";
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed) continue;
-      const [parsed, isDone, isValid] = parseDeepSeekSSELine(trimmed);
-      if (!isValid) continue;
-      if (isDone) {
-        sendSSE({
-          id: completionId,
+  n.on("data", (u) => {
+    r += u.toString("utf-8");
+    const d = r.split(`
+`);
+    r = d.pop() || "";
+    for (const f of d) {
+      const b = f.trim();
+      if (!b) continue;
+      const [x, v, h] = As(b);
+      if (!h) continue;
+      if (v) {
+        c({
+          id: o,
           object: "chat.completion.chunk",
-          created,
-          model,
+          created: s,
+          model: t,
           choices: [{
             index: 0,
             delta: {},
             finish_reason: "stop"
           }]
-        });
-        res.write("data: [DONE]\n\n");
-        res.end();
+        }), e.write(`data: [DONE]
+
+`), e.end();
         return;
       }
-      if (!parsed) continue;
-      if (hasContentFilterStatus(parsed)) {
-        sendSSE({
-          id: completionId,
+      if (!x) continue;
+      if (Cs(x)) {
+        c({
+          id: o,
           object: "chat.completion.chunk",
-          created,
-          model,
+          created: s,
+          model: t,
           choices: [{
             index: 0,
             delta: {},
             finish_reason: "content_filter"
           }]
-        });
-        res.write("data: [DONE]\n\n");
-        res.end();
+        }), e.write(`data: [DONE]
+
+`), e.end();
         return;
       }
-      const { parts, finished, nextType } = parseSSEChunkForContent(parsed, thinkingEnabled, currentType);
-      currentType = nextType;
-      if (finished) {
-        sendSSE({
-          id: completionId,
+      const { parts: w, finished: _, nextType: k } = Ts(x, a, i);
+      if (i = k, _) {
+        c({
+          id: o,
           object: "chat.completion.chunk",
-          created,
-          model,
+          created: s,
+          model: t,
           choices: [{
             index: 0,
             delta: {},
             finish_reason: "stop"
           }]
-        });
-        res.write("data: [DONE]\n\n");
-        res.end();
+        }), e.write(`data: [DONE]
+
+`), e.end();
         return;
       }
-      for (const part of parts) {
-        if (part.type === "thinking") {
-          if (!thinkingStartSent) {
-            sendSSE({
-              id: completionId,
-              object: "chat.completion.chunk",
-              created,
-              model,
-              choices: [{
-                index: 0,
-                delta: { role: "assistant", reasoning_content: "" },
-                finish_reason: null
-              }]
-            });
-            thinkingStartSent = true;
-          }
-          sendSSE({
-            id: completionId,
+      for (const S of w)
+        if (S.type === "thinking")
+          p || (c({
+            id: o,
             object: "chat.completion.chunk",
-            created,
-            model,
+            created: s,
+            model: t,
             choices: [{
               index: 0,
-              delta: { reasoning_content: part.text },
+              delta: { role: "assistant", reasoning_content: "" },
+              finish_reason: null
+            }]
+          }), p = !0), c({
+            id: o,
+            object: "chat.completion.chunk",
+            created: s,
+            model: t,
+            choices: [{
+              index: 0,
+              delta: { reasoning_content: S.text },
               finish_reason: null
             }]
           });
-        } else {
-          const result = sieve.processChunk(part.text);
-          if (result.outputText) {
-            sendSSE({
-              id: completionId,
-              object: "chat.completion.chunk",
-              created,
-              model,
-              choices: [{
-                index: 0,
-                delta: { content: result.outputText },
-                finish_reason: null
-              }]
-            });
-          }
-          if (result.toolCalls) {
-            sendSSE({
-              id: completionId,
-              object: "chat.completion.chunk",
-              created,
-              model,
-              choices: [{
-                index: 0,
-                delta: { tool_calls: result.toolCalls },
-                finish_reason: null
-              }]
-            });
-          }
+        else {
+          const R = l.processChunk(S.text);
+          R.outputText && c({
+            id: o,
+            object: "chat.completion.chunk",
+            created: s,
+            model: t,
+            choices: [{
+              index: 0,
+              delta: { content: R.outputText },
+              finish_reason: null
+            }]
+          }), R.toolCalls && c({
+            id: o,
+            object: "chat.completion.chunk",
+            created: s,
+            model: t,
+            choices: [{
+              index: 0,
+              delta: { tool_calls: R.toolCalls },
+              finish_reason: null
+            }]
+          });
         }
-      }
     }
-  });
-  stream2.on("end", () => {
-    if (!res.writableEnded) {
-      const finalResult = sieve.flush();
-      if (finalResult.outputText) {
-        sendSSE({
-          id: completionId,
-          object: "chat.completion.chunk",
-          created,
-          model,
-          choices: [{
-            index: 0,
-            delta: { content: finalResult.outputText },
-            finish_reason: null
-          }]
-        });
-      }
-      if (finalResult.toolCalls) {
-        sendSSE({
-          id: completionId,
-          object: "chat.completion.chunk",
-          created,
-          model,
-          choices: [{
-            index: 0,
-            delta: { tool_calls: finalResult.toolCalls },
-            finish_reason: null
-          }]
-        });
-      }
-      sendSSE({
-        id: completionId,
+  }), n.on("end", () => {
+    if (!e.writableEnded) {
+      const u = l.flush();
+      u.outputText && c({
+        id: o,
         object: "chat.completion.chunk",
-        created,
-        model,
+        created: s,
+        model: t,
+        choices: [{
+          index: 0,
+          delta: { content: u.outputText },
+          finish_reason: null
+        }]
+      }), u.toolCalls && c({
+        id: o,
+        object: "chat.completion.chunk",
+        created: s,
+        model: t,
+        choices: [{
+          index: 0,
+          delta: { tool_calls: u.toolCalls },
+          finish_reason: null
+        }]
+      }), c({
+        id: o,
+        object: "chat.completion.chunk",
+        created: s,
+        model: t,
         choices: [{
           index: 0,
           delta: {},
           finish_reason: "stop"
         }]
-      });
-      res.write("data: [DONE]\n\n");
-      res.end();
+      }), e.write(`data: [DONE]
+
+`), e.end();
     }
-  });
-  stream2.on("error", (err) => {
-    console.error("[shallowseek-api] Stream error:", err.message);
-    if (!res.writableEnded) res.end();
+  }), n.on("error", (u) => {
+    console.error("[shallowseek-api] Stream error:", u.message), e.writableEnded || e.end();
   });
 }
-async function handleNonStreamResponse(res, stream2, model, prompt, thinkingEnabled) {
-  const completionId = `chatcmpl-${crypto$1.randomUUID().replace(/-/g, "").slice(0, 24)}`;
-  const created = Math.floor(Date.now() / 1e3);
-  let thinkingText = "";
-  let contentText = "";
-  let currentType = thinkingEnabled ? "thinking" : "text";
-  let finishReason = "stop";
-  const raw = await streamToString(stream2);
-  const lines = raw.split("\n");
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
-    const [parsed, isDone, isValid] = parseDeepSeekSSELine(trimmed);
-    if (!isValid || isDone) continue;
-    if (!parsed) continue;
-    if (hasContentFilterStatus(parsed)) {
-      finishReason = "content_filter";
+async function Fu(e, n, t, a, o) {
+  const s = `chatcmpl-${Qt.randomUUID().replace(/-/g, "").slice(0, 24)}`, i = Math.floor(Date.now() / 1e3);
+  let r = "", p = "", l = o ? "thinking" : "text", c = "stop";
+  const d = (await Ps(n)).split(`
+`);
+  for (const w of d) {
+    const _ = w.trim();
+    if (!_) continue;
+    const [k, S, R] = As(_);
+    if (!R || S || !k) continue;
+    if (Cs(k)) {
+      c = "content_filter";
       break;
     }
-    const { parts, finished, nextType } = parseSSEChunkForContent(parsed, thinkingEnabled, currentType);
-    currentType = nextType;
-    if (finished) break;
-    for (const part of parts) {
-      if (part.type === "thinking") {
-        thinkingText += part.text;
-      } else {
-        contentText += part.text;
-      }
-    }
+    const { parts: j, finished: D, nextType: q } = Ts(k, o, l);
+    if (l = q, D) break;
+    for (const A of j)
+      A.type === "thinking" ? r += A.text : p += A.text;
   }
-  let finalContent = contentText;
-  let toolCalls = void 0;
-  const toolStartIdx = contentText.indexOf("<|DSML|tool_calls>");
-  const toolEndIdx = contentText.indexOf("</|DSML|tool_calls>");
-  if (toolStartIdx !== -1 && toolEndIdx !== -1) {
-    const fullXml = contentText.substring(toolStartIdx, toolEndIdx + "</|DSML|tool_calls>".length);
-    const parsedTools = parseDSMLToolCalls(fullXml);
-    if (parsedTools.length > 0) {
-      toolCalls = parsedTools;
-      finalContent = contentText.substring(0, toolStartIdx);
-    }
+  let f = p, b;
+  const x = p.indexOf("<|DSML|tool_calls>"), v = p.indexOf("</|DSML|tool_calls>");
+  if (x !== -1 && v !== -1) {
+    const w = p.substring(x, v + 19), _ = Kt(w);
+    _.length > 0 && (b = _, f = p.substring(0, x));
   }
-  const responseBody = {
-    id: completionId,
+  const h = {
+    id: s,
     object: "chat.completion",
-    created,
-    model,
+    created: i,
+    model: t,
     choices: [{
       index: 0,
       message: {
         role: "assistant",
-        content: finalContent,
-        ...thinkingEnabled && thinkingText ? { reasoning_content: thinkingText } : {},
-        ...toolCalls ? { tool_calls: toolCalls } : {}
+        content: f,
+        ...o && r ? { reasoning_content: r } : {},
+        ...b ? { tool_calls: b } : {}
       },
-      finish_reason: finishReason
+      finish_reason: c
     }],
     usage: {
-      prompt_tokens: estimateTokens(prompt),
-      completion_tokens: estimateTokens(contentText + thinkingText),
-      total_tokens: estimateTokens(prompt + contentText + thinkingText)
+      prompt_tokens: Tt(a),
+      completion_tokens: Tt(p + r),
+      total_tokens: Tt(a + p + r)
     }
   };
-  jsonResponse(res, 200, responseBody);
+  ue(e, 200, h);
 }
-function getNextToken() {
-  if (accountTokens.size === 0) return null;
-  const entries = Array.from(accountTokens.entries());
-  const [, token] = entries[accountIndex % entries.length];
-  accountIndex = (accountIndex + 1) % entries.length;
-  return token;
+function Uu() {
+  if ($e.size === 0) return null;
+  const e = Array.from($e.entries()), [, n] = e[Rt % e.length];
+  return Rt = (Rt + 1) % e.length, n;
 }
-function buildPromptText(messages, tools) {
-  if (!Array.isArray(messages) || messages.length === 0) return "";
-  const parts = [];
-  const toolPrompt = buildToolPrompt(tools || []);
-  let systemInjected = false;
-  for (const msg of messages) {
-    const role = msg.role || "user";
-    let content = typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content);
-    if (role === "system") {
-      if (toolPrompt && !systemInjected) {
-        content = content + "\n\n" + toolPrompt;
-        systemInjected = true;
-      }
-      parts.push(`[System]
-${content}`);
-    } else if (role === "user") {
-      parts.push(content);
-    } else if (role === "assistant") {
-      if (msg.tool_calls && Array.isArray(msg.tool_calls)) {
-        let historyToolCalls = "<|DSML|tool_calls>\n";
-        for (const call2 of msg.tool_calls) {
-          if (call2.function) {
-            historyToolCalls += `  <|DSML|invoke name="${call2.function.name}">
+function Bu(e, n) {
+  if (!Array.isArray(e) || e.length === 0) return "";
+  const t = [], a = ku(n || []);
+  let o = !1;
+  for (const s of e) {
+    const i = s.role || "user";
+    let r = typeof s.content == "string" ? s.content : JSON.stringify(s.content);
+    if (i === "system")
+      a && !o && (r = r + `
+
+` + a, o = !0), t.push(`[System]
+${r}`);
+    else if (i === "user")
+      t.push(r);
+    else if (i === "assistant") {
+      if (s.tool_calls && Array.isArray(s.tool_calls)) {
+        let p = `<|DSML|tool_calls>
+`;
+        for (const l of s.tool_calls)
+          if (l.function) {
+            p += `  <|DSML|invoke name="${l.function.name}">
 `;
             try {
-              const args = typeof call2.function.arguments === "string" ? JSON.parse(call2.function.arguments) : call2.function.arguments;
-              for (const [k, v] of Object.entries(args)) {
-                const valStr = typeof v === "object" ? JSON.stringify(v) : String(v);
-                historyToolCalls += `    <|DSML|parameter name="${k}"><![CDATA[${valStr}]]></|DSML|parameter>
+              const c = typeof l.function.arguments == "string" ? JSON.parse(l.function.arguments) : l.function.arguments;
+              for (const [u, d] of Object.entries(c)) {
+                const f = typeof d == "object" ? JSON.stringify(d) : String(d);
+                p += `    <|DSML|parameter name="${u}"><![CDATA[${f}]]></|DSML|parameter>
 `;
               }
             } catch {
-              historyToolCalls += `    <|DSML|parameter name="args"><![CDATA[${call2.function.arguments}]]></|DSML|parameter>
+              p += `    <|DSML|parameter name="args"><![CDATA[${l.function.arguments}]]></|DSML|parameter>
 `;
             }
-            historyToolCalls += `  </|DSML|invoke>
+            p += `  </|DSML|invoke>
 `;
           }
-        }
-        historyToolCalls += "</|DSML|tool_calls>";
-        content = content ? `${content}
-${historyToolCalls}` : historyToolCalls;
+        p += "</|DSML|tool_calls>", r = r ? `${r}
+${p}` : p;
       }
-      parts.push(`[Assistant]
-${content}`);
-    } else if (role === "tool") {
-      parts.push(`[Tool]
-Result: ${content}`);
-    }
+      t.push(`[Assistant]
+${r}`);
+    } else i === "tool" && t.push(`[Tool]
+Result: ${r}`);
   }
-  if (toolPrompt && !systemInjected) {
-    parts.unshift(`[System]
-${toolPrompt}`);
-  }
-  return parts.join("\n\n");
+  return a && !o && t.unshift(`[System]
+${a}`), t.join(`
+
+`);
 }
-function readBody(req) {
-  return new Promise((resolve2, reject) => {
-    let body = "";
-    req.on("data", (chunk) => {
-      body += chunk.toString();
-    });
-    req.on("end", () => resolve2(body));
-    req.on("error", reject);
+function zu(e) {
+  return new Promise((n, t) => {
+    let a = "";
+    e.on("data", (o) => {
+      a += o.toString();
+    }), e.on("end", () => n(a)), e.on("error", t);
   });
 }
-function streamToString(stream2) {
-  return new Promise((resolve2, reject) => {
-    let data = "";
-    stream2.on("data", (chunk) => {
-      data += chunk.toString();
-    });
-    stream2.on("end", () => resolve2(data));
-    stream2.on("error", reject);
+function Ps(e) {
+  return new Promise((n, t) => {
+    let a = "";
+    e.on("data", (o) => {
+      a += o.toString();
+    }), e.on("end", () => n(a)), e.on("error", t);
   });
 }
-function jsonResponse(res, status, data) {
-  res.writeHead(status, { "Content-Type": "application/json" });
-  res.end(JSON.stringify(data));
+function ue(e, n, t) {
+  e.writeHead(n, { "Content-Type": "application/json" }), e.end(JSON.stringify(t));
 }
-function setCORS(res, req) {
-  const origin2 = req.headers["origin"] || "*";
-  res.setHeader("Access-Control-Allow-Origin", origin2);
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-API-Key");
-  res.setHeader("Access-Control-Max-Age", "600");
+function qu(e, n) {
+  const t = n.headers.origin || "*";
+  e.setHeader("Access-Control-Allow-Origin", t), e.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE"), e.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-API-Key"), e.setHeader("Access-Control-Max-Age", "600");
 }
-function estimateTokens(text) {
-  return Math.ceil(text.length / 4);
+function Tt(e) {
+  return Math.ceil(e.length / 4);
 }
-let serverLogs = [];
-function broadcastServerStatus(isRunning2) {
-  const port = getPortFromDB();
-  for (const win2 of BrowserWindow.getAllWindows()) {
+let Jt = [];
+function wo(e) {
+  const n = Vt();
+  for (const t of X.getAllWindows())
     try {
-      win2.webContents.send("server-status-changed", isRunning2, port);
+      t.webContents.send("server-status-changed", e, n);
     } catch {
     }
-  }
 }
-function captureLog(msg) {
-  serverLogs.push(msg);
-  for (const win2 of BrowserWindow.getAllWindows()) {
+function Be(e) {
+  Jt.push(e);
+  for (const n of X.getAllWindows())
     try {
-      win2.webContents.send("server-log", msg);
+      n.webContents.send("server-log", e);
     } catch {
     }
-  }
 }
-function getPortFromDB() {
-  const raw = getSetting("endpointPort");
-  if (raw) {
-    const parsed = parseInt(raw, 10);
-    if (!isNaN(parsed) && parsed > 0 && parsed < 65536) return parsed;
+function Vt() {
+  const e = va("endpointPort");
+  if (e) {
+    const n = parseInt(e, 10);
+    if (!isNaN(n) && n > 0 && n < 65536) return n;
   }
   return 11434;
 }
-function getApiKeyFromDB() {
-  return getSetting("endpointApiKey");
+function $u() {
+  return va("endpointApiKey");
 }
-function getAccountsFromDB() {
-  const dbAccounts = getAccounts();
-  return dbAccounts.map((acc) => ({
-    id: acc.id,
-    email: acc.email,
+function Mu() {
+  return Ss().map((n) => ({
+    id: n.id,
+    email: n.email,
     password: "",
-    token: acc.chat_token
+    token: n.chat_token
   }));
 }
-function registerServerIpcs() {
-  setLogCallback(captureLog);
-  ipcMain.handle("server-start", async (_event, config) => {
-    if (isRunning()) {
-      return { ok: false, error: "Server is already running" };
-    }
-    serverLogs = [];
-    const port = (config == null ? void 0 : config.port) || getPortFromDB();
+function Hu() {
+  Ou(Be), C.handle("server-start", async (e, n) => {
+    if (At())
+      return { ok: !1, error: "Server is already running" };
+    Jt = [];
+    const t = (n == null ? void 0 : n.port) || Vt();
     try {
-      let accounts = (config == null ? void 0 : config.accounts) || [];
-      if (accounts.length === 0) {
-        accounts = getAccountsFromDB();
-      }
-      if (accounts.length === 0 && (config == null ? void 0 : config.token)) {
-        accounts = [{
-          id: "direct-token",
-          email: "direct",
-          password: "",
-          token: config.token
-        }];
-      }
-      if (accounts.length === 0) {
-        return { ok: false, error: "No accounts configured" };
-      }
-      const apiKeys = [];
-      const apiKey = (config == null ? void 0 : config.apiKey) || getApiKeyFromDB();
-      if (apiKey) {
-        apiKeys.push(apiKey);
-      }
-      const serverConfig = {
-        port,
-        apiKeys,
-        accounts,
+      let a = (n == null ? void 0 : n.accounts) || [];
+      if (a.length === 0 && (a = Mu()), a.length === 0 && (n != null && n.token) && (a = [{
+        id: "direct-token",
+        email: "direct",
+        password: "",
+        token: n.token
+      }]), a.length === 0)
+        return { ok: !1, error: "No accounts configured" };
+      const o = [], s = (n == null ? void 0 : n.apiKey) || $u();
+      s && o.push(s);
+      const i = {
+        port: t,
+        apiKeys: o,
+        accounts: a,
         modelAliases: {},
         autoDeleteMode: "single"
       };
-      captureLog(`[shallowseek-api] Starting server on port ${port}...`);
-      await startServer(serverConfig);
-      captureLog(`[shallowseek-api] Server started successfully on port ${port}`);
-      captureLog(`[shallowseek-api] OpenAI base URL: http://localhost:${port}/v1`);
-      captureLog(`[shallowseek-api] ${accounts.length} account(s) loaded`);
-      broadcastServerStatus(true);
-      return { ok: true, port };
-    } catch (err) {
-      const msg = err.message || "Unknown error";
-      captureLog(`[shallowseek-api] Start failed: ${msg}`);
-      return { ok: false, error: msg };
+      return Be(`[shallowseek-api] Starting server on port ${t}...`), await ju(i), Be(`[shallowseek-api] Server started successfully on port ${t}`), Be(`[shallowseek-api] OpenAI base URL: http://localhost:${t}/v1`), Be(`[shallowseek-api] ${a.length} account(s) loaded`), wo(!0), { ok: !0, port: t };
+    } catch (a) {
+      const o = a.message || "Unknown error";
+      return Be(`[shallowseek-api] Start failed: ${o}`), { ok: !1, error: o };
     }
-  });
-  ipcMain.handle("server-stop", async () => {
-    if (!isRunning()) {
-      return { ok: false, error: "Server is not running" };
-    }
+  }), C.handle("server-stop", async () => {
+    if (!At())
+      return { ok: !1, error: "Server is not running" };
     try {
-      await stopServer();
-      broadcastServerStatus(false);
-      return { ok: true };
-    } catch (err) {
-      return { ok: false, error: err.message };
+      return await Pu(), wo(!1), { ok: !0 };
+    } catch (e) {
+      return { ok: !1, error: e.message };
     }
-  });
-  ipcMain.handle("server-status", () => {
-    return { isRunning: isRunning(), port: getPortFromDB() };
-  });
-  ipcMain.handle("server-logs", () => {
-    return { logs: serverLogs };
-  });
+  }), C.handle("server-status", () => ({ isRunning: At(), port: Vt() })), C.handle("server-logs", () => ({ logs: Jt }));
 }
-function registerIpcs(__dirname, VITE_DEV_SERVER_URL2, RENDERER_DIST2) {
-  registerWindowIpcs(__dirname, VITE_DEV_SERVER_URL2, RENDERER_DIST2);
-  registerAccountIpcs(__dirname, VITE_DEV_SERVER_URL2, RENDERER_DIST2);
-  registerDatabaseIpcs();
-  registerServerIpcs();
+function Wu(e, n, t) {
+  Js(e, n, t), eu(e, n, t), cu(), Hu();
 }
-const __filename$1 = fileURLToPath(import.meta.url);
-const __dirname$1 = path$1.dirname(__filename$1);
-process.env.APP_ROOT = path$1.join(__dirname$1, "..");
-const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
-const MAIN_DIST = path$1.join(process.env.APP_ROOT, "dist-electron");
-const RENDERER_DIST = path$1.join(process.env.APP_ROOT, "dist");
-process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path$1.join(process.env.APP_ROOT, "public") : RENDERER_DIST;
-let win;
-function createWindow() {
-  win = new BrowserWindow({
+const Ku = zs(import.meta.url), ga = B.dirname(Ku);
+process.env.APP_ROOT = B.join(ga, "..");
+const Qe = process.env.VITE_DEV_SERVER_URL, Dd = B.join(process.env.APP_ROOT, "dist-electron"), Ln = B.join(process.env.APP_ROOT, "dist");
+process.env.VITE_PUBLIC = Qe ? B.join(process.env.APP_ROOT, "public") : Ln;
+let fe;
+function Ls() {
+  fe = new X({
     minWidth: 1200,
     minHeight: 800,
-    frame: false,
+    frame: !1,
     titleBarStyle: "hidden",
-    icon: path$1.join(process.env.VITE_PUBLIC, "logo.png"),
+    icon: B.join(process.env.VITE_PUBLIC, "logo.png"),
     webPreferences: {
-      preload: path$1.join(__dirname$1, "preload.mjs")
+      preload: B.join(ga, "preload.mjs")
     },
-    autoHideMenuBar: true
-  });
-  Menu.setApplicationMenu(null);
-  win.on("maximize", () => {
-    win == null ? void 0 : win.webContents.send("window-state-changed", "maximized");
-  });
-  win.on("unmaximize", () => {
-    win == null ? void 0 : win.webContents.send("window-state-changed", "unmaximized");
-  });
-  if (VITE_DEV_SERVER_URL) {
-    console.log("Loading URL:", VITE_DEV_SERVER_URL);
-    win.loadURL(VITE_DEV_SERVER_URL);
-  } else {
-    console.log("Loading file:", path$1.join(RENDERER_DIST, "index.html"));
-    win.loadFile(path$1.join(RENDERER_DIST, "index.html"));
-  }
+    autoHideMenuBar: !0
+  }), Bs.setApplicationMenu(null), fe.on("maximize", () => {
+    fe == null || fe.webContents.send("window-state-changed", "maximized");
+  }), fe.on("unmaximize", () => {
+    fe == null || fe.webContents.send("window-state-changed", "unmaximized");
+  }), Qe ? (console.log("Loading URL:", Qe), fe.loadURL(Qe)) : (console.log("Loading file:", B.join(Ln, "index.html")), fe.loadFile(B.join(Ln, "index.html")));
 }
-registerIpcs(__dirname$1, VITE_DEV_SERVER_URL, RENDERER_DIST);
-app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") {
-    app.quit();
-    win = null;
-  }
+Wu(ga, Qe, Ln);
+We.on("window-all-closed", () => {
+  process.platform !== "darwin" && (We.quit(), fe = null);
 });
-app.on("activate", () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow();
-  }
+We.on("activate", () => {
+  X.getAllWindows().length === 0 && Ls();
 });
-app.whenReady().then(createWindow);
+We.whenReady().then(Ls);
 export {
-  MAIN_DIST,
-  RENDERER_DIST,
-  VITE_DEV_SERVER_URL
+  Dd as MAIN_DIST,
+  Ln as RENDERER_DIST,
+  Qe as VITE_DEV_SERVER_URL
 };

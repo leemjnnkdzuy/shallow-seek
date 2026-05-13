@@ -172,8 +172,6 @@ const AddAccountPage: React.FC = () => {
 				});
 
 				if (res?.success) {
-					console.log(`[AddAccountPage] Successfully added account. Chat Token: ${user.token.substring(0, 15)}... (len: ${user.token.length}), Platform Token: ${result.platformToken ? `${result.platformToken.substring(0, 15)}... (len: ${result.platformToken.length})` : 'NULL'}`);
-					
 					if (result.platformToken) {
 						await window.electron?.db.setSetting(
 							`platform_token_${user.id}`, 

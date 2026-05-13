@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Minus, Square, X, Copy, ArrowLeft } from 'lucide-react';
-import {logo} from "@/assets";
+import {logo, deepseek} from "@/assets";
 import {useTitleBar} from "@/hooks/useTitleBar";
 import {motion, AnimatePresence} from "framer-motion";
 
@@ -13,6 +13,7 @@ const TitleBar: React.FC = () => {
     showLogo, 
     showBack,
     title,
+    logoIcon,
     onBack
   } = useTitleBar();
 
@@ -63,7 +64,7 @@ const TitleBar: React.FC = () => {
         {/* Logo and Title sitting just left of window controls */}
         <div className="flex items-center gap-2 px-4 py-1.5 mr-1 border-r border-border/20">
           {showLogo && (
-            <img src={logo} alt="Logo" className="w-3.5 h-3.5 object-contain" />
+            <img src={logoIcon === 'deepseek' ? deepseek : logo} alt="Logo" className="w-3.5 h-3.5 object-contain" />
           )}
           <span className="text-[11px] font-bold tracking-tight text-muted-foreground opacity-80">
             {title}

@@ -11,6 +11,7 @@ import EndpointPage from "@/windows/setting/EndpointPage";
 import InterfacePage from "@/windows/setting/InterfacePage";
 import AccountManagerPage from "@/windows/main/AccountManagerPage";
 import CreateAPIKeyPage from "@/windows/popup/CreateAPIKeyPage";
+import DeepseekBrowserPage from "@/windows/popup/DeepseekBrowserPage";
 
 import type { RouteConfig } from "../types";
 
@@ -53,6 +54,11 @@ const routes: RouteConfig[] = [
 	{
 		path: "/create-api-key/:token",
 		component: CreateAPIKeyPage,
+		layout: NothingLayout,
+	},
+	{
+		path: "/deepseek-browser",
+		component: DeepseekBrowserPage,
 		layout: NothingLayout,
 	},
 ];
