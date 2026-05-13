@@ -2,7 +2,6 @@ import React, {useEffect, useState} from "react";
 import {Button} from "@/components/ui/button";
 import {HelpCircle, Trash2, ShieldAlert, CheckCircle2} from "lucide-react";
 import {useTitleBar} from "@/hooks/useTitleBar";
-import {motion} from "framer-motion";
 
 const ConfirmPage: React.FC = () => {
 	const {setConfig, resetConfig} = useTitleBar();
@@ -64,11 +63,7 @@ const ConfirmPage: React.FC = () => {
 
 	return (
 		<div className='w-full h-full bg-background flex items-center justify-center p-6 overflow-hidden'>
-			<motion.div 
-				initial={{ opacity: 0, x: 20 }}
-				animate={{ opacity: 1, x: 0 }}
-				className='w-full flex items-start gap-5'
-			>
+			<div className='w-full flex items-start gap-5'>
 				{/* Left side: Icon */}
 				<div className={`p-4 rounded-2xl flex-shrink-0 ${
 					config.type === 'danger' ? 'bg-destructive/10' : 
@@ -109,7 +104,7 @@ const ConfirmPage: React.FC = () => {
 						</Button>
 					</div>
 				</div>
-			</motion.div>
+			</div>
 		</div>
 	);
 };

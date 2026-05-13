@@ -74,7 +74,6 @@ export default function LogAccountManager({ logs, onClear }: LogAccountManagerPr
 					{parts[0]}
 					<span className="text-amber-600 dark:text-amber-500 font-bold">[api]</span>
 					{parts.slice(1).map((part, idx) => {
-						// Highlight methods, status codes, times, status symbols
 						let renderedPart: React.ReactNode = part;
 
 						if (part.includes("→ 200")) {
@@ -87,7 +86,6 @@ export default function LogAccountManager({ logs, onClear }: LogAccountManagerPr
 								</span>
 							);
 						} else if (part.includes("→ 4") || part.includes("→ 5") || part.includes("✗")) {
-							// Simple red highlight for errors
 							renderedPart = (
 								<span key={idx} className="text-destructive font-medium">
 									{part}

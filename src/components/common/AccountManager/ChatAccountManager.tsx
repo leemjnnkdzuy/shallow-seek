@@ -1,6 +1,5 @@
 import {useState, useEffect, useRef} from "react";
 import {Button} from "@/components/ui/button";
-import {Input} from "@/components/ui/input";
 import {
 	Select,
 	SelectContent,
@@ -10,6 +9,8 @@ import {
 } from "@/components/ui/select";
 import {formatDeepSeekMessages, type FormattedMessage} from "@/lib/utils";
 import ChatMessage from "@/components/common/ChatMessage";
+import { Atom, ArrowUp, Paperclip, Globe } from "lucide-react";
+import { parseStreamLine } from "@/handlers/ChatStreamHandler";
 
 export default function ChatAccountManager({
 	account,
@@ -17,7 +18,7 @@ export default function ChatAccountManager({
 	onSessionCreated,
 	onRefreshHistory,
 }: {
-	account: {token: string};
+	account: {chat_token: string};
 	sessionId?: string | null;
 	onSessionCreated?: (id: string) => void;
 	onRefreshHistory?: () => void;
@@ -30,37 +31,29 @@ export default function ChatAccountManager({
 
 	const bufferRef = useRef("");
 	const [parentMessageId, setParentMessageId] = useState<number>(0);
+	const sessionCreatedLocallyRef = useRef<boolean>(false);
 
 	useEffect(() => {
+		if (sessionCreatedLocallyRef.current) {
+			sessionCreatedLocallyRef.current = false;
+			return;
+		}
+
 		setMessages([]);
 		setInput("");
 		setParentMessageId(0);
-		if (!sessionId || !account?.token) return;
+		if (!sessionId || !account?.chat_token) return;
 
 		const fetchMessages = async () => {
 			try {
 				const res =
 					await window.electron?.deepseek?.fetchSessionMessages({
-						token: account.token,
+						token: account.chat_token,
 						sessionId,
 					});
-				if (res?.ok) {
-					console.log(
-						"ChatAccountManager received session messages response:",
-						res.data,
-					);
-				}
 				if (res?.ok && res.data?.data?.biz_data?.chat_messages) {
 					const msgs = res.data.data.biz_data.chat_messages;
-					console.log(
-						"ChatAccountManager: Found messages:",
-						msgs.length,
-					);
 					const formattedMsgs = formatDeepSeekMessages(msgs);
-					console.log(
-						"ChatAccountManager: Formatted messages:",
-						formattedMsgs,
-					);
 					setMessages(formattedMsgs);
 					if (msgs.length > 0) {
 						const lastMsg = msgs[msgs.length - 1];
@@ -88,205 +81,38 @@ export default function ChatAccountManager({
 				bufferRef.current = lines.pop() || "";
 
 				for (const line of lines) {
-					const trimmedLine = line.trim();
-					// Empty line = SSE event boundary (\n\n), reset event type
-					if (!trimmedLine) {
-						currentEventType = "";
-						continue;
-					}
+					currentEventType = parseStreamLine(line, currentEventType, {
+						setIsStreaming,
+						setParentMessageId,
+						onAppendText: (textDelta, messageId) => {
+							setMessages((prev) => {
+								const newMsgs = [...prev];
+								const lastIdx = newMsgs.length - 1;
+								const last =
+									lastIdx >= 0 ?
+										{...newMsgs[lastIdx]}
+									:	null;
 
-					// Handle SSE event type lines
-					if (
-						trimmedLine.startsWith("event:") ||
-						trimmedLine.startsWith("event: ")
-					) {
-						currentEventType = trimmedLine
-							.replace(/^event:\s*/, "")
-							.trim();
-
-						// "close" event means stream is finished
-						if (currentEventType === "close") {
-							setIsStreaming(false);
+								if (last && last.role === "assistant") {
+									last.content += textDelta;
+									if (messageId) {
+										setParentMessageId(messageId);
+									}
+									newMsgs[lastIdx] = last;
+								} else {
+									newMsgs.push({
+										role: "assistant",
+										content: textDelta,
+										id: messageId,
+									});
+									if (messageId) {
+										setParentMessageId(messageId);
+									}
+								}
+								return newMsgs;
+							});
 						}
-						continue;
-					}
-
-					if (
-						trimmedLine.startsWith("data: ") ||
-						trimmedLine.startsWith("data:")
-					) {
-						const data = trimmedLine
-							.replace(/^data:\s*/, "")
-							.trim();
-						if (data === "[DONE]") {
-							setIsStreaming(false);
-							continue;
-						}
-						if (!data) continue;
-
-						try {
-							const parsed = JSON.parse(data);
-
-							// --- Handle "ready" event: extract response_message_id ---
-							if (
-								currentEventType === "ready" &&
-								parsed.response_message_id
-							) {
-								setParentMessageId(parsed.response_message_id);
-								continue;
-							}
-
-							// --- Handle "update_session" / "close" events: skip ---
-							if (
-								currentEventType === "update_session" ||
-								currentEventType === "close"
-							) {
-								continue;
-							}
-
-							let textDelta = "";
-							let responseMessageId: number | undefined;
-							let isFinished = false;
-
-							// --- DeepSeek Web format: JSON patch operations ---
-
-							// 1. Initial response object with fragments
-							// e.g. {"v":{"response":{"message_id":12,...,"fragments":[{"content":"Ch"}]}}}
-							if (parsed?.v?.response) {
-								const resp = parsed.v.response;
-								if (resp.message_id) {
-									responseMessageId = resp.message_id;
-								}
-								if (
-									resp.fragments &&
-									Array.isArray(resp.fragments)
-								) {
-									for (const frag of resp.fragments) {
-										if (frag.content) {
-											textDelta += frag.content;
-										}
-									}
-								}
-								if (resp.status === "FINISHED") {
-									isFinished = true;
-								}
-							}
-							// 2. Explicit APPEND operation on fragment content
-							// e.g. {"p":"response/fragments/-1/content","o":"APPEND","v":"ào"}
-							else if (
-								parsed?.o === "APPEND" &&
-								typeof parsed?.v === "string"
-							) {
-								textDelta = parsed.v;
-							}
-							// 3. SET operation (e.g. status = FINISHED)
-							// e.g. {"p":"response/status","o":"SET","v":"FINISHED"}
-							else if (parsed?.o === "SET") {
-								if (
-									parsed.p === "response/status" &&
-									parsed.v === "FINISHED"
-								) {
-									isFinished = true;
-								}
-								// Other SET operations are ignored
-							}
-							// 4. BATCH operation (e.g. accumulated_token_usage + quasi_status)
-							// e.g. {"p":"response","o":"BATCH","v":[{"p":"accumulated_token_usage","v":232},{"p":"quasi_status","v":"FINISHED"}]}
-							else if (
-								parsed?.o === "BATCH" &&
-								Array.isArray(parsed?.v)
-							) {
-								for (const patch of parsed.v) {
-									if (
-										patch.p === "quasi_status" &&
-										patch.v === "FINISHED"
-									) {
-										isFinished = true;
-									}
-								}
-							}
-							// 5. Shorthand append (no "p" or "o" fields, just {"v":"text"})
-							// e.g. {"v":" bạn"}
-							else if (
-								typeof parsed?.v === "string" &&
-								!parsed?.p &&
-								!parsed?.o
-							) {
-								textDelta = parsed.v;
-							}
-							// --- DeepSeek mobile API format (JSON patches with p/v) ---
-							else if (Array.isArray(parsed?.v)) {
-								for (const patch of parsed.v) {
-									if (
-										(patch.p === "text" ||
-											patch.p === "message/content") &&
-										typeof patch.v === "string"
-									) {
-										textDelta += patch.v;
-									}
-								}
-							} else if (
-								parsed?.v &&
-								typeof parsed.v === "string" &&
-								(parsed.p === "text" ||
-									parsed.p === "message/content")
-							) {
-								textDelta = parsed.v;
-							}
-							// --- OpenAI / compatible format ---
-							else if (parsed?.choices?.[0]?.delta?.content) {
-								textDelta = parsed.choices[0].delta.content;
-							} else if (parsed?.message?.content) {
-								textDelta = parsed.message.content;
-							}
-
-							// Apply text delta to messages
-							if (textDelta) {
-								setMessages((prev) => {
-									const newMsgs = [...prev];
-									const lastIdx = newMsgs.length - 1;
-									const last =
-										lastIdx >= 0 ?
-											{...newMsgs[lastIdx]}
-										:	null;
-
-									if (last && last.role === "assistant") {
-										last.content += textDelta;
-										if (responseMessageId) {
-											setParentMessageId(
-												responseMessageId,
-											);
-										}
-										newMsgs[lastIdx] = last;
-									} else {
-										newMsgs.push({
-											role: "assistant",
-											content: textDelta,
-											id:
-												responseMessageId ||
-												parsed.message_id ||
-												parsed.id,
-										});
-										if (responseMessageId) {
-											setParentMessageId(
-												responseMessageId,
-											);
-										}
-									}
-									return newMsgs;
-								});
-							}
-
-							if (isFinished) {
-								setIsStreaming(false);
-								if (onRefreshHistory) onRefreshHistory();
-							}
-						} catch (e) {
-							// ignore parse errors
-						}
-					}
-					// Reset event type after processing data line
-					currentEventType = "";
+					});
 				}
 			},
 		);
@@ -320,7 +146,7 @@ export default function ChatAccountManager({
 	}, [messages]);
 
 	const handleSend = async () => {
-		if (!input.trim() || !account?.token || isStreaming) return;
+		if (!input.trim() || !account?.chat_token || isStreaming) return;
 
 		const userMessage = input;
 		setInput("");
@@ -329,14 +155,14 @@ export default function ChatAccountManager({
 
 		let currentSessionId = sessionId;
 
-		// 1. If no sessionId, create one first
 		if (!currentSessionId) {
 			try {
 				const res = await window.electron?.deepseek?.createChatSession({
-					token: account.token,
+					token: account.chat_token,
 				});
 				if (res?.ok && res.data?.data?.biz_data?.chat_session?.id) {
 					currentSessionId = res.data.data.biz_data.chat_session.id;
+					sessionCreatedLocallyRef.current = true;
 					if (onSessionCreated)
 						onSessionCreated(currentSessionId as string);
 				} else {
@@ -352,7 +178,6 @@ export default function ChatAccountManager({
 			}
 		}
 
-		// 2. Start chat stream with the sessionId
 		const payload: any = {
 			chat_session_id: currentSessionId,
 			parent_message_id: parentMessageId > 0 ? parentMessageId : null,
@@ -364,30 +189,13 @@ export default function ChatAccountManager({
 		};
 
 		window.electron?.deepseek?.startChatStream({
-			token: account.token,
+			token: account.chat_token,
 			payload,
 		});
 	};
 
 	return (
 		<div className='flex flex-col h-full bg-transparent overflow-hidden gap-4'>
-			<div className='flex items-center justify-between px-1'>
-				<div className='flex items-center gap-2'>
-					<Select value={model} onValueChange={setModel}>
-						<SelectTrigger className='w-[180px] h-8 text-xs'>
-							<SelectValue placeholder='Chọn model' />
-						</SelectTrigger>
-						<SelectContent>
-							<SelectItem value='deepseek-chat'>
-								DeepSeek Chat
-							</SelectItem>
-							<SelectItem value='deepseek-coder'>
-								DeepSeek Coder
-							</SelectItem>
-						</SelectContent>
-					</Select>
-				</div>
-			</div>
 			<div className='flex-1 overflow-y-auto space-y-4' ref={scrollRef}>
 				{messages.length === 0 ?
 					<div className='text-center text-muted-foreground mt-10'>
@@ -396,33 +204,67 @@ export default function ChatAccountManager({
 				:	messages.map((m, i) => <ChatMessage key={i} message={m} />)}
 				{isStreaming &&
 					messages[messages.length - 1]?.role === "user" && (
-						<div className='p-3 px-4 rounded-2xl w-fit bg-muted/50 border border-border/50 mr-auto rounded-tl-none animate-pulse flex items-center gap-2'>
-							<div className='flex gap-1'>
-								<div className='w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce [animation-delay:-0.3s]'></div>
-								<div className='w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce [animation-delay:-0.15s]'></div>
-								<div className='w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce'></div>
-							</div>
+						<div className='p-3 px-4 rounded-2xl w-fit bg-muted/50 border border-border/50 mr-auto rounded-tl-none flex items-center gap-2'>
+							<Atom className='w-4 h-4 text-primary animate-spin' style={{ animationDuration: "3s" }} />
 							<span className='text-xs text-muted-foreground font-medium italic'>
 								Đang suy nghĩ...
 							</span>
 						</div>
 					)}
 			</div>
-			<div className='pt-4 flex items-center gap-2 bg-transparent'>
-				<Input
-					value={input}
-					onChange={(e) => setInput(e.target.value)}
-					onKeyDown={(e) => e.key === "Enter" && handleSend()}
-					placeholder='Nhập tin nhắn...'
-					disabled={isStreaming}
-					className='flex-1'
-				/>
-				<Button
-					onClick={handleSend}
-					disabled={isStreaming || !input.trim()}
-				>
-					{isStreaming ? "Đang gửi..." : "Gửi"}
-				</Button>
+			<div className='pt-2 pb-2 px-1 bg-transparent'>
+				<div className='relative rounded-2xl border border-border/80 bg-card/40 hover:bg-card/60 focus-within:bg-card/70 focus-within:border-ring/50 focus-within:ring-2 focus-within:ring-ring/10 transition-all duration-200 px-4 py-3 flex flex-col gap-2.5 shadow-sm'>
+					<textarea
+						value={input}
+						onChange={(e) => setInput(e.target.value)}
+						onKeyDown={(e) => {
+							if (e.key === "Enter" && !e.shiftKey) {
+								e.preventDefault();
+								handleSend();
+							}
+						}}
+						placeholder='Nhập tin nhắn...'
+						disabled={isStreaming}
+						rows={2}
+						className='w-full bg-transparent border-0 outline-none focus:outline-none focus:ring-0 focus-visible:ring-0 resize-none text-sm placeholder:text-muted-foreground text-foreground min-h-[44px] max-h-[160px]'
+					/>
+					<div className='flex items-center justify-between pt-1'>
+						{/* Left toolbar icons */}
+						<div className='flex items-center gap-2 text-muted-foreground/60'>
+							<Button variant='ghost' size='icon' className='h-7 w-7 rounded-lg hover:text-foreground hover:bg-muted/50'>
+								<Paperclip className='w-4 h-4' />
+							</Button>
+							<Button variant='ghost' size='sm' className='h-7 rounded-lg text-xs gap-1 hover:text-foreground hover:bg-muted/50 px-2.5 font-medium'>
+								<Globe className='w-3.5 h-3.5' />
+								<span>All Sources</span>
+							</Button>
+
+							<Select value={model} onValueChange={setModel}>
+								<SelectTrigger className='w-fit h-7 text-xs border border-border bg-muted/40 hover:bg-muted/60 text-muted-foreground hover:text-foreground rounded-lg px-2.5 shadow-none focus:ring-0 focus-visible:ring-0 gap-1.5 transition-all duration-150'>
+									<SelectValue placeholder='Chọn model' />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value='deepseek-chat'>
+										DeepSeek Chat
+									</SelectItem>
+									<SelectItem value='deepseek-coder'>
+										DeepSeek Coder
+									</SelectItem>
+								</SelectContent>
+							</Select>
+						</div>
+
+						{/* Right send button */}
+						<Button
+							size='icon'
+							onClick={handleSend}
+							disabled={isStreaming || !input.trim()}
+							className='h-8 w-8 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 disabled:pointer-events-none transition-all duration-200 shadow-sm shrink-0'
+						>
+							<ArrowUp className='w-4 h-4 stroke-[2.5]' />
+						</Button>
+					</div>
+				</div>
 			</div>
 		</div>
 	);

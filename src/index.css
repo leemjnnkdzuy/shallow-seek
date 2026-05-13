@@ -12,7 +12,7 @@
 		--card-foreground: oklch(0.145 0 0);
 		--popover: oklch(1 0 0);
 		--popover-foreground: oklch(0.145 0 0);
-		--primary: oklch(0.5 0.134 242.749);
+		--primary: rgb(77, 106, 255);
 		--primary-foreground: oklch(0.977 0.013 236.62);
 		--secondary: oklch(0.967 0.001 286.375);
 		--secondary-foreground: oklch(0.21 0.006 285.885);
@@ -46,7 +46,7 @@
 		--card-foreground: oklch(0.985 0 0);
 		--popover: oklch(0.205 0 0);
 		--popover-foreground: oklch(0.985 0 0);
-		--primary: oklch(0.443 0.11 240.79);
+		--primary: rgb(77, 106, 255);
 		--primary-foreground: oklch(0.977 0.013 236.62);
 		--secondary: oklch(0.274 0.006 286.033);
 		--secondary-foreground: oklch(0.985 0 0);
@@ -87,39 +87,43 @@
 		scroll-behavior: smooth;
 	}
 
-	/* Scrollbar styling - Modern & Premium */
-	::-webkit-scrollbar {
-		width: 12px;
-		height: 12px;
-	}
-
-	::-webkit-scrollbar-track {
-		background: transparent;
-	}
-
-	::-webkit-scrollbar-thumb {
-		background: oklch(from var(--muted-foreground) l c h / 0.15);
-		border-radius: 12px;
-		border: 4px solid transparent;
-		background-clip: padding-box;
-	}
-
-	::-webkit-scrollbar-thumb:hover {
-		background: oklch(from var(--muted-foreground) l c h / 0.3);
-		border: 3px solid transparent;
-	}
-
-	::-webkit-scrollbar-corner {
-		background: transparent;
-	}
-
-	/* Specific styling for scrollable containers to ensure consistency */
-	.overflow-auto, .overflow-y-auto, .overflow-x-auto {
-		scrollbar-width: thin;
-		scrollbar-color: oklch(from var(--muted-foreground) l c h / 0.2) transparent;
-	}
 }
 
 * {
 	user-select: none;
+}
+
+::-webkit-scrollbar {
+	width: 6px !important;
+	height: 6px !important;
+}
+
+::-webkit-scrollbar-button {
+	display: none !important;
+	width: 0 !important;
+	height: 0 !important;
+}
+
+::-webkit-scrollbar-track {
+	background: transparent !important;
+}
+
+::-webkit-scrollbar-thumb {
+	background: oklch(from var(--foreground) l c h / 0.12) !important;
+	border-radius: 0 !important;
+}
+
+::-webkit-scrollbar-thumb:hover {
+	background: oklch(from var(--foreground) l c h / 0.25) !important;
+}
+
+::-webkit-scrollbar-corner {
+	background: transparent !important;
+}
+
+.overflow-auto,
+.overflow-y-auto,
+.overflow-x-auto {
+	scrollbar-width: thin !important;
+	scrollbar-color: oklch(from var(--foreground) l c h / 0.12) transparent !important;
 }

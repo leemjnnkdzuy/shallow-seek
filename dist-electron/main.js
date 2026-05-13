@@ -12909,9 +12909,9 @@ var asynckit = asynckit$1;
 var setToStringTag2 = esSetTostringtag;
 var hasOwn = hasown;
 var populate = populate$1;
-function FormData$2(options) {
-  if (!(this instanceof FormData$2)) {
-    return new FormData$2(options);
+function FormData$1(options) {
+  if (!(this instanceof FormData$1)) {
+    return new FormData$1(options);
   }
   this._overheadLength = 0;
   this._valueLength = 0;
@@ -12922,10 +12922,10 @@ function FormData$2(options) {
     this[option] = options[option];
   }
 }
-util.inherits(FormData$2, CombinedStream);
-FormData$2.LINE_BREAK = "\r\n";
-FormData$2.DEFAULT_CONTENT_TYPE = "application/octet-stream";
-FormData$2.prototype.append = function(field, value, options) {
+util.inherits(FormData$1, CombinedStream);
+FormData$1.LINE_BREAK = "\r\n";
+FormData$1.DEFAULT_CONTENT_TYPE = "application/octet-stream";
+FormData$1.prototype.append = function(field, value, options) {
   options = options || {};
   if (typeof options === "string") {
     options = { filename: options };
@@ -12945,7 +12945,7 @@ FormData$2.prototype.append = function(field, value, options) {
   append2(footer);
   this._trackLength(header, value, options);
 };
-FormData$2.prototype._trackLength = function(header, value, options) {
+FormData$1.prototype._trackLength = function(header, value, options) {
   var valueLength = 0;
   if (options.knownLength != null) {
     valueLength += Number(options.knownLength);
@@ -12955,7 +12955,7 @@ FormData$2.prototype._trackLength = function(header, value, options) {
     valueLength = Buffer.byteLength(value);
   }
   this._valueLength += valueLength;
-  this._overheadLength += Buffer.byteLength(header) + FormData$2.LINE_BREAK.length;
+  this._overheadLength += Buffer.byteLength(header) + FormData$1.LINE_BREAK.length;
   if (!value || !value.path && !(value.readable && hasOwn(value, "httpVersion")) && !(value instanceof Stream)) {
     return;
   }
@@ -12963,7 +12963,7 @@ FormData$2.prototype._trackLength = function(header, value, options) {
     this._valuesToMeasure.push(value);
   }
 };
-FormData$2.prototype._lengthRetriever = function(value, callback) {
+FormData$1.prototype._lengthRetriever = function(value, callback) {
   if (hasOwn(value, "fd")) {
     if (value.end != void 0 && value.end != Infinity && value.start != void 0) {
       callback(null, value.end + 1 - (value.start ? value.start : 0));
@@ -12989,7 +12989,7 @@ FormData$2.prototype._lengthRetriever = function(value, callback) {
     callback("Unknown stream");
   }
 };
-FormData$2.prototype._multiPartHeader = function(field, value, options) {
+FormData$1.prototype._multiPartHeader = function(field, value, options) {
   if (typeof options.header === "string") {
     return options.header;
   }
@@ -13016,13 +13016,13 @@ FormData$2.prototype._multiPartHeader = function(field, value, options) {
         header = [header];
       }
       if (header.length) {
-        contents += prop + ": " + header.join("; ") + FormData$2.LINE_BREAK;
+        contents += prop + ": " + header.join("; ") + FormData$1.LINE_BREAK;
       }
     }
   }
-  return "--" + this.getBoundary() + FormData$2.LINE_BREAK + contents + FormData$2.LINE_BREAK;
+  return "--" + this.getBoundary() + FormData$1.LINE_BREAK + contents + FormData$1.LINE_BREAK;
 };
-FormData$2.prototype._getContentDisposition = function(value, options) {
+FormData$1.prototype._getContentDisposition = function(value, options) {
   var filename;
   if (typeof options.filepath === "string") {
     filename = path.normalize(options.filepath).replace(/\\/g, "/");
@@ -13035,7 +13035,7 @@ FormData$2.prototype._getContentDisposition = function(value, options) {
     return 'filename="' + filename + '"';
   }
 };
-FormData$2.prototype._getContentType = function(value, options) {
+FormData$1.prototype._getContentType = function(value, options) {
   var contentType = options.contentType;
   if (!contentType && value && value.name) {
     contentType = mime.lookup(value.name);
@@ -13050,13 +13050,13 @@ FormData$2.prototype._getContentType = function(value, options) {
     contentType = mime.lookup(options.filepath || options.filename);
   }
   if (!contentType && value && typeof value === "object") {
-    contentType = FormData$2.DEFAULT_CONTENT_TYPE;
+    contentType = FormData$1.DEFAULT_CONTENT_TYPE;
   }
   return contentType;
 };
-FormData$2.prototype._multiPartFooter = function() {
+FormData$1.prototype._multiPartFooter = function() {
   return (function(next) {
-    var footer = FormData$2.LINE_BREAK;
+    var footer = FormData$1.LINE_BREAK;
     var lastPart = this._streams.length === 0;
     if (lastPart) {
       footer += this._lastBoundary();
@@ -13064,10 +13064,10 @@ FormData$2.prototype._multiPartFooter = function() {
     next(footer);
   }).bind(this);
 };
-FormData$2.prototype._lastBoundary = function() {
-  return "--" + this.getBoundary() + "--" + FormData$2.LINE_BREAK;
+FormData$1.prototype._lastBoundary = function() {
+  return "--" + this.getBoundary() + "--" + FormData$1.LINE_BREAK;
 };
-FormData$2.prototype.getHeaders = function(userHeaders) {
+FormData$1.prototype.getHeaders = function(userHeaders) {
   var header;
   var formHeaders = {
     "content-type": "multipart/form-data; boundary=" + this.getBoundary()
@@ -13079,19 +13079,19 @@ FormData$2.prototype.getHeaders = function(userHeaders) {
   }
   return formHeaders;
 };
-FormData$2.prototype.setBoundary = function(boundary) {
+FormData$1.prototype.setBoundary = function(boundary) {
   if (typeof boundary !== "string") {
     throw new TypeError("FormData boundary must be a string");
   }
   this._boundary = boundary;
 };
-FormData$2.prototype.getBoundary = function() {
+FormData$1.prototype.getBoundary = function() {
   if (!this._boundary) {
     this._generateBoundary();
   }
   return this._boundary;
 };
-FormData$2.prototype.getBuffer = function() {
+FormData$1.prototype.getBuffer = function() {
   var dataBuffer = new Buffer.alloc(0);
   var boundary = this.getBoundary();
   for (var i = 0, len = this._streams.length; i < len; i++) {
@@ -13102,16 +13102,16 @@ FormData$2.prototype.getBuffer = function() {
         dataBuffer = Buffer.concat([dataBuffer, Buffer.from(this._streams[i])]);
       }
       if (typeof this._streams[i] !== "string" || this._streams[i].substring(2, boundary.length + 2) !== boundary) {
-        dataBuffer = Buffer.concat([dataBuffer, Buffer.from(FormData$2.LINE_BREAK)]);
+        dataBuffer = Buffer.concat([dataBuffer, Buffer.from(FormData$1.LINE_BREAK)]);
       }
     }
   }
   return Buffer.concat([dataBuffer, Buffer.from(this._lastBoundary())]);
 };
-FormData$2.prototype._generateBoundary = function() {
+FormData$1.prototype._generateBoundary = function() {
   this._boundary = "--------------------------" + crypto.randomBytes(12).toString("hex");
 };
-FormData$2.prototype.getLengthSync = function() {
+FormData$1.prototype.getLengthSync = function() {
   var knownLength = this._overheadLength + this._valueLength;
   if (this._streams.length) {
     knownLength += this._lastBoundary().length;
@@ -13121,14 +13121,14 @@ FormData$2.prototype.getLengthSync = function() {
   }
   return knownLength;
 };
-FormData$2.prototype.hasKnownLength = function() {
+FormData$1.prototype.hasKnownLength = function() {
   var hasKnownLength = true;
   if (this._valuesToMeasure.length) {
     hasKnownLength = false;
   }
   return hasKnownLength;
 };
-FormData$2.prototype.getLength = function(cb) {
+FormData$1.prototype.getLength = function(cb) {
   var knownLength = this._overheadLength + this._valueLength;
   if (this._streams.length) {
     knownLength += this._lastBoundary().length;
@@ -13148,7 +13148,7 @@ FormData$2.prototype.getLength = function(cb) {
     cb(null, knownLength);
   });
 };
-FormData$2.prototype.submit = function(params, cb) {
+FormData$1.prototype.submit = function(params, cb) {
   var request;
   var options;
   var defaults2 = { method: "post" };
@@ -13195,19 +13195,19 @@ FormData$2.prototype.submit = function(params, cb) {
   }).bind(this));
   return request;
 };
-FormData$2.prototype._error = function(err) {
+FormData$1.prototype._error = function(err) {
   if (!this.error) {
     this.error = err;
     this.pause();
     this.emit("error", err);
   }
 };
-FormData$2.prototype.toString = function() {
+FormData$1.prototype.toString = function() {
   return "[object FormData]";
 };
-setToStringTag2(FormData$2.prototype, "FormData");
-var form_data = FormData$2;
-const FormData$1 = /* @__PURE__ */ getDefaultExportFromCjs(form_data);
+setToStringTag2(FormData$1.prototype, "FormData");
+var form_data = FormData$1;
+const FormData$2 = /* @__PURE__ */ getDefaultExportFromCjs(form_data);
 function isVisitable(thing) {
   return utils$1.isPlainObject(thing) || utils$1.isArray(thing);
 }
@@ -13231,7 +13231,7 @@ function toFormData$1(obj, formData, options) {
   if (!utils$1.isObject(obj)) {
     throw new TypeError("target must be an object");
   }
-  formData = formData || new (FormData$1 || FormData)();
+  formData = formData || new (FormData$2 || FormData)();
   options = utils$1.toFlatObject(
     options,
     {
@@ -13476,7 +13476,7 @@ const platform$1 = {
   isNode: true,
   classes: {
     URLSearchParams: URLSearchParams$1,
-    FormData: FormData$1,
+    FormData: FormData$2,
     Blob: typeof Blob !== "undefined" && Blob || null
   },
   ALPHABET,
@@ -17958,30 +17958,6 @@ const getPlatformHeaders = (token) => ({
   "Referer": "https://platform.deepseek.com/api_keys",
   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36"
 });
-const maskIdentifier = (value) => {
-  if (!value) return "";
-  if (value.includes("@")) {
-    const [localPart, domain] = value.split("@");
-    const localMasked = localPart.length <= 2 ? `${localPart[0] ?? "*"}*` : `${localPart.slice(0, 2)}***`;
-    return `${localMasked}@${domain}`;
-  }
-  if (value.length <= 4) {
-    return `${value[0] ?? "*"}***`;
-  }
-  return `${value.slice(0, 2)}***${value.slice(-2)}`;
-};
-const previewValue = (value, maxLen = 4e3) => {
-  if (value == null) return "";
-  if (typeof value === "string") {
-    return value.length > maxLen ? `${value.slice(0, maxLen)}…(truncated)` : value;
-  }
-  try {
-    const json = JSON.stringify(value);
-    return json.length > maxLen ? `${json.slice(0, maxLen)}…(truncated)` : json;
-  } catch {
-    return String(value);
-  }
-};
 const rc = [
   0x0000000000000001n,
   0x0000000000008082n,
@@ -18230,180 +18206,150 @@ function solveAndBuildHeader(challenge) {
   );
   return buildPowHeader(challenge, answer);
 }
-async function acquirePlatformToken(email, password, deviceId) {
-  const partitionName = `platform-waf-${Date.now()}`;
-  const ses = session.fromPartition(partitionName, { cache: false });
-  const win2 = new BrowserWindow({
-    width: 800,
-    height: 600,
-    show: true,
-    // visible for debugging - change to false once working
-    webPreferences: {
-      session: ses,
-      nodeIntegration: false,
-      contextIsolation: true,
-      webSecurity: true
-    }
-  });
-  try {
-    console.log("[platform-token] Loading platform sign_in page...");
-    const tokenPromise = new Promise((resolve2) => {
-      const timeout = setTimeout(() => {
-        console.log("[platform-token] Login response timeout (60s)");
-        resolve2(null);
-      }, 6e4);
-      ses.webRequest.onCompleted(
-        { urls: ["*://platform.deepseek.com/auth-api/*"] },
-        (details) => {
-          console.log(`[platform-token] AUTH API response: ${details.statusCode} ${details.url}`);
-        }
-      );
-      ses.webRequest.onBeforeSendHeaders(
-        { urls: ["*://platform.deepseek.com/auth-api/*"] },
-        (details, callback) => {
-          console.log(`[platform-token] AUTH API request: ${details.method} ${details.url}`);
-          const cookieHeader = details.requestHeaders["Cookie"] || details.requestHeaders["cookie"];
-          if (cookieHeader) {
-            console.log(`[platform-token] Request cookies: ${cookieHeader.substring(0, 100)}`);
-          }
-          callback({ cancel: false, requestHeaders: details.requestHeaders });
-        }
-      );
-      ses.webRequest.onBeforeRequest((details, callback) => {
-        const url2 = details.url;
-        if (url2.includes("awswaf") || url2.includes("aws-waf") || url2.includes("mp_verify")) {
-          console.log(`[platform-token] WAF-related: ${details.method} ${url2}`);
-        }
-        callback({ cancel: false });
-      });
-      win2.webContents.session.webRequest.onHeadersReceived(
-        { urls: ["*://platform.deepseek.com/auth-api/v0/users/login"] },
-        (details, callback) => {
-          console.log(`[platform-token] Login response headers received: ${details.statusCode}`);
-          callback({ cancel: false, responseHeaders: details.responseHeaders });
-        }
-      );
-      win2.webContents.on("console-message", (_event, _level, message) => {
-        if (message.startsWith("__PLATFORM_TOKEN__:")) {
-          const token2 = message.replace("__PLATFORM_TOKEN__:", "").trim();
-          if (token2 && token2 !== "null" && token2 !== "undefined") {
-            console.log(`[platform-token] Got token via console: ${token2.substring(0, 15)}... (len: ${token2.length})`);
-            clearTimeout(timeout);
-            resolve2(token2);
-          }
-        } else if (message.startsWith("__PLATFORM_LOGIN_ERROR__:")) {
-          console.log(`[platform-token] Login error: ${message}`);
-        } else if (message.startsWith("__PLATFORM_LOGIN_STATUS__:")) {
-          console.log(`[platform-token] Login status: ${message}`);
-        }
-      });
-    });
-    await win2.loadURL("https://platform.deepseek.com/sign_in");
-    console.log("[platform-token] Page loaded, checking for WAF SDK...");
-    await new Promise((resolve2) => setTimeout(resolve2, 3e3));
-    const scriptSrcs = await win2.webContents.executeJavaScript(`
-			Array.from(document.querySelectorAll('script[src]')).map(s => s.src)
-		`);
-    console.log("[platform-token] Page scripts:", JSON.stringify(scriptSrcs));
-    const hasWafScript = await win2.webContents.executeJavaScript(`
-			!!document.querySelector('script[src*="awswaf"]') || 
-			!!document.querySelector('script[src*="challenge"]') ||
-			!!window.AwsWafIntegration ||
-			!!window.AwsWafCaptcha
-		`);
-    console.log("[platform-token] Has WAF SDK on page:", hasWafScript);
-    console.log("[platform-token] Injecting login fetch...");
-    await win2.webContents.executeJavaScript(`
-			(async () => {
-				try {
-					await new Promise(r => setTimeout(r, 2000));
-					
-					const loginPayload = {
-						email: ${JSON.stringify(email)},
-						mobile: "",
-						password: ${JSON.stringify(password)},
-						area_code: "",
-						device_id: ${JSON.stringify(deviceId)},
-						os: "web"
-					};
-					const fetchOpts = {
-						method: "POST",
-						headers: {
-							"accept": "*/*",
-							"content-type": "application/json",
-							"x-app-version": "1.0.0",
-						},
-						credentials: "include",
-						body: JSON.stringify(loginPayload)
-					};
-
-					// Attempt 1: This will likely return 202 and trigger the WAF challenge
-					console.log("__PLATFORM_LOGIN_STATUS__: Attempt 1 - triggering WAF challenge...");
-					const firstResponse = await fetch("https://platform.deepseek.com/auth-api/v0/users/login", fetchOpts);
-					console.log("__PLATFORM_LOGIN_STATUS__: Attempt 1 status = " + firstResponse.status);
-					
-					if (firstResponse.status === 200) {
-						// Lucky - no WAF challenge needed
-						const data = await firstResponse.json();
-						if (data?.code === 0 && data?.data?.biz_data?.user?.token) {
-							console.log("__PLATFORM_TOKEN__:" + data.data.biz_data.user.token);
-							return;
-						}
-						console.log("__PLATFORM_LOGIN_ERROR__: " + JSON.stringify(data).substring(0, 300));
-						return;
-					}
-
-					// Got 202 - WAF challenge has been triggered.
-					// Wait for the WAF SDK to complete the challenge and set the cookie.
-					console.log("__PLATFORM_LOGIN_STATUS__: Got 202, waiting for WAF challenge to complete...");
-					
-					// Poll for aws-waf-token cookie (WAF SDK sets it after challenge)
-					for (let i = 0; i < 20; i++) {
-						await new Promise(r => setTimeout(r, 1000));
-						if (document.cookie.includes("aws-waf-token")) {
-							console.log("__PLATFORM_LOGIN_STATUS__: WAF token cookie found after " + (i+1) + "s");
-							break;
-						}
-						if (i === 19) {
-							console.log("__PLATFORM_LOGIN_STATUS__: WAF cookie not found after 20s, retrying anyway...");
-						}
-					}
-
-					// Retry with the WAF token cookie now set
-					console.log("__PLATFORM_LOGIN_STATUS__: Attempt 2 - retrying with WAF cookie...");
-					console.log("__PLATFORM_LOGIN_STATUS__: cookies = " + document.cookie.substring(0, 200));
-					
-					const retryResponse = await fetch("https://platform.deepseek.com/auth-api/v0/users/login", {
-						...fetchOpts,
-						body: JSON.stringify(loginPayload) // fresh body
-					});
-					
-					console.log("__PLATFORM_LOGIN_STATUS__: Attempt 2 status = " + retryResponse.status);
-					
-					if (retryResponse.status === 200) {
-						const data = await retryResponse.json();
-						console.log("__PLATFORM_LOGIN_STATUS__: Response code = " + (data?.code ?? "unknown"));
-						if (data?.code === 0 && data?.data?.biz_data?.user?.token) {
-							console.log("__PLATFORM_TOKEN__:" + data.data.biz_data.user.token);
-						} else {
-							console.log("__PLATFORM_LOGIN_ERROR__: " + JSON.stringify(data).substring(0, 300));
-						}
-					} else {
-						console.log("__PLATFORM_LOGIN_ERROR__: Retry also returned " + retryResponse.status);
-					}
-				} catch (err) {
-					console.log("__PLATFORM_LOGIN_ERROR__: " + err.message);
+const credentialTrackerScript = `
+(function() {
+	if (window.__credentialTracker) return;
+	window.__credentialTracker = true;
+	
+	let email = "";
+	let password = "";
+	
+	setInterval(() => {
+		try {
+			const inputs = Array.from(document.querySelectorAll('input'));
+			if (inputs.length === 0) return;
+			
+			const emailInput = inputs.find(i => {
+				const type = i.type || 'text';
+				const placeholder = (i.placeholder || '').toLowerCase();
+				return (type === 'text' || type === 'email' || type === 'tel') && 
+					   (placeholder.includes('phone') || placeholder.includes('email') || placeholder.includes('username') || placeholder.includes('sđt') || placeholder.includes('address') || placeholder.includes('tài khoản'));
+			}) || inputs[0];
+			
+			const passwordInput = inputs.find(i => i.type === 'password') || inputs[1];
+			
+			if (emailInput && emailInput.value && emailInput.value !== email) {
+				email = emailInput.value;
+				console.log("__TRACKED_EMAIL__:" + email);
+			}
+			if (passwordInput && passwordInput.value && passwordInput.value !== password) {
+				password = passwordInput.value;
+				console.log("__TRACKED_PASSWORD__:" + password);
+			}
+		} catch(e) {}
+	}, 200);
+})();
+`;
+const loginPollerScript = `
+(function() {
+	if (window.__loginPoller) return;
+	window.__loginPoller = setInterval(() => {
+		try {
+			if (window.location.pathname.includes('sign_in')) return;
+			const storageStr = window.localStorage.getItem('userToken');
+			if (storageStr) {
+				const tokenData = JSON.parse(storageStr);
+				const token = tokenData.value || storageStr;
+				if (token && token.length > 20) {
+					console.log("__PLATFORM_TOKEN__:" + token);
 				}
-			})();
-		`);
-    const token = await tokenPromise;
-    return token;
-  } finally {
-    win2.destroy();
-    ses.clearStorageData().catch(() => {
-    });
-  }
-}
+			}
+		} catch(e) {}
+	}, 1000);
+})();
+`;
+const getAutoLoginScript = (email, password) => `
+(function() {
+	if (window.__autologinRun) return;
+	window.__autologinRun = true;
+	
+	const email = ${JSON.stringify(email)};
+	const password = ${JSON.stringify(password)};
+	if (!email || !password) return;
+	
+	const tryLogin = () => {
+		const inputs = Array.from(document.querySelectorAll('input'));
+		if (inputs.length === 0) return false;
+		
+		const emailInput = inputs.find(i => {
+			const type = i.type || 'text';
+			const placeholder = (i.placeholder || '').toLowerCase();
+			return (type === 'text' || type === 'email' || type === 'tel') && 
+				   (placeholder.includes('phone') || placeholder.includes('email') || placeholder.includes('username') || placeholder.includes('sđt') || placeholder.includes('address') || placeholder.includes('tài khoản'));
+		}) || inputs[0];
+		
+		const passwordInput = inputs.find(i => i.type === 'password') || inputs[1];
+		
+		if (emailInput && passwordInput) {
+			// Use React-safe native value setter
+			const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+			
+			if (nativeInputValueSetter) {
+				nativeInputValueSetter.call(emailInput, email);
+				emailInput.dispatchEvent(new Event('input', { bubbles: true }));
+				emailInput.dispatchEvent(new Event('change', { bubbles: true }));
+				
+				nativeInputValueSetter.call(passwordInput, password);
+				passwordInput.dispatchEvent(new Event('input', { bubbles: true }));
+				passwordInput.dispatchEvent(new Event('change', { bubbles: true }));
+			} else {
+				emailInput.value = email;
+				emailInput.dispatchEvent(new Event('input', { bubbles: true }));
+				passwordInput.value = password;
+				passwordInput.dispatchEvent(new Event('input', { bubbles: true }));
+			}
+			
+			const btn = document.querySelector('button[type="submit"]') || 
+						Array.from(document.querySelectorAll('button')).find(b => {
+							const text = b.textContent || "";
+							return text.includes("Log in") || text.includes("Sign in") || text.includes("Đăng nhập") || text.includes("Tiếp tục") || text.includes("Continue");
+						});
+						
+			if (btn) {
+				setTimeout(() => {
+					btn.click();
+				}, 500);
+				return true;
+			}
+		} else {
+			const loginTrigger = Array.from(document.querySelectorAll('button, a, div')).find(el => {
+				const text = el.textContent || "";
+				return (text === "Log In" || text === "Đăng nhập" || text.includes("Log in") || text.includes("Sign in")) && el.offsetWidth > 0;
+			});
+			if (loginTrigger) {
+				loginTrigger.click();
+			}
+		}
+		return false;
+	};
+	
+	const interval = setInterval(() => {
+		if (tryLogin()) {
+			clearInterval(interval);
+		}
+	}, 1000);
+	
+	setTimeout(() => clearInterval(interval), 15000);
+})();
+`;
+const chatPollerScript = `
+(function() {
+	if (window.__chatPoller) return;
+	window.__chatPoller = setInterval(() => {
+		try {
+			if (window.location.pathname.includes('sign_in')) return;
+			const storageStr = window.localStorage.getItem('userToken');
+			if (storageStr) {
+				const tokenData = JSON.parse(storageStr);
+				const token = tokenData.value || storageStr;
+				if (token && token.length > 20) {
+					console.log("__CHAT_TOKEN__:" + token);
+				}
+			}
+		} catch(e) {}
+	}, 1000);
+})();
+`;
 function registerAccountIpcs(__dirname, VITE_DEV_SERVER_URL2, RENDERER_DIST2) {
   ipcMain.on("open-add-account", (event) => {
     const parentWindow = BrowserWindow.fromWebContents(event.sender) || void 0;
@@ -18454,87 +18400,209 @@ function registerAccountIpcs(__dirname, VITE_DEV_SERVER_URL2, RENDERER_DIST2) {
   });
   ipcMain.handle(
     "deepseek-login",
-    async (_event, payload) => {
-      var _a, _b, _c, _d, _e, _f;
-      const body = payload;
-      const email = typeof (body == null ? void 0 : body.email) === "string" ? body.email : "";
-      const password = typeof (body == null ? void 0 : body.password) === "string" ? body.password : "";
-      const deviceId = typeof (body == null ? void 0 : body.deviceId) === "string" ? body.deviceId : "";
-      if (!email || !password) {
-        return {
-          ok: false,
-          error: { message: "Missing email or password." }
+    async (_event, _payload) => {
+      return new Promise(async (resolve2) => {
+        const partitionName = `platform-waf-${Date.now()}`;
+        const ses = session.fromPartition(partitionName, {
+          cache: false
+        });
+        const win2 = new BrowserWindow({
+          width: 800,
+          height: 600,
+          show: true,
+          webPreferences: {
+            session: ses,
+            nodeIntegration: false,
+            contextIsolation: true,
+            webSecurity: true,
+            preload: path$1.join(__dirname, "preload.mjs")
+          }
+        });
+        const standardUA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
+        ses.setUserAgent(standardUA);
+        win2.webContents.setUserAgent(standardUA);
+        let platformToken = null;
+        let chatToken = null;
+        let hasNavigatedToChat = false;
+        let isResolved = false;
+        let capturedEmail = "";
+        let capturedPassword = "";
+        const completeLogin = () => {
+          if (isResolved) return;
+          if (platformToken && chatToken) {
+            isResolved = true;
+            console.log(
+              "[deepseek-login] Both tokens captured successfully, fetching user profile via main process (Android client mode)..."
+            );
+            axios.get(
+              "https://chat.deepseek.com/api/v0/users/current",
+              {
+                headers: getHistoryHeaders(chatToken)
+              }
+            ).then((response) => {
+              var _a, _b;
+              const bizData = (_b = (_a = response.data) == null ? void 0 : _a.data) == null ? void 0 : _b.biz_data;
+              console.log(
+                "[deepseek-login] User profile fetched successfully:",
+                bizData
+              );
+              resolve2({
+                ok: true,
+                status: 200,
+                data: {
+                  data: {
+                    biz_data: {
+                      user: {
+                        id: (bizData == null ? void 0 : bizData.id) || `temp_${Date.now()}`,
+                        email: capturedEmail || (bizData == null ? void 0 : bizData.email) || "unknown@deepseek.com",
+                        token: chatToken
+                      }
+                    }
+                  }
+                },
+                platformToken
+              });
+            }).catch((err) => {
+              console.error(
+                "[deepseek-login] Main-process profile fetch failed, using captured credentials fallback:",
+                err.message
+              );
+              resolve2({
+                ok: true,
+                status: 200,
+                data: {
+                  data: {
+                    biz_data: {
+                      user: {
+                        id: `temp_${Date.now()}`,
+                        email: capturedEmail || "unknown@deepseek.com",
+                        token: chatToken
+                      }
+                    }
+                  }
+                },
+                platformToken
+              });
+            }).finally(() => {
+              setTimeout(() => {
+                if (!win2.isDestroyed()) {
+                  win2.destroy();
+                  ses.clearStorageData().catch(() => {
+                  });
+                }
+              }, 500);
+            });
+          }
         };
-      }
-      try {
-        const requestBody = getLoginRequestBody(
-          email,
-          password,
-          deviceId
-        );
-        const response = await axios.post(
-          DEEPSEEK_LOGIN_URL,
-          requestBody,
-          {
-            headers: getLoginHeaders(),
-            validateStatus: () => true
+        ses.webRequest.onBeforeSendHeaders(
+          { urls: ["*://*/*"] },
+          (details, callback) => {
+            if (details.requestHeaders["sec-ch-ua"]) {
+              details.requestHeaders["sec-ch-ua"] = details.requestHeaders["sec-ch-ua"].split(", ").filter(
+                (part) => !part.includes("Electron") && !part.includes("shallow-seek")
+              ).join(", ");
+            }
+            callback({
+              cancel: false,
+              requestHeaders: details.requestHeaders
+            });
           }
         );
-        if (response.status >= 400 || response.status === 202) {
-          console.log("[deepseek-login] non-200", {
-            status: response.status,
-            dataPreview: previewValue(response.data)
-          });
-        }
-        let platformToken = null;
-        try {
-          platformToken = await acquirePlatformToken(email, password, deviceId);
-        } catch (platformErr) {
-          console.warn("[deepseek-login] Platform token acquisition failed:", platformErr);
-        }
-        const chatToken = ((_d = (_c = (_b = (_a = response.data) == null ? void 0 : _a.data) == null ? void 0 : _b.biz_data) == null ? void 0 : _c.user) == null ? void 0 : _d.token) || "NULL";
-        console.log(`[deepseek-login] Login Success!`);
-        console.log(`- Chat Token: ${chatToken.substring(0, 15)}... (len: ${chatToken.length})`);
-        console.log(`- Platform Token: ${platformToken ? `${platformToken.substring(0, 15)}... (len: ${platformToken.length})` : "NULL"}`);
-        return {
-          ok: true,
-          status: response.status,
-          data: response.data,
-          platformToken
-        };
-      } catch (err) {
-        if (axios.isAxiosError(err)) {
-          const status = (_e = err.response) == null ? void 0 : _e.status;
-          const code = err.code;
-          const dataPreview = previewValue((_f = err.response) == null ? void 0 : _f.data);
-          console.log("[deepseek-login] network error", {
-            emailMasked: maskIdentifier(email),
-            deviceIdPrefix: deviceId ? deviceId.slice(0, 8) : "",
-            deviceIdLength: deviceId.length,
-            message: err.message,
-            code,
-            status,
-            dataPreview
-          });
-          return {
-            ok: false,
-            error: {
-              message: status ? `HTTP ${status}` : err.message || "Network Error",
-              code,
-              status,
-              dataPreview
+        win2.webContents.on("did-finish-load", async () => {
+          const url2 = win2.webContents.getURL();
+          if (url2.includes("platform.deepseek.com")) {
+            await win2.webContents.executeJavaScript(credentialTrackerScript).catch(() => {
+            });
+            await win2.webContents.executeJavaScript(loginPollerScript).catch(() => {
+            });
+          } else if (url2.includes("chat.deepseek.com")) {
+            if (capturedEmail && capturedPassword) {
+              console.log(
+                "[deepseek-login] Injecting auto-login credentials into Chat page...",
+                { capturedEmail }
+              );
+              await win2.webContents.executeJavaScript(
+                getAutoLoginScript(
+                  capturedEmail,
+                  capturedPassword
+                )
+              ).catch(() => {
+              });
             }
-          };
-        }
-        const message = err instanceof Error ? err.message : "Unknown error";
-        console.log("[deepseek-login] unknown error", {
-          emailMasked: maskIdentifier(email),
-          deviceIdPrefix: deviceId ? deviceId.slice(0, 8) : "",
-          deviceIdLength: deviceId.length,
-          message
+            await win2.webContents.executeJavaScript(chatPollerScript).catch(() => {
+            });
+          }
         });
-        return { ok: false, error: { message } };
-      }
+        win2.webContents.on(
+          "console-message",
+          async (_event2, level, message) => {
+            console.log(
+              `[Browser Console] [Level ${level}]:`,
+              message
+            );
+            if (message.startsWith("__TRACKED_EMAIL__:")) {
+              capturedEmail = message.replace("__TRACKED_EMAIL__:", "").trim();
+            } else if (message.startsWith("__TRACKED_PASSWORD__:")) {
+              capturedPassword = message.replace("__TRACKED_PASSWORD__:", "").trim();
+            } else if (message.startsWith("__PLATFORM_TOKEN__:")) {
+              const token = message.replace("__PLATFORM_TOKEN__:", "").trim();
+              if (!platformToken) {
+                platformToken = token;
+                console.log(
+                  "[deepseek-login] Captured platform token from localStorage!"
+                );
+              }
+              if (platformToken && !hasNavigatedToChat) {
+                hasNavigatedToChat = true;
+                try {
+                  const cookies2 = await ses.cookies.get({});
+                  console.log(
+                    "[deepseek-login] Domain cookies:",
+                    cookies2.map(
+                      (c) => `${c.domain} - ${c.name}=${c.value ? "***" : "empty"}`
+                    )
+                  );
+                } catch (cookieErr) {
+                  console.error(
+                    "[deepseek-login] Error getting cookies:",
+                    cookieErr.message
+                  );
+                }
+                console.log(
+                  "[deepseek-login] Platform token found, waiting 2.5s before navigating to chat..."
+                );
+                setTimeout(() => {
+                  win2.loadURL("https://chat.deepseek.com/");
+                }, 2500);
+              }
+            } else if (message.startsWith("__CHAT_TOKEN__:")) {
+              const token = message.replace("__CHAT_TOKEN__:", "").trim();
+              if (!chatToken) {
+                chatToken = token;
+                console.log(
+                  "[deepseek-login] Captured chat token from localStorage!"
+                );
+              }
+            }
+            completeLogin();
+          }
+        );
+        win2.on("closed", () => {
+          if (!isResolved) {
+            isResolved = true;
+            resolve2({
+              ok: false,
+              error: {
+                message: "User closed window before login complete"
+              }
+            });
+          }
+        });
+        console.log(
+          "[deepseek-login] Opening platform sign_in page..."
+        );
+        await win2.loadURL("https://platform.deepseek.com/sign_in");
+      });
     }
   );
   ipcMain.handle(
@@ -18841,18 +18909,28 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS accounts (
     id TEXT PRIMARY KEY,
     email TEXT NOT NULL,
-    token TEXT NOT NULL,
+    chat_token TEXT NOT NULL,
+    platform_token TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
-
+`);
+try {
+  db.exec(`ALTER TABLE accounts RENAME COLUMN token TO chat_token;`);
+} catch (e) {
+}
+try {
+  db.exec(`ALTER TABLE accounts ADD COLUMN platform_token TEXT;`);
+} catch (e) {
+}
+db.exec(`
   CREATE TABLE IF NOT EXISTS settings (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL
   );
 `);
 const addAccount = (account) => {
-  const stmt = db.prepare("INSERT OR REPLACE INTO accounts (id, email, token) VALUES (?, ?, ?)");
-  return stmt.run(account.id, account.email, account.token);
+  const stmt = db.prepare("INSERT OR REPLACE INTO accounts (id, email, chat_token, platform_token) VALUES (?, ?, ?, ?)");
+  return stmt.run(account.id, account.email, account.chat_token, account.platform_token || null);
 };
 const getAccounts = () => {
   const stmt = db.prepare("SELECT * FROM accounts ORDER BY created_at DESC");
@@ -18945,7 +19023,10 @@ function intFrom(v) {
 }
 async function login(acc) {
   var _a, _b, _c, _d, _e;
-  const body = getLoginRequestBody(acc.email.trim(), acc.password.trim());
+  const body = getLoginRequestBody(
+    acc.email.trim(),
+    acc.password.trim()
+  );
   const resp = await axios.post(DEEPSEEK_LOGIN_URL, body, {
     headers: getLoginHeaders(),
     validateStatus: () => true
@@ -18966,16 +19047,24 @@ async function createSession(token, maxAttempts = 3) {
   const headers = getHistoryHeaders(token);
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
-      const resp = await axios.post(DEEPSEEK_CREATE_SESSION_URL, { agent: "chat" }, {
-        headers,
-        validateStatus: () => true
-      });
+      const resp = await axios.post(
+        DEEPSEEK_CREATE_SESSION_URL,
+        { agent: "chat" },
+        {
+          headers,
+          validateStatus: () => true
+        }
+      );
       const data = resp.data;
       if (resp.status === 200 && intFrom(data == null ? void 0 : data.code) === 0 && intFrom((_a = data == null ? void 0 : data.data) == null ? void 0 : _a.biz_code) === 0) {
         const sessionId = extractSessionId(data);
         if (sessionId) return sessionId;
       }
-      console.warn("[shallowseek-api] create_session failed", resp.status, data == null ? void 0 : data.msg);
+      console.warn(
+        "[shallowseek-api] create_session failed",
+        resp.status,
+        data == null ? void 0 : data.msg
+      );
     } catch (err) {
       console.warn("[shallowseek-api] create_session error", err.message);
     }
@@ -18985,7 +19074,8 @@ async function createSession(token, maxAttempts = 3) {
 function extractSessionId(resp) {
   var _a, _b;
   const bizData = (_a = resp == null ? void 0 : resp.data) == null ? void 0 : _a.biz_data;
-  if (typeof (bizData == null ? void 0 : bizData.id) === "string" && bizData.id.trim()) return bizData.id.trim();
+  if (typeof (bizData == null ? void 0 : bizData.id) === "string" && bizData.id.trim())
+    return bizData.id.trim();
   if (typeof ((_b = bizData == null ? void 0 : bizData.chat_session) == null ? void 0 : _b.id) === "string" && bizData.chat_session.id.trim()) {
     return bizData.chat_session.id.trim();
   }
@@ -19004,10 +19094,15 @@ async function getPow(token, maxAttempts = 3) {
       const data = resp.data;
       if (resp.status === 200 && intFrom(data == null ? void 0 : data.code) === 0 && intFrom((_a = data == null ? void 0 : data.data) == null ? void 0 : _a.biz_code) === 0) {
         const challenge = (_c = (_b = data == null ? void 0 : data.data) == null ? void 0 : _b.biz_data) == null ? void 0 : _c.challenge;
-        if (!challenge) throw new Error("invalid pow challenge response");
+        if (!challenge)
+          throw new Error("invalid pow challenge response");
         return solveAndBuildHeader(challenge);
       }
-      console.warn("[shallowseek-api] get_pow failed", resp.status, data == null ? void 0 : data.msg);
+      console.warn(
+        "[shallowseek-api] get_pow failed",
+        resp.status,
+        data == null ? void 0 : data.msg
+      );
     } catch (err) {
       console.warn("[shallowseek-api] get_pow error", err.message);
     }
@@ -19916,7 +20011,7 @@ function getAccountsFromDB() {
     id: acc.id,
     email: acc.email,
     password: "",
-    token: acc.token
+    token: acc.chat_token
   }));
 }
 function registerServerIpcs() {

@@ -37,11 +37,12 @@ declare global {
 				addAccount: (account: {
 					id: string;
 					email: string;
-					token: string;
+					chat_token: string;
+					platform_token?: string;
 				}) => Promise<{success: boolean; error?: string}>;
 				getAccounts: () => Promise<{
 					success: boolean;
-					data?: {id: string; email: string; token: string}[];
+					data?: {id: string; email: string; chat_token: string; platform_token?: string}[];
 					error?: string;
 				}>;
 				deleteAccount: (

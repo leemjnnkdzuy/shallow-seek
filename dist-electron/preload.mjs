@@ -1,5 +1,16 @@
 "use strict";
 const electron = require("electron");
+try {
+  Object.defineProperty(navigator, "webdriver", {
+    get: () => void 0
+  });
+  if (!window.chrome) {
+    window.chrome = {
+      runtime: {}
+    };
+  }
+} catch (e) {
+}
 electron.contextBridge.exposeInMainWorld("electron", {
   send: (channel, data) => {
     let validChannels = ["toMain"];

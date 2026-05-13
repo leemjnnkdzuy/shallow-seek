@@ -34,10 +34,6 @@ const CreateAPIKeyPage: React.FC = () => {
 	const tokenRaw = matchIndex !== -1 ? hash.substring(matchIndex + "/create-api-key/".length) : "";
 	const token = decodeURIComponent(tokenRaw);
 
-	useEffect(() => {
-		console.log("[CreateAPIKeyPage] Raw Hash:", hash);
-		console.log("[CreateAPIKeyPage] Extracted Token:", token);
-	}, [hash, token]);
 
 	const [keyName, setKeyName] = useState("");
 	const [phase, setPhase] = useState<1 | 2>(1);
@@ -190,9 +186,6 @@ const CreateAPIKeyPage: React.FC = () => {
 						>
 							<CardHeader className="space-y-1">
 								<div className="flex items-center gap-2 mb-1 text-emerald-500">
-									<div className="p-2 bg-emerald-500/10 rounded-xl">
-										<Check className="w-5 h-5" />
-									</div>
 									<CardTitle className="text-xl font-bold">
 										Tạo Khóa Thành Công!
 									</CardTitle>
@@ -230,7 +223,7 @@ const CreateAPIKeyPage: React.FC = () => {
 											onClick={() => createdKey && copyToClipboard(createdKey.sensitive_id)}
 										>
 											{copied ? (
-												<Check className="w-4 h-4 text-emerald-500 animate-bounce" />
+												<Check className="w-4 h-4 text-emerald-500" />
 											) : (
 												<Copy className="w-4 h-4 text-muted-foreground" />
 											)}

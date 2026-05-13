@@ -50,7 +50,7 @@ function getAccountsFromDB(): AccountConfig[] {
 		id: acc.id,
 		email: acc.email,
 		password: "",
-		token: acc.token,
+		token: acc.chat_token,
 	}));
 }
 

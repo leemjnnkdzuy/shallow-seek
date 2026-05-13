@@ -12,78 +12,64 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
-interface ApiKey {
-	created_at: number;
-	last_use: string | null;
-	tracking_id: string;
-	sensitive_id: string;
-	name: string;
-}
+import {
+	ApiKey,
+	fetchApiKeys,
+	connectPlatform,
+	deleteApiKey,
+	renameApiKey,
+} from "@/handlers/ApiKeyHandler";
 
 interface KeyAccountManagerProps {
-	account: { id: string; token: string };
+	account: { id: string; email: string; chat_token: string; platform_token?: string };
 }
 
 export default function KeyAccountManager({ account }: KeyAccountManagerProps) {
 	const [keys, setKeys] = useState<ApiKey[]>([]);
 	const [loading, setLoading] = useState(false);
 
-	// Renaming state
 	const [editingKeyId, setEditingKeyId] = useState<string | null>(null);
 	const [editingName, setEditingName] = useState("");
 	const [updating, setUpdating] = useState(false);
 
-	// Platform Token logic
 	const [platformToken, setPlatformToken] = useState<string | null>(null);
-	const [inputToken, setInputToken] = useState("");
+	const [error40003, setError40003] = useState(false);
 
 	useEffect(() => {
 		const loadPlatformToken = async () => {
-			if (!account?.id) return;
-			const res = await window.electron?.db.getSetting(`platform_token_${account.id}`);
-			if (res?.success && res.value) {
-				setPlatformToken(res.value);
+			if (account?.platform_token) {
+				setPlatformToken(account.platform_token);
+			} else if (account?.id) {
+				const res = await window.electron?.db.getSetting(`platform_token_${account.id}`);
+				if (res?.success && res.value) {
+					setPlatformToken(res.value);
+				}
 			}
 		};
 		loadPlatformToken();
 	}, [account?.id]);
 
-	const handleSaveToken = async () => {
-		const token = inputToken.trim();
-		if (!token || !account?.id) return;
-		await window.electron?.db.setSetting(`platform_token_${account.id}`, token);
-		setPlatformToken(token);
+	const fetchKeys = async () => {
+		await fetchApiKeys(platformToken, {
+			setKeys,
+			setPlatformToken,
+			setError40003,
+			setLoading,
+		});
 	};
 
-	const fetchKeys = async () => {
-		const tokenToUse = platformToken || account?.token;
-		if (!tokenToUse) return;
-		
-		setLoading(true);
-		try {
-			const res = await window.electron?.deepseek?.getApiKeys({
-				token: tokenToUse,
-			});
-			
-			if (res?.ok && res.data?.code === 0 && res.data?.data?.biz_data?.api_keys) {
-				setKeys(res.data.data.biz_data.api_keys);
-				if (!platformToken && tokenToUse === account.token) {
-					setPlatformToken(account.token);
-				}
-			} else if (res?.data?.code === 40003 || res?.error?.message?.includes("40003") || (res?.ok && res?.data?.code !== 0)) {
-				setPlatformToken(null);
-			} else {
-				console.error("Failed to fetch keys:", res);
-			}
-		} catch (err) {
-			console.error("Error fetching keys:", err);
-		} finally {
-			setLoading(false);
-		}
+	const handleConnectPlatform = async () => {
+		if (!account?.id) return;
+		await connectPlatform(account.id, {
+			setLoading,
+			setPlatformToken,
+			setError40003,
+			fetchKeys,
+		});
 	};
 
 	useEffect(() => {
-		if (platformToken !== null || account?.token) {
+		if (platformToken !== null || account?.chat_token) {
 			fetchKeys();
 		}
 	}, [account, platformToken]);
@@ -97,38 +83,9 @@ export default function KeyAccountManager({ account }: KeyAccountManagerProps) {
 	}, [account]);
 
 	const handleDeleteKey = async (key: ApiKey) => {
-		if (!account?.token) return;
-
-		const confirmed = await window.electron?.windowControls.openConfirm({
-			title: "Xóa API Key",
-			message: `Bạn có chắc chắn muốn xóa API Key "${key.name}"? Các ứng dụng đang sử dụng key này sẽ không thể truy cập được nữa.`,
-			confirmText: "Xóa",
-			cancelText: "Hủy",
-			variant: "destructive",
-			type: "danger",
-		});
-
-		if (confirmed) {
-			try {
-				const res = await window.electron?.deepseek?.editApiKeys({
-					token: account.token,
-					body: {
-						action: "delete",
-						name: null,
-						redacted_key: key.sensitive_id,
-						created_at: key.created_at,
-					},
-				});
-
-				if (res?.ok && res.data?.code === 0) {
-					fetchKeys();
-				} else {
-					console.error("Failed to delete key:", res);
-				}
-			} catch (err) {
-				console.error("Error deleting key:", err);
-			}
-		}
+		const tokenToUse = platformToken || account?.chat_token;
+		if (!tokenToUse) return;
+		await deleteApiKey(key, tokenToUse, { fetchKeys });
 	};
 
 	const handleStartRename = (key: ApiKey) => {
@@ -137,35 +94,13 @@ export default function KeyAccountManager({ account }: KeyAccountManagerProps) {
 	};
 
 	const handleSaveRename = async (key: ApiKey) => {
-		const trimmedName = editingName.trim();
-		if (!trimmedName || trimmedName === key.name || !account?.token) {
-			setEditingKeyId(null);
-			return;
-		}
-
-		setUpdating(true);
-		try {
-			const res = await window.electron?.deepseek?.editApiKeys({
-				token: account.token,
-				body: {
-					action: "update",
-					name: trimmedName,
-					redacted_key: key.sensitive_id,
-					created_at: key.created_at,
-				},
-			});
-
-			if (res?.ok && res.data?.code === 0) {
-				setEditingKeyId(null);
-				fetchKeys();
-			} else {
-				console.error("Failed to rename key:", res);
-			}
-		} catch (err) {
-			console.error("Error renaming key:", err);
-		} finally {
-			setUpdating(false);
-		}
+		const tokenToUse = platformToken || account?.chat_token;
+		if (!tokenToUse) return;
+		await renameApiKey(key, editingName, tokenToUse, {
+			setEditingKeyId,
+			setUpdating,
+			fetchKeys,
+		});
 	};
 
 	const formatDate = (timestamp: number) => {
@@ -181,43 +116,10 @@ export default function KeyAccountManager({ account }: KeyAccountManagerProps) {
 	const handleOpenCreatePopup = () => {
 		if (platformToken) {
 			window.electron?.windowControls.openCreateApiKey(platformToken);
-		} else if (account?.token) {
-			// Fallback to chat token if trying anyway
-			window.electron?.windowControls.openCreateApiKey(account.token);
+		} else if (account?.chat_token) {
+			window.electron?.windowControls.openCreateApiKey(account.chat_token);
 		}
 	};
-
-	if (!platformToken) {
-		return (
-			<div className="flex flex-col h-full bg-transparent overflow-hidden gap-4 items-center justify-center p-4">
-				<div className="max-w-md w-full bg-card p-6 rounded-2xl flex flex-col gap-4 text-center border border-border/50 shadow-sm">
-					<div className="mx-auto w-12 h-12 bg-amber-500/10 text-amber-500 flex items-center justify-center rounded-xl mb-2">
-						<KeyRound className="w-6 h-6" />
-					</div>
-					<h3 className="text-lg font-semibold">Cần Platform Token</h3>
-					<p className="text-sm text-muted-foreground leading-relaxed">
-						Hệ thống bảo mật <strong className="text-foreground">Cloudflare WAF/Turnstile (Mã 202)</strong> trên trang phát triển của DeepSeek chặn đăng nhập tự động.
-					</p>
-					<p className="text-xs text-muted-foreground/80 leading-relaxed bg-muted/40 p-3 rounded-xl border border-border/40 text-left">
-						Vui lòng truy cập <a href="https://platform.deepseek.com" target="_blank" rel="noreferrer" className="text-primary hover:underline font-semibold">platform.deepseek.com</a>, mở Network (F12) và copy Bearer Token để dán vào dưới đây.
-					</p>
-					<div className="flex flex-col gap-2 mt-2">
-						<Input
-							type="password"
-							placeholder="Nhập Platform Token (Bearer ...)"
-							value={inputToken}
-							onChange={(e) => setInputToken(e.target.value)}
-							className="rounded-xl text-center h-10"
-							onKeyDown={(e) => e.key === "Enter" && handleSaveToken()}
-						/>
-						<Button className="rounded-xl mt-2 font-semibold h-10" onClick={handleSaveToken} disabled={!inputToken.trim()}>
-							Lưu Token & Tiếp Tục
-						</Button>
-					</div>
-				</div>
-			</div>
-		);
-	}
 
 	return (
 		<div className="flex flex-col h-full bg-transparent overflow-hidden gap-4">
@@ -228,20 +130,7 @@ export default function KeyAccountManager({ account }: KeyAccountManagerProps) {
 					<h3 className="text-lg font-semibold tracking-tight">Quản lý API Keys</h3>
 				</div>
 				<div className="flex items-center gap-2">
-					{platformToken && platformToken !== account?.token && (
-						<Button
-							variant="outline"
-							size="sm"
-							className="h-9 rounded-xl text-muted-foreground px-3 gap-1.5 hover:bg-muted/30"
-							onClick={() => {
-								setPlatformToken(null);
-							}}
-							title="Đổi Platform Token"
-						>
-							<KeyRound className="w-3.5 h-3.5" />
-							<span className="hidden md:inline">Đổi Token</span>
-						</Button>
-					)}
+
 					<Button
 						variant="outline"
 						size="icon"
@@ -263,32 +152,54 @@ export default function KeyAccountManager({ account }: KeyAccountManagerProps) {
 				</div>
 			</div>
 
-			{/* Keys List Table */}
-			<div className="flex-1 bg-card rounded-2xl overflow-hidden flex flex-col">
-				<div className="flex-1 overflow-y-auto">
-					{loading ? (
-						<div className="h-full flex flex-col items-center justify-center text-muted-foreground italic gap-2.5">
-							<RefreshCw className="w-6 h-6 animate-spin text-primary" />
-							<span className="text-xs">Đang tải danh sách API Key...</span>
+			{/* Keys Grid / Scroll Container */}
+			<div className="flex-1 overflow-y-auto pr-1">
+				{loading ? (
+					<div className="h-full min-h-[250px] flex flex-col items-center justify-center text-muted-foreground italic gap-2.5">
+						<RefreshCw className="w-6 h-6 animate-spin text-primary" />
+						<span className="text-xs">Đang tải danh sách API Key...</span>
+					</div>
+				) : error40003 ? (
+					<div className="h-full min-h-[250px] flex flex-col items-center justify-center text-muted-foreground gap-4 py-10 bg-card rounded-2xl border border-dashed border-border/40 px-6 text-center">
+						<div className="p-3.5 bg-amber-500/10 rounded-2xl text-amber-500">
+							<KeyRound className="w-6 h-6" />
 						</div>
-					) : keys.length > 0 ? (
-						<div className="divide-y divide-border/50">
-							{keys.map((key) => {
-								const isEditing = editingKeyId === key.tracking_id;
+						<div className="flex flex-col gap-1 max-w-sm">
+							<span className="text-sm font-semibold text-foreground">Yêu cầu Đăng nhập cổng Platform</span>
+							<span className="text-xs text-muted-foreground leading-relaxed">
+								Để quản lý API Keys (Xem, Tạo, Đổi tên, Xóa), bạn cần đăng nhập tài khoản trên cổng DeepSeek Platform để lấy mã xác thực an toàn.
+							</span>
+						</div>
+						<Button
+							onClick={handleConnectPlatform}
+							disabled={loading}
+							className="gap-2 h-9 rounded-xl font-semibold bg-primary hover:bg-primary/90 text-primary-foreground"
+						>
+							<KeyRound className="w-4 h-4" />
+							<span>Đăng nhập cổng Platform</span>
+						</Button>
+					</div>
+				) : keys.length > 0 ? (
+					<div className="flex flex-col gap-3">
+						{keys.map((key) => {
+							const isEditing = editingKeyId === key.tracking_id;
 
-								return (
-									<div
-										key={key.tracking_id}
-										className="p-4 flex items-center justify-between hover:bg-muted/10 transition-colors duration-150 gap-4"
-									>
-										<div className="flex-1 flex flex-col gap-1 overflow-hidden">
+							return (
+								<div
+									key={key.tracking_id}
+									className="px-5 py-4 flex flex-row items-center justify-between bg-card hover:bg-card/85 border border-border/40 hover:border-border-muted rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 gap-4"
+								>
+									{/* Left group: Name and Redacted key details */}
+									<div className="flex-1 min-w-0 flex items-center gap-4">
+										{/* Key name/input section */}
+										<div className="w-[150px] shrink-0 min-w-[100px] max-w-[180px]">
 											{isEditing ? (
-												<div className="flex items-center gap-1.5 max-w-sm">
+												<div className="flex items-center gap-1 w-full">
 													<Input
 														value={editingName}
 														onChange={(e) => setEditingName(e.target.value)}
 														disabled={updating}
-														className="h-8 rounded-lg text-sm"
+														className="h-8 rounded-lg text-sm flex-1"
 														onKeyDown={(e) => e.key === "Enter" && handleSaveRename(key)}
 													/>
 													<Button
@@ -311,69 +222,70 @@ export default function KeyAccountManager({ account }: KeyAccountManagerProps) {
 													</Button>
 												</div>
 											) : (
-												<div className="flex items-center gap-2 group">
-													<span className="font-semibold text-sm truncate text-foreground">
+												<div className="flex items-center gap-1.5 group">
+													<span className="font-semibold text-sm truncate text-foreground" title={key.name}>
 														{key.name}
 													</span>
 													<Button
 														variant="ghost"
 														size="icon"
-														className="h-6 w-6 rounded-md text-muted-foreground/60 opacity-0 group-hover:opacity-100 hover:text-primary hover:bg-muted transition-all"
+														className="h-6 w-6 rounded-md text-muted-foreground/60 opacity-0 group-hover:opacity-100 hover:text-primary hover:bg-muted transition-all shrink-0"
 														onClick={() => handleStartRename(key)}
 													>
 														<Pencil className="w-3 h-3" />
 													</Button>
 												</div>
 											)}
-											<div className="flex items-center gap-2.5 text-xs text-muted-foreground font-mono select-all select-text">
-												<span className="px-1.5 py-0.5 bg-muted rounded text-[10px] uppercase font-sans font-bold tracking-wider shrink-0 select-none">
-													API Key
-												</span>
-												<span className="truncate">{key.sensitive_id}</span>
-											</div>
 										</div>
 
-										<div className="flex items-center gap-5 shrink-0">
-											<div className="flex flex-col items-end gap-0.5 text-right">
-												<div className="flex items-center gap-1 text-[11px] text-muted-foreground/80 font-medium">
-													<Calendar className="w-3.5 h-3.5" />
-													<span>Ngày tạo</span>
-												</div>
-												<span className="text-[11px] font-mono text-muted-foreground/60">
-													{formatDate(key.created_at)}
-												</span>
-											</div>
-
-											<Button
-												variant="ghost"
-												size="icon"
-												className="h-8 w-8 rounded-xl text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 transition-colors"
-												onClick={() => handleDeleteKey(key)}
-											>
-												<Trash2 className="w-4 h-4" />
-											</Button>
+										{/* Key Value section */}
+										<div className="flex-1 flex items-center gap-2.5 min-w-0">
+											<span className="px-1.5 py-0.5 bg-muted rounded text-[10px] uppercase font-sans font-bold tracking-wider shrink-0 select-none">
+												API Key
+											</span>
+											<span className="font-mono text-xs text-muted-foreground truncate select-all">{key.sensitive_id}</span>
 										</div>
 									</div>
-								);
-							})}
+
+									{/* Right group: Date created and delete button */}
+									<div className="flex items-center gap-5 shrink-0 ml-4">
+										<div className="flex items-center gap-1.5 text-xs text-muted-foreground/80 font-medium">
+											<Calendar className="w-3.5 h-3.5 text-muted-foreground/50" />
+											<span>Ngày tạo:</span>
+											<span className="font-mono text-muted-foreground/60 font-normal">
+												{formatDate(key.created_at)}
+											</span>
+										</div>
+
+										<Button
+											variant="ghost"
+											size="icon"
+											className="h-8 w-8 rounded-xl text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0"
+											onClick={() => handleDeleteKey(key)}
+										>
+											<Trash2 className="w-4 h-4" />
+										</Button>
+									</div>
+								</div>
+							);
+						})}
+					</div>
+				) : (
+					<div className="h-full min-h-[250px] flex flex-col items-center justify-center text-muted-foreground italic gap-2 py-12 rounded-2xl">
+						<div className="p-3 bg-muted rounded-2xl text-muted-foreground/40">
+							<KeyRound className="w-8 h-8" />
 						</div>
-					) : (
-						<div className="h-full flex flex-col items-center justify-center text-muted-foreground italic gap-2 py-12">
-							<div className="p-3 bg-muted rounded-2xl text-muted-foreground/40">
-								<KeyRound className="w-8 h-8" />
-							</div>
-							<span className="text-xs font-medium">Chưa có API Key nào được tạo.</span>
-							<Button
-								variant="link"
-								size="sm"
-								className="text-xs text-primary"
-								onClick={handleOpenCreatePopup}
-							>
-								Tạo API Key đầu tiên ngay bây giờ
-							</Button>
-						</div>
-					)}
-				</div>
+						<span className="text-xs font-medium">Chưa có API Key nào được tạo.</span>
+						<Button
+							variant="link"
+							size="sm"
+							className="text-xs text-primary"
+							onClick={handleOpenCreatePopup}
+						>
+							Tạo API Key đầu tiên ngay bây giờ
+						</Button>
+					</div>
+				)}
 			</div>
 		</div>
 	);

@@ -167,7 +167,8 @@ const AddAccountPage: React.FC = () => {
 				const res = await window.electron?.db.addAccount({
 					id: user.id,
 					email: user.email,
-					token: user.token,
+					chat_token: user.token,
+					platform_token: result.platformToken || undefined
 				});
 
 				if (res?.success) {

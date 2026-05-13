@@ -42,7 +42,6 @@ export const useLanguage = () => {
     loadLang();
   }, []);
 
-  // Listen for language changes from other windows
   useEffect(() => {
     const unsubscribe = window.electron?.windowControls.onLanguageChanged((newLang: string) => {
       if (newLang !== i18n.language) {
@@ -60,9 +59,7 @@ export const useLanguage = () => {
     i18n.changeLanguage(lng);
     setCurrentLanguageState(lng);
     localStorage.setItem('language', lng);
-    // Notify other windows
     window.electron?.windowControls.notifyLanguageChanged(lng);
-    // Save to DB
     try {
       await window.electron?.db.setSetting('language', lng);
     } catch (error) {

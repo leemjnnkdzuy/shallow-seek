@@ -29,7 +29,7 @@ export default function AccountManagerPage() {
       if (res?.success && res.data) {
         const acc = res.data.find((a: any) => a.id === id);
         if (acc) {
-          console.log("[AccountManagerPage] Found account:", acc.email, "Token exists:", !!acc.token);
+          console.log("[AccountManagerPage] Found account:", acc.email, "Token exists:", !!acc.chat_token);
           setAccount(acc);
         } else {
           console.error("[AccountManagerPage] Account not found for id:", id);
@@ -71,7 +71,7 @@ export default function AccountManagerPage() {
     console.log("[AccountManagerPage] Fetching history for account:", account.email);
     try {
       const res = await window.electron?.deepseek?.fetchHistory({
-        token: account.token,
+        token: account.chat_token,
       });
       console.log("[AccountManagerPage] fetchHistory response:", res);
       if (res?.ok && res.data?.data?.biz_data?.chat_sessions) {
@@ -110,7 +110,7 @@ export default function AccountManagerPage() {
   };
 
   const handleDeleteSession = async (sessionId: string) => {
-    if (!account?.token) return;
+    if (!account?.chat_token) return;
 
     const confirmed = await window.electron?.windowControls.openConfirm({
       title: "",
@@ -124,7 +124,7 @@ export default function AccountManagerPage() {
     if (confirmed) {
       try {
         const res = await window.electron?.deepseek?.deleteChatSession({
-          token: account.token,
+          token: account.chat_token,
           sessionId
         });
         if (res?.ok) {
@@ -167,16 +167,14 @@ export default function AccountManagerPage() {
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold tracking-tight">Lịch sử</h3>
               <Button 
-                variant={!selectedSession ? "default" : "outline"} 
-                size="sm" 
-                className="gap-1.5 h-8 px-3"
                 onClick={() => setSelectedSession(null)}
+                className="gap-1 h-8 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm font-semibold px-3.5"
               >
-                <Plus className="w-3.5 h-3.5" />
+                <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
                 <span>Mới</span>
               </Button>
             </div>
-            <div className="flex-1 overflow-y-auto overflow-x-hidden pr-2 relative">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden relative">
               {loadingHistory && history.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-32 gap-2">
                   <RefreshCw className="w-5 h-5 animate-spin text-primary" />

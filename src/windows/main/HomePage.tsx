@@ -24,7 +24,8 @@ import {useTitleBar} from "@/hooks/useTitleBar";
 interface Account {
 	id: string;
 	email: string;
-	token: string;
+	chat_token: string;
+	platform_token?: string;
 }
 
 const HomePage: React.FC = () => {
@@ -70,6 +71,36 @@ const HomePage: React.FC = () => {
 		}
 	};
 
+	const handleAddAccount = async () => {
+		try {
+			const result = await window.electron?.deepseek?.login({ email: "", password: "", deviceId: "" });
+			if (result?.ok && result.data) {
+				const user = (result.data as any)?.data?.biz_data?.user;
+				if (!user) return;
+				
+				// check exists
+				const check = await window.electron?.db.checkAccountExists(user.email);
+				if (check?.success && check.exists) {
+					// account already exists
+					return;
+				}
+
+				const res = await window.electron?.db.addAccount({
+					id: user.id,
+					email: user.email,
+					chat_token: user.token,
+					platform_token: result.platformToken || undefined
+				});
+
+				if (res?.success) {
+					fetchAccounts();
+				}
+			}
+		} catch (error) {
+			console.error("Failed to add account:", error);
+		}
+	};
+
 	useEffect(() => {
 		setConfig({ 
 			title: t('sidebar.home'),
@@ -89,9 +120,7 @@ const HomePage: React.FC = () => {
 						variant='default'
 						size='sm'
 						className='flex items-center gap-2 h-9 px-5 rounded-xl'
-						onClick={() =>
-							window.electron?.windowControls.openAddAccount()
-						}
+						onClick={handleAddAccount}
 					>
 						<Plus className='w-4 h-4' />
 						{t('home.add_account')}
