@@ -42,9 +42,18 @@ import {
 	shouldRetryEmptyOutput,
 	clonePayloadForEmptyOutputRetry,
 } from "@/server/EmptyRetry";
-import {EMPTY_OUTPUT_RETRY_MAX_ATTEMPTS} from "@/constants";
+import {EMPTY_OUTPUT_RETRY_MAX_ATTEMPTS, MEMORY_FILENAME} from "@/constants";
 import {parseToolCallsDetailed} from "@/lib/toolcall/ToolParser";
 import {normalizeParsedToolCallsForSchemas} from "@/lib/toolcall/ToolSchema";
+import {uploadContextMemory} from "@/server/ContextMemory";
+
+export interface CompletionResult {
+	lastMessageId: number | null;
+	contentText: string;
+	thinkingText: string;
+	toolCalls?: ToolCall[];
+}
+
 
 export async function handleChatCompletions(
 	req: http.IncomingMessage,
@@ -97,7 +106,7 @@ export async function handleChatCompletions(
 	const {thinking, search} = resolveThinkingAndSearch(request, modelDefaults);
 	const modelType = getModelType(resolvedModel);
 
-	let token = getNextToken(state);
+	const token = getNextToken(state);
 	if (!token) {
 		logWithPort(
 			state.port,
@@ -138,6 +147,9 @@ export async function handleChatCompletions(
 
 		let refFileIds: string[] = [];
 		let finalPrompt = prompt;
+		let hasMemoryFile = false;
+		let hasToolsFile = false;
+		let rulesSucceeded = false;
 
 		try {
 			const ruleFiles = await uploadRuleFiles(
@@ -147,18 +159,8 @@ export async function handleChatCompletions(
 				state.port,
 			);
 			refFileIds = ruleFiles.refFileIds;
-
-			const contextSummary =
-				state.sessionManager.getContextSummary(token);
-			const userPrompt =
-				contextSummary ?
-					`[Compressed context from previous conversation]\n${contextSummary}\n\n---\n\n${prompt}`
-				:	prompt;
-
-			finalPrompt = buildLivePrompt(
-				userPrompt,
-				ruleFiles.toolsFileId !== null,
-			);
+			hasToolsFile = ruleFiles.toolsFileId !== null;
+			rulesSucceeded = true;
 			logWithPort(
 				state.port,
 				`[api]   rule-files: rules=${ruleFiles.rulesFileId.slice(0, 8)}... tools=${ruleFiles.toolsFileId ? ruleFiles.toolsFileId.slice(0, 8) + "..." : "none"}`,
@@ -170,11 +172,51 @@ export async function handleChatCompletions(
 				state.port,
 				`[api]   rule-file upload failed, falling back to inline: ${message}`,
 			);
+		}
+
+		try {
+			const memoryFileId = await uploadContextMemory(
+				token,
+				request.messages,
+				sessionId,
+				state.port,
+			);
+			if (memoryFileId) {
+				refFileIds.push(memoryFileId);
+				hasMemoryFile = true;
+				logWithPort(
+					state.port,
+					`[api]   context-memory uploaded: fileId=${memoryFileId.slice(0, 8)}...`,
+				);
+			}
+		} catch (memErr: unknown) {
+			const message =
+				memErr instanceof Error ? memErr.message : String(memErr);
+			logWithPort(
+				state.port,
+				`[api]   ⚠ context memory upload failed: ${message}`,
+			);
+		}
+
+		const contextSummary = state.sessionManager.getContextSummary(token);
+
+		if (rulesSucceeded) {
+			const userPrompt = contextSummary ?
+				`[Compressed context from previous conversation]\n${contextSummary}\n\n---\n\n${prompt}`
+			:	prompt;
+
+			finalPrompt = buildLivePrompt(
+				userPrompt,
+				hasToolsFile,
+				hasMemoryFile,
+			);
+		} else {
 			finalPrompt = buildPromptText(request.messages, tools);
-			const contextSummary =
-				state.sessionManager.getContextSummary(token);
 			if (contextSummary) {
 				finalPrompt = `[Compressed context from previous conversation]\n${contextSummary}\n\n---\n\n${finalPrompt}`;
+			}
+			if (hasMemoryFile) {
+				finalPrompt = `Also refer to the attached ${MEMORY_FILENAME} file for complete context, session history, and step-by-step progress/tool outputs. Use it to coordinate your actions and do not repeat completed tasks.\n\n${finalPrompt}`;
 			}
 		}
 
@@ -194,8 +236,10 @@ export async function handleChatCompletions(
 		}
 
 		let lastMessageId: number | null = null;
+		let completionResult: CompletionResult | null = null;
+
 		if (request.stream) {
-			lastMessageId = await handleStreamWithRetry(
+			completionResult = await handleStreamWithRetry(
 				res,
 				state,
 				token,
@@ -206,7 +250,7 @@ export async function handleChatCompletions(
 				tools,
 			);
 		} else {
-			lastMessageId = await handleNonStreamWithRetry(
+			completionResult = await handleNonStreamWithRetry(
 				res,
 				state,
 				token,
@@ -219,12 +263,23 @@ export async function handleChatCompletions(
 			);
 		}
 
-		state.sessionManager.recordExchange(
-			token,
-			prompt,
-			"(response recorded)",
-			lastMessageId,
-		);
+		if (completionResult) {
+			lastMessageId = completionResult.lastMessageId;
+			state.sessionManager.recordExchange(
+				token,
+				prompt,
+				completionResult.contentText || "(response recorded)",
+				lastMessageId,
+				completionResult.toolCalls,
+			);
+		} else {
+			state.sessionManager.recordExchange(
+				token,
+				prompt,
+				"(response recorded)",
+				null,
+			);
+		}
 
 		const elapsed = ((Date.now() - reqStart) / 1000).toFixed(1);
 		logWithPort(
@@ -261,15 +316,16 @@ async function handleNonStreamWithRetry(
 	model: string,
 	prompt: string,
 	thinkingEnabled: boolean,
-	tools: any[],
-): Promise<number | null> {
+	tools: unknown[],
+): Promise<CompletionResult | null> {
 	let currentPayload = {...payload};
 	let currentPow = pow;
 	let currentToken = token;
 	let attempts = 0;
 	let accountSwitchAttempted = false;
 
-	while (true) {
+	const running = true;
+	while (running) {
 		const dsResponse = await dsClient.callCompletion(
 			currentToken,
 			currentPayload,
@@ -376,7 +432,7 @@ async function handleNonStreamWithRetry(
 			const thinkingSource =
 				result.thinkingText || cleanedThinking || "";
 			if (thinkingSource.trim()) {
-				let thinkingParsed =
+				const thinkingParsed =
 					parseToolCallsDetailed(thinkingSource);
 
 				if (thinkingParsed.Calls.length > 0) {
@@ -446,8 +502,14 @@ async function handleNonStreamWithRetry(
 		};
 
 		jsonResponse(res, 200, responseBody);
-		return result.lastMessageId;
+		return {
+			lastMessageId: result.lastMessageId,
+			contentText: cleanedContent,
+			thinkingText: cleanedThinking,
+			toolCalls: finalToolCalls,
+		};
 	}
+	return null;
 }
 
 interface NonStreamCollectResult {
@@ -461,7 +523,7 @@ interface NonStreamCollectResult {
 async function collectNonStreamResponse(
 	stream: Readable,
 	thinkingEnabled: boolean,
-	tools: any[],
+	tools: unknown[],
 ): Promise<NonStreamCollectResult> {
 	let thinkingText = "";
 	let contentText = "";
@@ -536,8 +598,8 @@ async function handleStreamWithRetry(
 	pow: string,
 	model: string,
 	thinkingEnabled: boolean,
-	tools: any[],
-): Promise<number | null> {
+	tools: unknown[],
+): Promise<CompletionResult | null> {
 	let currentToken = token;
 	let currentPayload = {...payload};
 	let currentPow = pow;
@@ -632,8 +694,8 @@ async function handleStreamResponse(
 	model: string,
 	thinkingEnabled: boolean,
 	state: ServerInstanceState,
-	tools: any[],
-): Promise<number | null> {
+	tools: unknown[],
+): Promise<CompletionResult> {
 	let lastMessageId: number | null = null;
 	res.writeHead(200, {
 		"Content-Type": "text/event-stream",
@@ -653,7 +715,11 @@ async function handleStreamResponse(
 	const textAccum = new StreamTextAccumulator();
 	const thinkingAccum = new StreamTextAccumulator();
 
-	return new Promise((resolve, reject) => {
+	let contentText = "";
+	let thinkingText = "";
+	const sieveToolCalls: ToolCall[] = [];
+
+	return new Promise<CompletionResult>((resolve, reject) => {
 		const sendSSE = (data: Record<string, unknown>) => {
 			res.write(`data: ${JSON.stringify(data)}\n\n`);
 		};
@@ -685,6 +751,12 @@ async function handleStreamResponse(
 					});
 					res.write("data: [DONE]\n\n");
 					res.end();
+					resolve({
+						lastMessageId,
+						contentText,
+						thinkingText,
+						toolCalls: sieveToolCalls.length > 0 ? sieveToolCalls : undefined,
+					});
 					return;
 				}
 
@@ -706,6 +778,12 @@ async function handleStreamResponse(
 					});
 					res.write("data: [DONE]\n\n");
 					res.end();
+					resolve({
+						lastMessageId,
+						contentText,
+						thinkingText,
+						toolCalls: sieveToolCalls.length > 0 ? sieveToolCalls : undefined,
+					});
 					return;
 				}
 
@@ -736,6 +814,12 @@ async function handleStreamResponse(
 					});
 					res.write("data: [DONE]\n\n");
 					res.end();
+					resolve({
+						lastMessageId,
+						contentText,
+						thinkingText,
+						toolCalls: sieveToolCalls.length > 0 ? sieveToolCalls : undefined,
+					});
 					return;
 				}
 
@@ -779,6 +863,7 @@ async function handleStreamResponse(
 								},
 							],
 						});
+						thinkingText += cleaned;
 					} else {
 						const deduped = textAccum.append(part.text);
 						if (!deduped) continue;
@@ -800,6 +885,7 @@ async function handleStreamResponse(
 									},
 								],
 							});
+							contentText += result.outputText;
 						}
 						if (result.toolCalls) {
 							hasToolCalls = true;
@@ -816,6 +902,7 @@ async function handleStreamResponse(
 									},
 								],
 							});
+							sieveToolCalls.push(...result.toolCalls);
 						}
 					}
 				}
@@ -841,6 +928,7 @@ async function handleStreamResponse(
 								},
 							],
 						});
+						contentText += cleaned;
 					}
 				}
 				if (finalResult.toolCalls) {
@@ -858,6 +946,7 @@ async function handleStreamResponse(
 							},
 						],
 					});
+					sieveToolCalls.push(...finalResult.toolCalls);
 				}
 
 				sendSSE({
@@ -876,7 +965,12 @@ async function handleStreamResponse(
 				});
 				res.write("data: [DONE]\n\n");
 				res.end();
-				resolve(lastMessageId);
+				resolve({
+					lastMessageId,
+					contentText,
+					thinkingText,
+					toolCalls: sieveToolCalls.length > 0 ? sieveToolCalls : undefined,
+				});
 			}
 		});
 

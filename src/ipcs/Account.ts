@@ -83,8 +83,8 @@ export function registerAccountIpcs(
 		}
 	});
 
-	ipcMain.handle("deepseek-login", async (_event, _payload: unknown) => {
-		return performLogin({__dirname, VITE_DEV_SERVER_URL, RENDERER_DIST});
+	ipcMain.handle("deepseek-login", async (_event, payload: any) => {
+		return performLogin({__dirname, VITE_DEV_SERVER_URL, RENDERER_DIST, proxy: payload?.proxy});
 	});
 
 	ipcMain.handle(

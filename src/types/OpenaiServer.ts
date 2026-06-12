@@ -6,6 +6,7 @@ export interface AccountConfig {
 	email: string;
 	password: string;
 	token?: string;
+	proxy?: string;
 }
 
 export interface ApiKeyConfig {

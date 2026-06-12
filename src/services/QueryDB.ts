@@ -20,6 +20,7 @@ db.exec(`
     email TEXT NOT NULL,
     chat_token TEXT NOT NULL,
     platform_token TEXT,
+    proxy TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 `);
@@ -34,6 +35,11 @@ try {
 } catch (e) {
 	/* ignore */
 }
+try {
+	db.exec(`ALTER TABLE accounts ADD COLUMN proxy TEXT;`);
+} catch (e) {
+	/* ignore */
+}
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS settings (
@@ -44,13 +50,14 @@ db.exec(`
 
 export const addAccount = (account: Account) => {
 	const stmt = db.prepare(
-		"INSERT OR REPLACE INTO accounts (id, email, chat_token, platform_token) VALUES (?, ?, ?, ?)",
+		"INSERT OR REPLACE INTO accounts (id, email, chat_token, platform_token, proxy) VALUES (?, ?, ?, ?, ?)",
 	);
 	return stmt.run(
 		account.id,
 		account.email,
 		account.chat_token,
 		account.platform_token || null,
+		account.proxy || null,
 	);
 };
 
@@ -89,4 +96,15 @@ export const getAllSettings = (): Record<string, string> => {
 	const stmt = db.prepare("SELECT * FROM settings");
 	const rows = stmt.all() as {key: string; value: string}[];
 	return rows.reduce((acc, row) => ({...acc, [row.key]: row.value}), {});
+};
+
+export const getProxyForToken = (token: string): string | null => {
+	if (!token) return null;
+	try {
+		const stmt = db.prepare("SELECT proxy FROM accounts WHERE chat_token = ? OR platform_token = ?");
+		const result = stmt.get(token, token) as {proxy: string | null} | undefined;
+		return result ? result.proxy : null;
+	} catch (e) {
+		return null;
+	}
 };

@@ -1,6 +1,6 @@
 import axios from "axios";
 import FormData from "form-data";
-import {Readable} from "node:stream";
+import { Readable } from "node:stream";
 import {
 	DEEPSEEK_UPLOAD_FILE_URL,
 	DEEPSEEK_CREATE_POW_URL,
@@ -9,14 +9,17 @@ import {
 	OUTPUT_INTEGRITY_GUARD,
 	RULES_FILENAME,
 	TOOLS_FILENAME,
+	MEMORY_FILENAME,
 	CONTENT_TYPE,
 	FILE_READY_POLL_ATTEMPTS,
 	FILE_READY_POLL_INTERVAL_MS,
 } from "@/constants";
-import {logWithPort} from "@/handlers/ServerHelpers";
-import {solveAndBuildHeader} from "@/ipcs/Pow";
-import {buildToolPrompt} from "@/server/ToolSieve";
-import type {CachedRuleFiles} from "@/types/RuleUploader";
+import { getProxyAgent } from "@/services/ProxyAgent";
+import { getProxyForToken } from "@/services/QueryDB";
+import { logWithPort } from "@/handlers/ServerHelpers";
+import { solveAndBuildHeader } from "@/ipcs/Pow";
+import { buildToolPrompt } from "@/server/ToolSieve";
+import type { CachedRuleFiles } from "@/types/RuleUploader";
 
 const fileCache = new Map<string, CachedRuleFiles>();
 
@@ -44,6 +47,7 @@ export function buildRulesText(systemMessages: string[]): string {
 }
 
 export function buildToolsText(tools: unknown[]): string {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const toolPrompt = buildToolPrompt(tools as any[]);
 	if (!toolPrompt) return "";
 
@@ -109,7 +113,7 @@ export async function uploadRuleFiles(
 
 	const refFileIds = [rulesFileId];
 	if (toolsFileId) refFileIds.push(toolsFileId);
-	return {rulesFileId, toolsFileId, refFileIds};
+	return { rulesFileId, toolsFileId, refFileIds };
 }
 
 export function clearRuleFileCache(token: string): void {
@@ -123,6 +127,7 @@ export function clearAllRuleFileCache(): void {
 export function buildLivePrompt(
 	userMessage: string,
 	hasToolsFile: boolean,
+	hasMemoryFile = false,
 ): string {
 	let instruction = `Follow the instructions in the attached ${RULES_FILENAME}.`;
 
@@ -130,22 +135,30 @@ export function buildLivePrompt(
 		instruction += ` Available tool descriptions and parameter schemas are attached in ${TOOLS_FILENAME}; use only those tools and follow the tool-call format rules described there.`;
 	}
 
+	if (hasMemoryFile) {
+		instruction += ` Also refer to the attached ${MEMORY_FILENAME} file for complete context, session history, and step-by-step progress/tool outputs. Use it to coordinate your actions and do not repeat completed tasks.`;
+	}
+
 	return `${instruction}\n\n${userMessage}`;
 }
 
-async function uploadTextFile(
+export async function uploadTextFile(
 	token: string,
 	filename: string,
 	content: string,
 	port: number,
 ): Promise<string> {
+	const proxyUrl = getProxyForToken(token);
+	const httpsAgent = getProxyAgent(proxyUrl);
+
 	// 1. Get PoW challenge for upload endpoint
 	const powResponse = await axios.post(
 		DEEPSEEK_CREATE_POW_URL,
-		{target_path: "/api/v0/file/upload_file"},
+		{ target_path: "/api/v0/file/upload_file" },
 		{
 			headers: getHistoryHeaders(token),
 			validateStatus: () => true,
+			httpsAgent,
 		},
 	);
 
@@ -178,6 +191,7 @@ async function uploadTextFile(
 		maxBodyLength: Infinity,
 		maxContentLength: Infinity,
 		validateStatus: () => true,
+		httpsAgent,
 	});
 
 	if (response.status !== 200 || response.data?.code !== 0) {
@@ -189,7 +203,7 @@ async function uploadTextFile(
 	const fileId = extractFileId(response.data);
 	if (!fileId) {
 		throw new Error(
-			`[rule-uploader] Upload succeeded but no file ID for ${filename}`,
+			`[rule-uploader] Upload succeeded but no file ID for ${filename}: ${JSON.stringify(response.data).slice(0, 300)}`,
 		);
 	}
 
@@ -244,10 +258,13 @@ async function waitForFileReady(
 }
 
 async function fetchFileStatus(token: string, fileId: string): Promise<string> {
+	const proxyUrl = getProxyForToken(token);
+	const httpsAgent = getProxyAgent(proxyUrl);
 	const url = `${DEEPSEEK_FETCH_FILES_URL}?file_ids=${encodeURIComponent(fileId)}`;
 	const response = await axios.get(url, {
 		headers: getHistoryHeaders(token),
 		validateStatus: () => true,
+		httpsAgent,
 	});
 
 	if (response.status !== 200 || response.data?.code !== 0) {
@@ -257,6 +274,7 @@ async function fetchFileStatus(token: string, fileId: string): Promise<string> {
 	return findFileStatusInResponse(response.data, fileId);
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function findFileStatusInResponse(data: any, targetId: string): string {
 	if (!data || typeof data !== "object") return "";
 
@@ -299,28 +317,124 @@ function isReadyFileStatus(status: string): boolean {
 	}
 }
 
-function extractFileId(data: any): string | null {
-	const bizData = data?.data?.biz_data;
-	if (typeof bizData?.id === "string" && bizData.id.trim()) {
-		return bizData.id.trim();
+function extractFileId(data: unknown): string | null {
+	if (!data || typeof data !== "object") return null;
+
+	const searchQueue: Record<string, unknown>[] = [data as Record<string, unknown>];
+	const rawData = (data as Record<string, unknown>).data;
+	if (rawData && typeof rawData === "object") {
+		searchQueue.push(rawData as Record<string, unknown>);
+		const bizData = (rawData as Record<string, unknown>).biz_data;
+		if (bizData && typeof bizData === "object") {
+			searchQueue.push(bizData as Record<string, unknown>);
+		}
 	}
-	if (typeof bizData?.file?.id === "string" && bizData.file.id.trim()) {
-		return bizData.file.id.trim();
+
+	const searchMaps = [...searchQueue];
+	for (const parent of searchQueue) {
+		for (const key of ["file", "biz_data", "data", "files"]) {
+			const val = parent[key];
+			if (val && typeof val === "object") {
+				if (Array.isArray(val)) {
+					for (const item of val) {
+						if (item && typeof item === "object") {
+							searchMaps.push(item as Record<string, unknown>);
+						}
+					}
+				} else {
+					searchMaps.push(val as Record<string, unknown>);
+				}
+			}
+		}
 	}
-	if (typeof data?.data?.id === "string" && data.data.id.trim()) {
-		return data.data.id.trim();
+
+	for (const m of searchMaps) {
+		if (!m || typeof m !== "object") continue;
+		const idVal = m.id || m.file_id || m.fileId;
+		if (typeof idVal === "string" && idVal.trim()) {
+			return idVal.trim();
+		}
 	}
-	return null;
+
+	// Fallback recursive finder as a last resort
+	const findId = (obj: unknown): string | null => {
+		if (!obj || typeof obj !== "object") return null;
+		const r = obj as Record<string, unknown>;
+		const idVal = r.id || r.file_id || r.fileId;
+		if (typeof idVal === "string" && idVal.trim()) {
+			return idVal.trim();
+		}
+		for (const key of Object.keys(r)) {
+			const val = r[key];
+			if (val && typeof val === "object") {
+				const res = findId(val);
+				if (res) return res;
+			}
+		}
+		return null;
+	};
+
+	return findId(data);
 }
 
-function extractFileStatus(data: any): string {
-	const bizData = data?.data?.biz_data;
-	if (typeof bizData?.status === "string") return bizData.status.trim();
-	if (typeof bizData?.file_status === "string")
-		return bizData.file_status.trim();
-	if (typeof bizData?.file?.status === "string")
-		return bizData.file.status.trim();
-	return "uploaded";
+function extractFileStatus(data: unknown): string {
+	if (!data || typeof data !== "object") return "uploaded";
+
+	const searchQueue: Record<string, unknown>[] = [data as Record<string, unknown>];
+	const rawData = (data as Record<string, unknown>).data;
+	if (rawData && typeof rawData === "object") {
+		searchQueue.push(rawData as Record<string, unknown>);
+		const bizData = (rawData as Record<string, unknown>).biz_data;
+		if (bizData && typeof bizData === "object") {
+			searchQueue.push(bizData as Record<string, unknown>);
+		}
+	}
+
+	const searchMaps = [...searchQueue];
+	for (const parent of searchQueue) {
+		for (const key of ["file", "biz_data", "data", "files"]) {
+			const val = parent[key];
+			if (val && typeof val === "object") {
+				if (Array.isArray(val)) {
+					for (const item of val) {
+						if (item && typeof item === "object") {
+							searchMaps.push(item as Record<string, unknown>);
+						}
+					}
+				} else {
+					searchMaps.push(val as Record<string, unknown>);
+				}
+			}
+		}
+	}
+
+	for (const m of searchMaps) {
+		if (!m || typeof m !== "object") continue;
+		const statusVal = m.status || m.file_status || m.fileStatus;
+		if (typeof statusVal === "string" && statusVal.trim()) {
+			return statusVal.trim();
+		}
+	}
+
+	// Fallback recursive
+	const findStatus = (obj: unknown): string | null => {
+		if (!obj || typeof obj !== "object") return null;
+		const r = obj as Record<string, unknown>;
+		const statusVal = r.status || r.file_status || r.fileStatus;
+		if (typeof statusVal === "string" && statusVal.trim()) {
+			return statusVal.trim();
+		}
+		for (const key of Object.keys(r)) {
+			const val = r[key];
+			if (val && typeof val === "object") {
+				const res = findStatus(val);
+				if (res) return res;
+			}
+		}
+		return null;
+	};
+
+	return findStatus(data) || "uploaded";
 }
 
 function simpleHash(text: string): string {

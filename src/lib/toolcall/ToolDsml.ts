@@ -55,7 +55,7 @@ function rewriteDSMLToolMarkupOutsideIgnored(text: string): string {
 			continue;
 		}
 
-		out += "<" + (tag.Closing ? "/" : "") + tag.Name + ">";
+		out += "<" + (tag.Closing ? "/" : "") + tag.Name + text.slice(tag.NameEnd, tag.End) + ">";
 		i = tag.End + 1;
 	}
 	return out;

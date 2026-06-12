@@ -81,6 +81,7 @@ export class SessionManager {
 		userPrompt: string,
 		assistantResponse: string,
 		assistantMessageId?: number | null,
+		toolCalls?: any[] | null,
 	): void {
 		const session = this.sessions.get(token);
 		if (!session) return;
@@ -99,6 +100,7 @@ export class SessionManager {
 			content: assistantResponse,
 			tokenEstimate: assistantTokens,
 			timestamp: Date.now(),
+			tool_calls: toolCalls || undefined,
 		});
 
 		session.totalTokens += userTokens + assistantTokens;

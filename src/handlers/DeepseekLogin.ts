@@ -8,12 +8,14 @@ import {
 	getAutoLoginScript,
 	chatPollerScript,
 } from "@/scripts";
+import {getProxyAgent} from "@/services/ProxyAgent";
 import type {LoginResult} from "@/types";
 
 export interface LoginContext {
 	__dirname: string;
 	VITE_DEV_SERVER_URL: string | undefined;
 	RENDERER_DIST: string;
+	proxy?: string;
 }
 
 export function performLogin(ctx: LoginContext): Promise<LoginResult> {
@@ -22,6 +24,15 @@ export function performLogin(ctx: LoginContext): Promise<LoginResult> {
 		const ses = session.fromPartition(partitionName, {
 			cache: false,
 		});
+
+		if (ctx.proxy) {
+			await ses.setProxy({proxyRules: ctx.proxy}).catch((err) => {
+				console.error(
+					"[deepseek-login] Failed to set proxy for session:",
+					err.message,
+				);
+			});
+		}
 
 		const win = new BrowserWindow({
 			width: 800,
@@ -84,11 +95,13 @@ export function performLogin(ctx: LoginContext): Promise<LoginResult> {
 					"[deepseek-login] Both tokens captured successfully, fetching user profile via main process (Android client mode)...",
 				);
 
+				const httpsAgent = getProxyAgent(ctx.proxy);
 				axios
 					.get(
 						"https://chat.deepseek.com/api/v0/users/current",
 						{
 							headers: getHistoryHeaders(chatToken),
+							httpsAgent,
 						},
 					)
 					.then((response) => {
@@ -117,6 +130,7 @@ export function performLogin(ctx: LoginContext): Promise<LoginResult> {
 								},
 							},
 							platformToken,
+							proxy: ctx.proxy,
 						});
 					})
 					.catch((err) => {
@@ -141,6 +155,7 @@ export function performLogin(ctx: LoginContext): Promise<LoginResult> {
 								},
 							},
 							platformToken,
+							proxy: ctx.proxy,
 						});
 					})
 					.finally(() => {

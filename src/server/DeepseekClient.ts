@@ -12,6 +12,8 @@ import {
 	getChatHeaders,
 } from "@/constants";
 import {solveAndBuildHeader} from "@/ipcs/Pow";
+import {getProxyAgent} from "@/services/ProxyAgent";
+import {getProxyForToken} from "@/services/QueryDB";
 import type {AccountConfig, DeepSeekPowChallenge} from "@/types";
 
 function intFrom(v: any): number {
@@ -25,9 +27,11 @@ export async function login(acc: AccountConfig): Promise<string> {
 		acc.password.trim(),
 		"deepseek_to_api",
 	);
+	const httpsAgent = getProxyAgent(acc.proxy);
 	const resp = await axios.post(DEEPSEEK_LOGIN_URL, body, {
 		headers: getLoginHeaders(),
 		validateStatus: () => true,
+		httpsAgent,
 	});
 	const data = resp.data;
 	const code = intFrom(data?.code);
@@ -45,6 +49,8 @@ export async function createSession(
 	token: string,
 	maxAttempts = 3,
 ): Promise<string> {
+	const proxyUrl = getProxyForToken(token);
+	const httpsAgent = getProxyAgent(proxyUrl);
 	const headers = getHistoryHeaders(token);
 	for (let attempt = 0; attempt < maxAttempts; attempt++) {
 		try {
@@ -54,6 +60,7 @@ export async function createSession(
 				{
 					headers,
 					validateStatus: () => true,
+					httpsAgent,
 				},
 			);
 			const data = resp.data;
@@ -91,13 +98,15 @@ function extractSessionId(resp: any): string | null {
 }
 
 export async function getPow(token: string, maxAttempts = 3): Promise<string> {
+	const proxyUrl = getProxyForToken(token);
+	const httpsAgent = getProxyAgent(proxyUrl);
 	const headers = getHistoryHeaders(token);
 	for (let attempt = 0; attempt < maxAttempts; attempt++) {
 		try {
 			const resp = await axios.post(
 				DEEPSEEK_CREATE_POW_URL,
 				{target_path: DEEPSEEK_COMPLETION_TARGET_PATH},
-				{headers, validateStatus: () => true},
+				{headers, validateStatus: () => true, httpsAgent},
 			);
 			const data = resp.data;
 			if (
@@ -128,11 +137,14 @@ export async function callCompletion(
 	payload: Record<string, any>,
 	powResponse: string,
 ): Promise<import("axios").AxiosResponse> {
+	const proxyUrl = getProxyForToken(token);
+	const httpsAgent = getProxyAgent(proxyUrl);
 	const headers = getChatHeaders(token, powResponse);
 	return axios.post(DEEPSEEK_COMPLETION_URL, payload, {
 		headers,
 		responseType: "stream",
 		validateStatus: () => true,
+		httpsAgent,
 	});
 }
 
@@ -141,10 +153,12 @@ export async function deleteSession(
 	sessionId: string,
 ): Promise<void> {
 	try {
+		const proxyUrl = getProxyForToken(token);
+		const httpsAgent = getProxyAgent(proxyUrl);
 		await axios.post(
 			DEEPSEEK_DELETE_SESSION_URL,
 			{chat_session_id: sessionId},
-			{headers: getHistoryHeaders(token), validateStatus: () => true},
+			{headers: getHistoryHeaders(token), validateStatus: () => true, httpsAgent},
 		);
 	} catch (err: any) {
 		console.warn("[shallowseek-api] delete_session error", err.message);

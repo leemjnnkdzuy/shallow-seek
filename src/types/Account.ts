@@ -3,4 +3,5 @@ export interface Account {
 	email: string;
 	chat_token: string;
 	platform_token?: string;
+	proxy?: string;
 }

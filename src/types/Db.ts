@@ -4,10 +4,11 @@ export interface DbAPI {
 		email: string;
 		chat_token: string;
 		platform_token?: string;
+		proxy?: string;
 	}) => Promise<{ success: boolean; error?: string }>;
 	getAccounts: () => Promise<{
 		success: boolean;
-		data?: { id: string; email: string; chat_token: string; platform_token?: string }[];
+		data?: { id: string; email: string; chat_token: string; platform_token?: string; proxy?: string }[];
 		error?: string;
 	}>;
 	deleteAccount: (

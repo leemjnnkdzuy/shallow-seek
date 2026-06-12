@@ -11,6 +11,7 @@ export interface LoginResult {
 	status?: number;
 	data?: unknown;
 	platformToken?: string | null;
+	proxy?: string;
 	error?: {
 		message: string;
 		code?: string;

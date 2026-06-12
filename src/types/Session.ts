@@ -3,6 +3,7 @@ export interface HistoryMessage {
 	content: string;
 	tokenEstimate: number;
 	timestamp: number;
+	tool_calls?: Record<string, unknown>[];
 }
 
 export interface ActiveSession {

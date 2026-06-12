@@ -45,8 +45,8 @@ export function buildToolPrompt(tools: any[]): string {
 export function parseDSMLToolCalls(xmlContent: string, tools?: any[]): any[] {
 	const result = newParseToolCalls(xmlContent);
 	let calls = result.calls.map((c) => ({
-		Name: c.name,
-		Input: c.input,
+		Name: c.name !== undefined ? c.name : (c as any).Name,
+		Input: c.input !== undefined ? c.input : (c as any).Input,
 	}));
 
 	if (tools && tools.length > 0) {
@@ -66,6 +66,7 @@ export function parseDSMLToolCalls(xmlContent: string, tools?: any[]): any[] {
 export class StreamToolSieve {
 	private sieve: NewSieve;
 	private tools?: any[];
+	private toolCallCounter = 0;
 
 	constructor(tools?: any[]) {
 		this.sieve = new NewSieve();
@@ -85,8 +86,8 @@ export class StreamToolSieve {
 				outputText += ev.text;
 			} else if (ev.type === "tool_calls" && ev.calls) {
 				let callsToNormalize: ParsedToolCall[] = ev.calls.map((c) => ({
-					Name: c.name,
-					Input: c.input,
+					Name: c.name !== undefined ? c.name : (c as any).Name,
+					Input: c.input !== undefined ? c.input : (c as any).Input,
 				}));
 
 				if (this.tools && this.tools.length > 0) {
@@ -97,6 +98,7 @@ export class StreamToolSieve {
 				}
 
 				const formatted = callsToNormalize.map((c) => ({
+					index: this.toolCallCounter++,
 					id: `call_${crypto.randomUUID().replace(/-/g, "")}`,
 					type: "function",
 					function: {
@@ -121,8 +123,8 @@ export class StreamToolSieve {
 				outputText += ev.text;
 			} else if (ev.type === "tool_calls" && ev.calls) {
 				let callsToNormalize: ParsedToolCall[] = ev.calls.map((c) => ({
-					Name: c.name,
-					Input: c.input,
+					Name: c.name !== undefined ? c.name : (c as any).Name,
+					Input: c.input !== undefined ? c.input : (c as any).Input,
 				}));
 
 				if (this.tools && this.tools.length > 0) {
@@ -133,6 +135,7 @@ export class StreamToolSieve {
 				}
 
 				const formatted = callsToNormalize.map((c) => ({
+					index: this.toolCallCounter++,
 					id: `call_${crypto.randomUUID().replace(/-/g, "")}`,
 					type: "function",
 					function: {

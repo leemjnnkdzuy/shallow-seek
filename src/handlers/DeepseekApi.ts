@@ -15,6 +15,8 @@ import {
 	getPlatformHeaders,
 } from "@/constants";
 import {solveAndBuildHeader} from "@/ipcs/Pow";
+import {getProxyAgent} from "@/services/ProxyAgent";
+import {getProxyForToken} from "@/services/QueryDB";
 import type {
 	TokenPayload,
 	SessionPayload,
@@ -30,9 +32,12 @@ export async function fetchHistory(payload: TokenPayload): Promise<IpcResult> {
 		payload.token ? "present" : "missing",
 	);
 	try {
+		const proxyUrl = getProxyForToken(payload.token);
+		const httpsAgent = getProxyAgent(proxyUrl);
 		const response = await axios.get(DEEPSEEK_HISTORY_URL, {
 			headers: getHistoryHeaders(payload.token, payload.cookies),
 			validateStatus: () => true,
+			httpsAgent,
 		});
 		console.log(
 			"[deepseek-fetch-history] Response status:",
@@ -57,6 +62,8 @@ export async function fetchSessionMessages(
 	payload: SessionPayload,
 ): Promise<IpcResult> {
 	try {
+		const proxyUrl = getProxyForToken(payload.token);
+		const httpsAgent = getProxyAgent(proxyUrl);
 		const headers = getHistoryHeaders(
 			payload.token,
 			payload.cookies,
@@ -66,6 +73,7 @@ export async function fetchSessionMessages(
 			`${DEEPSEEK_HISTORY_MESSAGES_URL}?chat_session_id=${payload.sessionId}`,
 			{
 				headers,
+				httpsAgent,
 			},
 		);
 
@@ -103,6 +111,8 @@ export async function createSession(
 	payload: TokenPayload,
 ): Promise<IpcResult> {
 	try {
+		const proxyUrl = getProxyForToken(payload.token);
+		const httpsAgent = getProxyAgent(proxyUrl);
 		const response = await axios.post(
 			DEEPSEEK_CREATE_SESSION_URL,
 			{},
@@ -112,6 +122,7 @@ export async function createSession(
 					payload.cookies,
 				),
 				validateStatus: () => true,
+				httpsAgent,
 			},
 		);
 		console.log(
@@ -134,6 +145,8 @@ export async function deleteSession(
 	payload: SessionPayload,
 ): Promise<IpcResult> {
 	try {
+		const proxyUrl = getProxyForToken(payload.token);
+		const httpsAgent = getProxyAgent(proxyUrl);
 		const response = await axios.post(
 			DEEPSEEK_DELETE_SESSION_URL,
 			{chat_session_id: payload.sessionId},
@@ -143,6 +156,7 @@ export async function deleteSession(
 					payload.cookies,
 				),
 				validateStatus: () => true,
+				httpsAgent,
 			},
 		);
 		console.log(
@@ -171,11 +185,14 @@ export async function getApiKeys(
 			: "missing",
 	);
 	try {
+		const proxyUrl = getProxyForToken(payload.token);
+		const httpsAgent = getProxyAgent(proxyUrl);
 		const response = await axios.get(
 			DEEPSEEK_PLATFORM_GET_API_KEYS_URL,
 			{
 				headers: getPlatformHeaders(payload.token),
 				validateStatus: () => true,
+				httpsAgent,
 			},
 		);
 		console.log(
@@ -205,6 +222,8 @@ export async function editApiKeys(
 		JSON.stringify(payload.body),
 	);
 	try {
+		const proxyUrl = getProxyForToken(payload.token);
+		const httpsAgent = getProxyAgent(proxyUrl);
 		const response = await axios.post(
 			DEEPSEEK_PLATFORM_EDIT_API_KEYS_URL,
 			payload.body,
@@ -214,6 +233,7 @@ export async function editApiKeys(
 					"Content-Type": "application/json",
 				},
 				validateStatus: () => true,
+				httpsAgent,
 			},
 		);
 		console.log(
@@ -236,6 +256,8 @@ export async function uploadFile(
 	payload: UploadFilePayload,
 ): Promise<IpcResult> {
 	try {
+		const proxyUrl = getProxyForToken(payload.token);
+		const httpsAgent = getProxyAgent(proxyUrl);
 		// 1. Get PoW challenge
 		const powResponse = await axios.post(
 			DEEPSEEK_CREATE_POW_URL,
@@ -246,6 +268,7 @@ export async function uploadFile(
 					payload.cookies,
 				),
 				validateStatus: () => true,
+				httpsAgent,
 			},
 		);
 
@@ -272,6 +295,7 @@ export async function uploadFile(
 			maxBodyLength: Infinity,
 			maxContentLength: Infinity,
 			validateStatus: () => true,
+			httpsAgent,
 		});
 
 		if (response.status !== 200 || response.data?.code !== 0) {
@@ -289,10 +313,13 @@ export async function fetchFiles(
 	payload: FetchFilesPayload,
 ): Promise<IpcResult> {
 	try {
+		const proxyUrl = getProxyForToken(payload.token);
+		const httpsAgent = getProxyAgent(proxyUrl);
 		const query = payload.fileIds.map((id) => `file_ids=${encodeURIComponent(id)}`).join("&");
 		const response = await axios.get(`${DEEPSEEK_FETCH_FILES_URL}?${query}`, {
 			headers: getHistoryHeaders(payload.token),
 			validateStatus: () => true,
+			httpsAgent,
 		});
 
 		if (response.status !== 200 || response.data?.code !== 0) {

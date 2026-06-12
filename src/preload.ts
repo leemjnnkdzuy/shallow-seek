@@ -85,7 +85,7 @@ contextBridge.exposeInMainWorld("electron", {
 		getAllSettings: () => ipcRenderer.invoke("db-get-all-settings"),
 	},
 	deepseek: {
-		login: (payload: {email: string; password: string; deviceId: string}) =>
+		login: (payload: {email: string; password: string; deviceId: string; proxy?: string}) =>
 			ipcRenderer.invoke("deepseek-login", payload),
 		fetchHistory: (payload: {token: string; cookies?: string}) =>
 			ipcRenderer.invoke("deepseek-fetch-history", payload),
